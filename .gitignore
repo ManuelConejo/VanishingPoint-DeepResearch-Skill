@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+# Run artefacts (one working directory per question; never commit a run)
+state/
+runs/
+*.jsonl
+!tests/fixtures/*.jsonl
+# Secrets: keys live in ~/.config/vp/ or the environment, never in the repository
+*.key
+.config/
+.env

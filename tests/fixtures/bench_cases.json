@@ -1,0 +1,173 @@
+{
+ "B01": {
+  "T": "2025-01-27T00:00:00Z",
+  "forbidden_dois": [
+   "10.1007/s41666-026-00248-6"
+  ],
+  "forbidden_titles": [
+   "A Systematic Review of Deep Learning and Machine Learning Applications in Longitudinal Multimodal Clinical Data."
+  ]
+ },
+ "B02": {
+  "T": "2025-10-18T00:00:00Z",
+  "forbidden_dois": [
+   "10.3390/diagnostics16183054"
+  ],
+  "forbidden_titles": [
+   "Artificial Intelligence Reporting Guidelines in Radiology: A Systematic Review."
+  ]
+ },
+ "B03": {
+  "T": "2026-07-01T00:00:00Z",
+  "forbidden_dois": [
+   "10.1002/brb3.71748"
+  ],
+  "forbidden_titles": [
+   "Cost-Effectiveness of Decompressive Craniectomy in Severe Traumatic Brain Injury Patients: A Systematic Review of Economic Studies."
+  ]
+ },
+ "B04": {
+  "T": "2025-02-01T00:00:00Z",
+  "forbidden_dois": [
+   "10.2196/82143"
+  ],
+  "forbidden_titles": [
+   "Cost-Effectiveness of Virtual Emergency Care Models: Systematic Review."
+  ]
+ },
+ "B05": {
+  "T": "2025-06-16T00:00:00Z",
+  "forbidden_dois": [
+   "10.3390/children13091128"
+  ],
+  "forbidden_titles": [
+   "The Effectiveness of Life Skills-Based School Violence Prevention Programs in Secondary Education: A Systematic Review and Meta-Analysis."
+  ]
+ },
+ "B06": {
+  "T": "2026-07-19T00:00:00Z",
+  "forbidden_dois": [
+   "10.3390/jintelligence14090228"
+  ],
+  "forbidden_titles": [
+   "Cognitive Load and Foreign-Language Anxiety in Second-Language Learning: A Systematic Review and Meta-Analysis."
+  ]
+ },
+ "B07": {
+  "T": "2025-09-13T00:00:00Z",
+  "forbidden_dois": [
+   "10.1093/ageing/afag203"
+  ],
+  "forbidden_titles": [
+   "Cost-effectiveness of comprehensive geriatric assessment: systematic review of economic evaluations."
+  ]
+ },
+ "B08": {
+  "T": "2026-05-25T00:00:00Z",
+  "forbidden_dois": [
+   "10.1186/s12913-026-15428-8"
+  ],
+  "forbidden_titles": [
+   "Economic and productivity outcomes of workplace health programmes incorporating blood-based laboratory screening: a systematic review."
+  ]
+ },
+ "B09": {
+  "T": "2026-01-01T00:00:00Z",
+  "forbidden_dois": [
+   "10.3390/biomimetics11070512"
+  ],
+  "forbidden_titles": [
+   "Machine Learning for Graduation Prediction in Higher Education: A Systematic Review with a Bio-Inspired Optimization Perspective."
+  ]
+ },
+ "B10": {
+  "T": "2026-06-01T00:00:00Z",
+  "forbidden_dois": [
+   "10.3390/children13091267"
+  ],
+  "forbidden_titles": [
+   "Effects of Physically Active Learning (PAL) Interventions on Physical Fitness, Physical Activity, and Sedentary Behavior in Primary School Children: A Systematic Review."
+  ]
+ },
+ "B11": {
+  "T": "2025-12-01T00:00:00Z",
+  "forbidden_dois": [
+   "10.3390/jintelligence14070130"
+  ],
+  "forbidden_titles": [
+   "Physical Activity-Based Methodologies as a Physical Education Resource for Inhibitory Control: A Systematic Review with Meta-Analysis."
+  ]
+ },
+ "B12": {
+  "T": "2026-04-01T00:00:00Z",
+  "forbidden_dois": [
+   "10.1136/bmjph-2025-004782"
+  ],
+  "forbidden_titles": [
+   "Association between air pollution, multimorbidity and polypharmacy: a systematic review and meta-analysis."
+  ]
+ },
+ "B13": {
+  "T": "2025-07-10T00:00:00Z",
+  "forbidden_dois": [
+   "10.1111/gcb.71034"
+  ],
+  "forbidden_titles": [
+   "Arboreal Mammals Are at Risk Under Climate Change: Insights From a Global Systematic Review and Meta-Analysis."
+  ]
+ },
+ "B14": {
+  "T": "2025-04-17T00:00:00Z",
+  "forbidden_dois": [
+   "10.1002/cpp.70346"
+  ],
+  "forbidden_titles": [
+   "Effectiveness of Emotion-Focused Therapy for Self-Criticism: A Systematic Review and Meta-Analysis."
+  ]
+ },
+ "B15": {
+  "T": "2026-03-30T00:00:00Z",
+  "forbidden_dois": [
+   "10.1111/cts.70730"
+  ],
+  "forbidden_titles": [
+   "Rituximab as Rescue or Add-On Therapy for Relapsing or Refractory Lupus Nephritis: A Systematic Review and Meta-Analysis."
+  ]
+ },
+ "B16": {
+  "T": "2026-05-01T00:00:00Z",
+  "forbidden_dois": [
+   "10.2147/prbm.s627521"
+  ],
+  "forbidden_titles": [
+   "Effects of Forest Therapy on Depressive Symptoms: A Systematic Review and Meta-Analysis."
+  ]
+ },
+ "B17": {
+  "T": "2026-03-23T00:00:00Z",
+  "forbidden_dois": [
+   "10.3389/fphar.2026.1912369"
+  ],
+  "forbidden_titles": [
+   "Meta-analysis and systematic review of amiodarone-inclusive treatment for fetal tachyarrhythmia."
+  ]
+ },
+ "B18": {
+  "T": "2024-06-01T00:00:00Z",
+  "forbidden_dois": [
+   "10.3390/dj14090599"
+  ],
+  "forbidden_titles": [
+   "Photobiomodulation in Dental Implant Surgery: A Systematic Review and Meta-Analysis of Randomized Controlled Trials."
+  ]
+ },
+ "B20": {
+  "T": "2026-04-09T00:00:00Z",
+  "forbidden_dois": [
+   "10.3389/fneur.2026.1875347"
+  ],
+  "forbidden_titles": [
+   "Bright light therapy for post-stroke sleep disturbances: a systematic review and meta-analysis."
+  ]
+ }
+}
