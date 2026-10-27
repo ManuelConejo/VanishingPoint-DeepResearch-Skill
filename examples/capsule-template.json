@@ -1,0 +1,41 @@
+{
+ "_comment": "Hand-written model of the JSON twin of capsule-template.md, as tools/code_capsule.py writes it. Placeholders only; the fields marked TO BE FILLED BY THE OWNER are completed by hand before a run (plugins/code.md, section Context capsule).",
+ "Y": "TO BE FILLED BY THE OWNER",
+ "entry_points": {
+  "limits": [
+   "lexical parsers only: entry points computed at runtime (dynamic setup.py) are not seen"
+  ],
+  "list": []
+ },
+ "identity": {
+  "bytes": 0,
+  "commit_date": "2026-01-01T00:00:00+00:00",
+  "files": 0,
+  "repo": "/path/to/example-project",
+  "sha": "0123456789abcdef0123456789abcdef01234567",
+  "tree_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+ },
+ "intention": "TO BE FILLED BY THE OWNER",
+ "license": null,
+ "meta": {
+  "generated_utc": "2026-01-01T00:00:00+00:00",
+  "tool": "code_capsule.py"
+ },
+ "mode": "TO BE FILLED BY THE OWNER",
+ "modules": {
+  "list": [],
+  "total": 0,
+  "truncated": false
+ },
+ "refusals": [
+  "TO BE FILLED BY THE OWNER"
+ ],
+ "registry": null,
+ "request_date": "TO BE FILLED BY THE OWNER",
+ "reviewed_by_owner": "no",
+ "target_seam": "TO BE FILLED BY THE OWNER",
+ "tests": {
+  "directories": [],
+  "test_files": 0
+ }
+}
