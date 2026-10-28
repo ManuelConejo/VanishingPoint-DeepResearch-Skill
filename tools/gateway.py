@@ -7,6 +7,10 @@ the forbidden DOIs and titles, and the engines that no plugin declared.
 Command line:
   gateway.py [--plugin P.md ...] [--T YYYY-MM-DD | --case ID] [--run NAME] [--state DIR] [--cap N] [--since YEAR]
              <command> <argument> [--n N]
+  --plugin takes a path from the current directory, a path from the skill directory (plugins/cs-ai.md) or a bare name (cs-ai): the gateway
+  runs the same from any directory; an unknown plugin stops with exit 2 and the list of the plugins shipped.
+  Call pools: the searches count in `counter-<run>.txt` (cap: --cap, else the plugins' `cap:`, else config call_cap.default); tools/verifier.py
+  opens the pool `verifier` (`counter-<run>.verifier.txt`, cap: config verifier.call_cap), so verification never competes with the searches.
   commands: sources | search-<engine> "<query>" | read <id> | citing <id> | references <id> | related <id> (OpenAlex related works, same barrier)
   wired engines: pubmed, europepmc, crossref, openalex, arxiv   (id: pmid:NNN | doi:10.x | arxiv:2501.01234)
   law engines (plugins/law.md): eurlex, justice-administrative [--court CE|TA75|CAA69] [--from YYYY-MM-DD] [--to YYYY-MM-DD], hal, theses-fr
@@ -88,9 +92,28 @@ def related(ident, n, B): return _chain('related', ident, n, B)
 
 # ---------------------------------------------------------------- plugins and interface
 
+SKILL_DIR = P.parent
+
+
+class PluginNotFound(ValueError):
+    """A --plugin argument that names no file (message: what was tried and the plugins shipped)."""
+
+
+def plugin_path(path):
+    """--plugin argument -> existing file: the path as given (current directory or absolute), else the same path from the skill directory
+    (`plugins/cs-ai.md` works from any directory), else a bare name (`cs-ai`, `cs-ai.md`) in <skill>/plugins/. Never a guess beyond these."""
+    p = pathlib.Path(str(path))
+    for c in (p, SKILL_DIR / p, SKILL_DIR / 'plugins' / p.name, SKILL_DIR / 'plugins' / (p.name + '.md')):
+        if c.is_file(): return c
+    shipped = sorted(x.stem for x in (SKILL_DIR / 'plugins').glob('*.md') if not x.name.startswith('_'))
+    raise PluginNotFound(f"plugin not found: {str(path)!r} (tried from the current directory {os.getcwd()} and from the skill directory "
+                         f"{SKILL_DIR}); give plugins/<name>.md or <name>, shipped: {', '.join(shipped)}")
+
+
 def read_plugin(path):
     """Reads the ```sources block of a plugin (key: value lines). Without block: no engine declared (reported)."""
-    txt = pathlib.Path(path).read_text(encoding='utf-8')
+    path = plugin_path(path)
+    txt = path.read_text(encoding='utf-8')
     m = re.search(r'```sources[^\n]*\n(.*?)```', txt, re.S)
     decl = {}
     if m:
@@ -106,7 +129,9 @@ def read_plugin(path):
 
 
 class Gateway:
-    def __init__(self, plugins=(), T=None, case=None, run='vp', state=None, cap=None, since=None):
+    def __init__(self, plugins=(), T=None, case=None, run='vp', state=None, cap=None, since=None, pool=None):
+        """pool: None = the searches (counter-<run>.txt); a name = a separate budget with its own counter (counter-<run>.<pool>.txt) and
+        its own cap (`cap`, else config `<pool>.call_cap`), journaled with `pool` (tools/verifier.py: pool 'verifier')."""
         self.plugins = [read_plugin(p) for p in plugins]
         if case: self.B = Barrier.from_case(case)
         else:
@@ -117,14 +142,17 @@ class Gateway:
         self.code_engines = sorted({m for p in self.plugins for m in p['code_engines']})   # absent without plugin (intended difference)
         self.served_by = {m: SERVED_BY[m] for m in sorted(set(declared) - set(ENGINES)) if SERVED_BY.get(m) in self.code_engines}
         self.not_wired = sorted(set(declared) - set(ENGINES) - set(self.served_by))   # a name served by a declared code engine is not "not wired"
-        self.cap = cap or min((p['cap'] for p in self.plugins if p['cap']), default=None) or CFG['call_cap']['default']
+        self.pool = re.sub(r'[^A-Za-z0-9_-]', '_', str(pool)) if pool else None
+        if self.pool: self.cap = cap or int((CFG.get(self.pool) or {}).get('call_cap') or 0) or None
+        else: self.cap = cap or min((p['cap'] for p in self.plugins if p['cap']), default=None) or CFG['call_cap']['default']
+        if not self.cap: raise ValueError(f"no call cap for the pool {self.pool!r}: set {self.pool}.call_cap in tools/config.json or pass cap")
         self.run = re.sub(r'[^A-Za-z0-9_.-]', '_', str(run))
         setattr(sys.modules[__name__], 'STATE', pathlib.Path(state or os.environ.get('VP_STATE') or 'vp-state'))   # rebinds every source
         self.state = STATE
         self.client = sc.CodeClient(cache_dir=self.state)                     # receipts in <state>/requests.jsonl, never the URL nor the token
 
     def sources(self):
-        return {'T': self.B.T.isoformat(), 'bound': f'documents before {self.B.T}', 'since': self.B.since, 'cap': self.cap,
+        return {'T': self.B.T.isoformat(), 'bound': f'documents before {self.B.T}', 'since': self.B.since, 'cap': self.cap, **({'pool': self.pool} if self.pool else {}),
                 'engines': self.engines, 'not_wired': self.not_wired, 'served_by': self.served_by, 'code_engines': self.code_engines,
                 'keys_present': sorted({k for p in self.plugins for k in p['keys'] if live_key(k)} | self._github_state()),
                 'key_invalid': sorted(sc.invalid_keys(self.state)),
@@ -139,7 +167,7 @@ class Gateway:
 
     def _count(self):
         self.state.mkdir(parents=True, exist_ok=True)
-        with open(self.state / f'counter-{self.run}.txt', 'a+') as f:
+        with open(self.state / (f'counter-{self.run}.txt' if not self.pool else f'counter-{self.run}.{self.pool}.txt'), 'a+') as f:
             fcntl.flock(f, fcntl.LOCK_EX); f.seek(0); k = int(f.read() or 0)
             if k >= self.cap: return None
             f.seek(0); f.truncate(); f.write(str(k + 1))
@@ -162,6 +190,7 @@ class Gateway:
             return {'refusal': f"unknown command '{cmd}'"}
         k = self._count()
         if k is None:
+            if self.pool: return {'refusal': f"CAP reached ({self.cap} calls of the {self.pool} budget, {self.pool}.call_cap of tools/config.json)", 'pool': self.pool}
             return {'refusal': f"CAP reached ({self.cap} calls): stop searching and return your list."}
         B = self.B; B.excluded = 0; err = None; extra = {}
         ja_opt = {k: opt[k] for k in FILTER_OPT.get(cmd, ()) if opt.get(k)}   # engine filters (FILTER_OPT, PISTE block)
@@ -177,10 +206,10 @@ class Gateway:
         except Exception as e:
             res, total, err = {'error': f'{type(e).__name__}: {str(e)[:200]}'}, None, str(e)
         inv = sorted(sc.invalid_keys(self.state))                            # names of the keys rejected by their provider in this run
-        out = {'call': k, 'cap': self.cap, 'bound': f'documents before {B.T}', 'index_total': total,
+        out = {'call': k, 'cap': self.cap, **({'pool': self.pool} if self.pool else {}), 'bound': f'documents before {B.T}', 'index_total': total,
                'excluded_post_T_or_forbidden': B.excluded, 'results': res, 'engine': engine, 'query': arg, 'n': n, **extra, **({'key_invalid': inv} if inv else {})}
         with open(self.state / 'journal.jsonl', 'a') as f:
-            f.write(json.dumps({'utc': dt.datetime.now(dt.timezone.utc).isoformat(), 'run': self.run, 'T': B.T.isoformat(), 'call': cmd, 'engine': engine,
+            f.write(json.dumps({'utc': dt.datetime.now(dt.timezone.utc).isoformat(), 'run': self.run, **({'pool': self.pool} if self.pool else {}), 'T': B.T.isoformat(), 'call': cmd, 'engine': engine,
                                 'query': arg, **({'filters': ja_opt} if ja_opt else {}), 'n': n, 'count': len(res) if isinstance(res, list) else None, 'excluded': B.excluded, 'error': err, **({'key_invalid': inv} if inv else {}),
                                 'ids': [r.get('id') for r in res] if isinstance(res, list) else [res.get('id')] if isinstance(res, dict) else []},
                                ensure_ascii=False) + '\n')
@@ -228,7 +257,8 @@ def main():
     ap.add_argument('--from', dest='date_from', default=None); ap.add_argument('--to', dest='date_to', default=None, help='search-justice-administrative: decision-date window YYYY-MM-DD')
     ap.add_argument('--chamber', default=None, help='search-judilibre: chamber key (civ1, soc, cr...); --court cc|ca|tj|tcom'); ap.add_argument('--fund', default=None, help='search-legifrance: code|loda|jorf')
     a = ap.parse_args()
-    g = Gateway(a.plugin, T=a.T, case=a.case, run=a.run, state=a.state, cap=a.cap, since=a.since)
+    try: g = Gateway(a.plugin, T=a.T, case=a.case, run=a.run, state=a.state, cap=a.cap, since=a.since)
+    except PluginNotFound as e: print(f'gateway.py: {e}', file=sys.stderr); sys.exit(2)
     print(json.dumps(g.call(a.cmd, ' '.join(a.arg), a.n, language=a.language, repo=a.repo, court=a.court, date_from=a.date_from, date_to=a.date_to, chamber=a.chamber, fund=a.fund), ensure_ascii=False))
 
 

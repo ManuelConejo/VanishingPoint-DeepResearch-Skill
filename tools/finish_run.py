@@ -5,8 +5,13 @@ Usage: finish_run.py RUN_DIR [--T YYYY-MM-DD] [--plugin plugins/law.md ...] [--o
 Runs, in this order, each step whatever the others gave (status ok | problems | skipped, with the reason):
   1 validate_card.py DIR --header (--header skipped without state/journal.jsonl)   2 validate_result.py DIR/result.json
   3 retraction check (below; writes DIR/retractions.json)   4 law_checks.py DIR (only when a law plugin is used: --plugin, else scope.md)
-  5 export_report.py DIR --pdf --open   6 export_data.py DIR
+  5 export_report.py DIR --pdf --open (with the cited passages under each bibliography entry)   6 export_data.py DIR (also passages.json,
+  PASSAGES.md: tools/passages.py)
 Exit code 0 only when steps 1 and 2 passed; the paths of the files produced are printed at the end.
+Receipt: DIR/state/finish_run.json (fingerprints of REPORT.md, card.json, result.json, verdicts.json taken before the steps, then the steps and
+their statuses). `validate_card.py DIR` (check 13, gateway runs) refuses a run without it or whose files changed after it: the run cannot be
+delivered clean without this command. The verifier's receipt (DIR/state/verifier.json: full texts attempted / obtained, gateway pool) is
+summarised under `verification`, informative.
 Retraction check (rule shared by all plugins: "Mechanical retraction check"): for every DOI of card.json `sources`, Crossref `/works/<DOI>`
 (`updated-by`, and `update-to` when the DOI is itself a notice), then, when the record carries no `updated-by`, the notices pointing to it
 (`/works?filter=updates:<DOI>`, their `update-to`). Retraction Watch: the update entries Crossref serves with source `retraction-watch`, and
@@ -19,6 +24,7 @@ import argparse, csv, datetime as dt, hashlib, json, os, pathlib, re, subprocess
 P = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(P))
 import gateway as gw   # noqa: E402  (fetch, _mailto: the gateway's polite HTTP pattern)
+import validate_card as vc   # noqa: E402  (fingerprints of the end-step inputs, check 13)
 
 STATE_OF = {'retraction': 'retracted', 'partial_retraction': 'retracted', 'withdrawal': 'retracted', 'removal': 'retracted',
             'expression_of_concern': 'concern', 'erratum': 'erratum', 'correction': 'erratum', 'corrigendum': 'erratum'}
@@ -127,8 +133,20 @@ def law_used(d, plugins):
     return s.exists() and bool(re.search(r'\bplugins?\b[^\n.]{0,40}\blaw\b|plugins/law\.md', s.read_text(encoding='utf-8', errors='replace'), re.I))
 
 
+def verification(d):
+    """Summary of DIR/state/verifier.json (written by verifier.py --state), or None when the verifier left no receipt."""
+    try: v = json.loads((d / 'state' / 'verifier.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError): return None
+    return {k: v.get(k) for k in ('summary', 'fulltext_mode', 'fulltext_cap', 'fulltext_attempted', 'fulltext_obtained', 'fulltext_not_tried_cap', 'origins', 'gateway', 'model')}
+
+
 def finish(d, T=None, plugins=(), offline=False, rw_csv=None):
     d = pathlib.Path(d).resolve(); steps, files = [], []
+    receipt = d / 'state' / 'finish_run.json'
+    inputs = vc.fingerprints(d)                                   # before any step: a file changed later makes this receipt stale (check 13)
+    receipt.parent.mkdir(parents=True, exist_ok=True)
+    receipt.write_text(json.dumps({'started_utc': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'), 'inputs': inputs, 'T': T,
+                                   'plugins': list(plugins), 'offline': offline}, ensure_ascii=False, indent=1), encoding='utf-8')
 
     def step(name, status, detail, out=()):
         steps.append({'step': name, 'status': status, 'detail': detail}); files.extend(x for x in out if x not in files)
@@ -166,7 +184,11 @@ def finish(d, T=None, plugins=(), offline=False, rw_csv=None):
             step(name, 'ok' if c == 0 else 'problems', (' '.join(pdf_note) or o.splitlines()[-1]) if o else '', _paths(o))
     else:
         for name in ('export_report', 'export_data'): step(name, 'skipped', 'no REPORT.md')
-    return {'dir': str(d), 'validation_passed': c1 == 0 and c2 == 0, 'steps': steps, 'files': files}
+    out = {'dir': str(d), 'validation_passed': c1 == 0 and c2 == 0, 'steps': steps, 'files': files, 'verification': verification(d)}
+    receipt.write_text(json.dumps({**json.loads(receipt.read_text(encoding='utf-8')), 'finished_utc': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'),
+                                   'validation_passed': out['validation_passed'], 'steps': [{k: s[k] for k in ('step', 'status')} for s in steps],
+                                   'verification': out['verification']}, ensure_ascii=False, indent=1), encoding='utf-8')
+    return out
 
 
 def main(argv=None):
@@ -182,6 +204,11 @@ def main(argv=None):
     else:
         for s in r['steps']:
             print(f"{s['step']:<24} {s['status']:<9} " + ' | '.join(x for x in str(s['detail']).splitlines()[:6] if x))
+        v = r.get('verification')
+        print('verification: ' + ('no state/verifier.json (tools/verifier.py verify ... --state <dir>/state not run)' if not v else
+              f"{v.get('summary')}; full text {v.get('fulltext_obtained')}/{v.get('fulltext_attempted')} obtained/attempted"
+              + (f", {v.get('fulltext_not_tried_cap')} beyond the cap" if v.get('fulltext_not_tried_cap') else '')
+              + (f"; gateway pool {v['gateway'].get('pool')} cap {v['gateway'].get('cap')}" if v.get('gateway') else '')))
         print('validation: ' + ('passed' if r['validation_passed'] else 'FAILED (exit 1)'))
         for f in r['files']: print(f)
     return 0 if r['validation_passed'] else 1

@@ -9,7 +9,23 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.2.1, measured on small benches (3 to 50 cases); see CHANGELOG.md.
+Status: v0.5.1, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+"What is measured, what is not" below and CHANGELOG.md.
+
+## In two minutes
+
+- **You give**: a question and, optionally, a date T ("what was known before T").
+- **It does**: 3 to 5 searches through a gateway that only returns documents dated before T (arXiv, OpenAlex, Crossref,
+  PubMed, Europe PMC, OpenReview, code hosts... no key required), stops on saturation, writes the report, then a separate
+  fresh-context call re-reads the sources and checks the claims that carry a decision.
+- **You get**, in one directory: `REPORT.md` / `REPORT.html` (eight sections, numbered bibliography, each checked claim
+  shown with the exact source passage), `card.json` / `result.json` / `verdicts.json` (machine annex and verdicts:
+  FOUND, DISTORTED, ABSENT, INVALID, SOURCE-UNAVAILABLE, UNVERIFIED), `studies.csv` and `references.bib` / `.ris`.
+- **It costs**: about 3 USD of model usage per academic question on Claude Code (2.8 to 3.0 USD measured, verification
+  included), up to about 10 USD on long legal texts, more with the optional full-text verification (see the example);
+  0 USD metered on a Codex subscription.
+- **See a real run**: [`examples/report-cs-ai/`](examples/report-cs-ai/) (question, report, verdicts, cited passages,
+  with its limits).
 
 ## Installation
 
@@ -19,9 +35,12 @@ deps.dev, Hugging Face Papers, Software Heritage); every API key is optional (KE
 
 ### Claude Code
 
-Copy this directory to the user skills directory, or to a project's skills directory:
+Clone the repository, then copy it to the user skills directory, or to a project's skills directory (create the
+parent directory first: `cp` does not):
 
 ```
+git clone https://github.com/ManuelConejo/VanishingPoint-DeepResearch-Skill.git
+mkdir -p ~/.claude/skills
 cp -r VanishingPoint-DeepResearch-Skill ~/.claude/skills/vanishingpoint        # user-wide
 cp -r VanishingPoint-DeepResearch-Skill <project>/.claude/skills/vanishingpoint # one project
 ```
@@ -44,6 +63,7 @@ Codex CLI (checked with codex-cli 0.160.1) discovers skills in `~/.codex/skills/
 `<project>/.agents/skills/<name>/SKILL.md` (one project); the YAML header (`name`, `description`) is read as for Claude Code:
 
 ```
+mkdir -p ~/.codex/skills
 cp -r VanishingPoint-DeepResearch-Skill ~/.codex/skills/vanishingpoint          # user-wide
 cp -r VanishingPoint-DeepResearch-Skill <project>/.agents/skills/vanishingpoint  # one project
 ```
@@ -68,6 +88,9 @@ or `.agents/skills/vanishingpoint/SKILL.md`), then the plugin it selects.
 
 ## First run
 
+Set once, in the shell you use: `export SKILL=~/.claude/skills/vanishingpoint` (or `~/.codex/skills/vanishingpoint`);
+every command below uses it.
+
 1. Create a working directory for the question (one directory per question) and open the agent there.
 2. Optional, once: `python3 -I "$SKILL/tools/check_keys.py"` (with `SKILL=~/.claude/skills/vanishingpoint` or `~/.codex/skills/vanishingpoint`: the tools live in the skill directory, not in the working directory) prints, per plugin, the sources that are active, degraded or skipped
    for lack of a key, with the link to obtain each key (never a value). To install one: `python3 -I "$SKILL/tools/setup_keys.py" <NAME>`
@@ -80,11 +103,11 @@ or `.agents/skills/vanishingpoint/SKILL.md`), then the plugin it selects.
    with receipts), `REPORT.md` (the report), `card.json` and `result.json` (machine annex), `verdicts.json` and
    `sources/<key>/source.txt` (verification), `run.json` (header derived from the gateway journal), `state/` (gateway journal,
    receipts without URL nor key). The code plugin adds `capsule.md` (input) and `mechanisms.json` (output).
-5. Check before using the report: `python3 -I "$SKILL/tools/validate_card.py" <dir> --header` (12 numbered mechanical checks; empty output
+5. Check before using the report: `python3 -I "$SKILL/tools/validate_card.py" <dir> --header` (13 numbered mechanical checks, the 13th: end steps run by `finish_run.py` below; empty output
    = valid). A report that keeps ABSENT or INVALID claims unhandled is not delivered as valid.
 6. Export: `python3 -I "$SKILL/tools/export_report.py" <dir> [--pdf] [--open]` writes `REPORT.html` (one self-contained page, prints to PDF from any browser) and, with `--pdf`, `REPORT.pdf` through WeasyPrint, Chromium, wkhtmltopdf or pandoc when one is installed (nothing is installed, no network). Then `python3 -I "$SKILL/tools/export_data.py" <dir>` writes `studies.csv` (one row per study, criteria and verification counts) and `references.bib` / `.ris` / `.json` (CSL-JSON) for reference managers.
 
-All end steps in one command (available, not yet in the instructions: next duel): `python3 -I "$SKILL/tools/finish_run.py" <dir> [--T YYYY-MM-DD] [--plugin plugins/law.md] [--offline] [--rw-csv FILE]` runs `validate_card.py --header`, `validate_result.py`, the mechanical retraction check of the plugins (Crossref `updated-by` / `update-to`, Retraction Watch entries; `retractions.json`, `unknown` never turned into clean), `law_checks.py` for a law run, `export_report.py --pdf --open` and `export_data.py`; each step reports ok / problems / skipped and never stops the others; exit 0 only when validation passed; the produced paths are printed.
+All end steps in one command (SKILL.md section 8; `validate_card.py` run alone refuses a run whose end steps did not run on the current files, check 13, receipt `state/finish_run.json`): `python3 -I "$SKILL/tools/finish_run.py" <dir> [--T YYYY-MM-DD] [--plugin plugins/law.md] [--offline] [--rw-csv FILE]` runs `validate_card.py --header`, `validate_result.py`, the mechanical retraction check of the plugins (Crossref `updated-by` / `update-to`, Retraction Watch entries; `retractions.json`, `unknown` never turned into clean), `law_checks.py` for a law run, `export_report.py --pdf --open` and `export_data.py`; each step reports ok / problems / skipped and never stops the others; exit 0 only when validation passed; the produced paths are printed.
 
 Update of a previous run (living review): ask "update my review of <dir>"; the skill reruns the question at today's T in a new directory, then `python3 -I "$SKILL/tools/living_diff.py" <old dir> <new dir>` writes `UPDATE.md` and `update.json` (what changed since the old T); neither report is edited by the tool.
 
@@ -99,7 +122,7 @@ python3 -I "$SKILL/tools/gateway.py" --T 2026-10-26 --run try --state /tmp/vp-st
 ## Keys (optional) and access policy
 
 - KEYS.md: every key is optional; without one, the source is skipped or degraded with a receipt, never "nothing found".
-  Install and check one: `python3 -I tools/setup_keys.py <NAME>` (`--check`, `--remove`). Manual method: environment variable
+  Install and check one: `python3 -I "$SKILL/tools/setup_keys.py" <NAME>` (`--check`, `--remove`). Manual method: environment variable
   `NAME`, else the file `~/.config/vp/<name in lowercase>.key` (the resolution order). No value is ever printed or logged.
 - ACCESS-POLICY.md: three levels (documented API; public pages even under robots.txt with a declared user agent, cadence
   and cache; never a reserved access, a captcha bypass or a service whose terms forbid automation). Set `VP_CONTACT` to a
@@ -125,7 +148,8 @@ basis read), Methodology Appendix (process, "Source coverage" block, verificatio
 `card.json` (the claims checked, one per `criteria` field, per figure of the summary and per verdict) and `result.json`
 (the studies with six criteria fields, saturation, calls used, verification rule). The code plugin adds `mechanisms.json`
 (ten fields per mechanism: Y side `file:line@SHA`, target seam in X, GO / WATCH / NO-GO, what not to take, licence).
-See `examples/capsule-template.md` (and its `.json` twin) for the shape of a context capsule.
+See `examples/report-cs-ai/` for a real, unedited run and `examples/capsule-template.md` (and its `.json` twin) for
+the shape of a context capsule.
 
 ## Costs measured
 
@@ -156,6 +180,22 @@ See `examples/capsule-template.md` (and its `.json` twin) for the shape of a con
 
 The figures above come from small benches (3 to 50 cases each) run by the authors; the benches, protocols and raw
 traces are not part of this repository.
+
+## What is measured, what is not
+
+Measured (private benches, small n, judged by models of other families and by the author):
+- downstream verification: -4.2 points of false claims at equal recall (50 questions);
+- recall equal to the reference deep-research method it rewrites (10 questions); about 2x its cost;
+- whole reading before verdicts on code: exclusive verified findings in 5 of 6 code cases;
+- contradictor option: 6 code cases, three models of 2026-10-27;
+- every tool: an offline test suite (`tests/`, about 250 tests, standard library, about one minute).
+
+Not measured or not verified:
+- no public benchmark: the figures above cannot be reproduced from this repository yet;
+- PISTE engines (Judilibre, Legifrance) are coded and tested offline, **not yet verified on the live service**;
+- the verifier's claim windows are tested offline; their catch rate and cost with a model are not measured;
+- `claude` as contradictor, and other models or providers than those listed;
+- engines listed "not wired" by `sources` are declared only.
 
 ## Adding a plugin
 
@@ -193,6 +233,8 @@ python3 -I tests/test_gateway.py --online                 # optional, network: f
 ```
 
 Run the tests as a normal user (not root): the code-capsule and whole-reading tests create throwaway git repositories.
+Checked on Python 3.12 (Ubuntu 24.04, `env -i`, empty home): all files pass, about one minute. The system Python often has
+no `pytest`; without it, skip `test_code_capsule.py` or install it (`python3 -m pip install --user pytest`).
 
 ## Layout
 
@@ -200,7 +242,7 @@ Run the tests as a normal user (not root): the code-capsule and whole-reading te
 SKILL.md            the engine (one file, read by the host)        plugins/     cs-ai, code, finance, biology, law, _TEMPLATE
 tools/gateway.py    date-bounded documentary access (sources: tools/sources/, one file each)   tools/verifier.py (+ verifier/ROLE.md, citation_check.py, fetch_fulltext.py)
 tools/check_keys.py keys and mode (setup_keys.py: install + live check) tools/validate_card.py, validate_result.py   mechanical checks
-tools/finish_run.py all end steps in one command (checks, retractions, law checks, exports; not yet in SKILL.md)
+tools/finish_run.py all end steps in one command (checks, retractions, law checks, exports; SKILL.md section 8)
 tools/code_capsule.py, condense_repo.py, whole_reading.py, contradictor.py   code plugin tools (capsule, Y condensation, whole reading, contradictor)
 tools/config.json   caps, models, host command profiles             tests/  examples/  KEYS.md  ACCESS-POLICY.md  CONTRIBUTING.md  CHANGELOG.md  LICENSE  NOTICE
 ```

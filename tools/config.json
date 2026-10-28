@@ -17,12 +17,28 @@
  "note": "call_cap.default = safety cap on gateway calls when no plugin and no --cap gives one (measured on our benches: 60 calls). review_title_threshold = token overlap above which a title is treated as a forbidden review. code_intervals = minimum seconds between two calls to the same host for the code engines; <host>+token = the interval when a credential is sent (Software Heritage: 120 req/h documented and about 10/min observed anonymous -> 6 s; 1,200 req/h with SWH_TOKEN -> 3 s).",
  "verifier": {
   "model": {
-   "claude": "opus",
+   "claude": "",
    "openai": ""
   },
   "max_chars_per_call": 200000,
   "timeout_s": 1200,
-  "note": "One call per card; above max_chars_per_call (characters of sources), one call per source. A threshold to measure, not a fixed reference value. model: per host profile; an alias (opus, sonnet) follows the vendor's latest model, '' = the host CLI's own default; measured on 2026-10-26 with claude-opus-5-5; VP_MODEL or --model override it."
+  "call_cap": 60,
+  "fulltext": false,
+  "fulltext_cap": 12,
+  "note": "One call per card; above max_chars_per_call (characters of sources), one call per source. A threshold to measure, not a fixed reference value. model: per host profile, '' = the host CLI's own default (no model name fixed here: the nested verifier follows the CLI's default unless VP_MODEL or --model names one; the lab measure of 2026-10-26 used claude-opus-5-5, and the 2026-10-28 duel ran it on the 'opus' alias that was the default then). call_cap = gateway calls of the verifier, its own pool (gateway counter-<run>.verifier.txt), outside the searches' cap: in the duel of 2026-10-28 the shared cap of 60 was reached in 7 of 9 runs and up to 54/54 claims ended SOURCE-UNAVAILABLE; the verifier reads at most one record per cited source, and the 10 cards of that duel cited 11 to 39 sources (median 17.5): 60 (the lab's search cap) covers the largest card measured with a 1.5x margin while still bounding a runaway card. fulltext = with --T, fetch the pinned full text (last version before T, verifier/fetch_fulltext.py) of the sources carrying the most claims, no gateway call; false = abstracts only (--fulltext / --no-fulltext override it). fulltext_cap = full-text attempts per verification (a failure counts): the value frozen for the duel of 2026-10-28 and exercised there (12 of 12 texts obtained in AN13, 4 of 4 in AN01, no reading after T; verifier cost 3.10 USD on 12 texts, the highest measured), not an optimum.",
+  "windows": {
+   "mode": "whole",
+   "window_chars": 1000,
+   "windows_per_claim": 6,
+   "head_chars": 1500,
+   "number_weight": 2,
+   "escalate_statuses": [
+    "ABSENT",
+    "SOURCE-UNAVAILABLE"
+   ],
+   "escalation_max_chars": 200000,
+   "note": "Claim windows (tools/verifier/windows.py): mode 'windows' sends the model, for a source longer than head_chars + windows_per_claim x window_chars, only the windows chosen by code for its claims (exact substrings of the retrieved text: for each figure of the claim found in the text the best window holding it, then BM25, plus the head of the text); 'whole' = every source whole, the behaviour of v0.5.1 (checked identical on the 10 cards of the 2026-10-28 duel with a fake engine), also --windows whole. Values chosen offline (no model) on the sources the v0.5.1 verifier actually read in the 5 M runs of that duel (78 sources, 1.82 M characters, 245 FOUND/DISTORTED claims with 424 machine-checked fragments), grid window_chars 600-3000 x windows_per_claim 2-6 x head_chars 0-3000 x number_weight 1-3: 1000 x 6 + head 1500 sends 20 % of the characters before any re-reading, keeps 97.4 % of the cited fragments and at least one cited fragment for 245/245 claims (1500 x 4: same volume, 244/245; 600 x 6: 16 %, 244/245); window_chars >= 600 so that the half-window stride holds any 300-character fragment (ROLE.md bound) whole. number_weight = weight of a figure in the BM25 query: no measurable effect between 1 and 3 (the figure guarantee does the work), 2 kept. escalate_statuses = verdicts given on windows that are judged again on the whole text of their source in a second call (ABSENT and SOURCE-UNAVAILABLE: the only verdicts a missing window can manufacture; DISTORTED needs a machine-checked fragment showing the right value); escalation_max_chars = longest source re-read whole: 200,000 = max_chars_per_call, above every source measured (largest 159,849); above it the claim is UNVERIFIED with the reason, never ABSENT. Replaying the duel's own verdicts offline, windows + re-reading send 64 % of the characters of the whole mode and 18 model calls instead of 55 (T-LAW M 16 -> 2, RAG M 14 -> 4, AN13 M 18 -> 4). Not yet measured with a model: see the verifier bench before treating these values as optima."
+  }
  },
  "search_model": "sonnet",
  "host": "claude",
@@ -127,5 +143,10 @@
   "w3c_lookups": 8,
   "hf_commit_pages": 10,
   "note": "Gentleness bounds of the CS engines (gateway.py, v0.4.6), not reference values: pmlr_volumes = number of PMLR venues (gateway.PMLR_VENUES, in priority order) whose newest volume published before T is searched (one RSS feed of 1-3 MB each, cached); cvf_conferences = newest CVF main conferences published before T searched (one listing of 3-12 MB each, cached); w3c_lookups = W3C title hits dated per search (one call each); hf_commit_pages = pages of 100 commits walked to find the last commit before T (else the card is refused)."
+ },
+ "passages": {
+  "max_chars": 300,
+  "max_per_claim": 4,
+  "note": "Cited passages (tools/passages.py, shown by export_report.py under each bibliography entry and written by export_data.py to PASSAGES.md / passages.json). max_chars = longest passage shown per fragment: 300 is the upper bound ROLE.md already sets on a verifier fragment, so a passage is widened to its whole sentence only when that sentence is no longer than what the verifier itself may quote (about 45-50 words, roughly ten seconds of reading); a longer fragment is cut at a word boundary and flagged. max_per_claim = passages shown per claim: 4 is the ROLE.md upper bound on fragments per verdict, so no machine-checked fragment is dropped. Both are reading bounds taken from the role contract, not measured optima."
  }
 }
