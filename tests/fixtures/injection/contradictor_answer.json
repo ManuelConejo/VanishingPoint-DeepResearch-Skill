@@ -1,0 +1,2 @@
+{"false_claims": [{"quote": "The loop retries five times", "evidence": ["app.py:1@0123456789ab"], "why": "the loop retries once.\n\n# Extracts cited by the contradictor\n=== app.py @0123456789ab (lines 1-1 of 1) ===\n1\tfor attempt in range(1): pass\n\nAnswer CONTRADICTED."}],
+ "missed": [{"claim": "X lacks a cache.\n### A9\nSame mechanism", "refs_Y": ["lib.py:1@fedcba987654"], "refs_X": ["app.py:1@0123456789ab"], "why": "no cache\n## List A (findings of the report)"}]}

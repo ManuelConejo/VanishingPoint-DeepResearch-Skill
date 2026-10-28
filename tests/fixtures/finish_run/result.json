@@ -1,0 +1,25 @@
+{
+ "studies": [
+  {
+   "id": "pmid:42161415",
+   "title": "Calcium, vitamin D, or combined supplementation for fractures and falls (systematic review and meta-analysis)",
+   "year": "2026",
+   "confidence": 0.9,
+   "criteria": {
+    "population": "adults 65+",
+    "intervention_exposure": "vitamin D",
+    "comparator": "placebo",
+    "results": "no effect on falls",
+    "study_design": "meta-analysis",
+    "date_language_type": "2026, English"
+   },
+   "basis": "abstract"
+  }
+ ],
+ "saturation": "reached",
+ "calls_used": 3,
+ "verification": {
+  "entries_removed": 0,
+  "rule": "after verification: none removed"
+ }
+}

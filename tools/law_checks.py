@@ -103,10 +103,14 @@ def load_anchor(d, key, desc, ident):
     notes = []
     for name, origin in (('record.json', 'record'), ('source.txt', 'source')):
         f = pathlib.Path(d) / 'sources' / from_fs / name
+        if f.is_file() and name == 'source.txt' and (f.parent / 'meta.json').is_file():   # a full text fetched by fetch_fulltext.py: the source's own words, never a record
+            notes.append(f'sources/{from_fs}/source.txt skipped: full text (meta.json), not a gateway record'); continue
         if f.is_file():
             try: rec, ref, err = parse_record(f.read_text(encoding='utf-8', errors='replace'))
             except OSError as e: rec = ref = err = None; notes.append(f'sources/{from_fs}/{name} skipped: unreadable ({type(e).__name__})')
             else:
+                if rec and ident and rec.get('id') and re.sub(r'\s+', '', str(rec['id'])).lower() != re.sub(r'\s+', '', ident).lower():
+                    notes.append(f'sources/{from_fs}/{name} skipped: record id {str(rec["id"])[:60]!r} is not the card identifier {ident!r}'); continue
                 if rec or ref or err: return {'key': key, 'ident': ident, 'rec': {**desc, **rec} if rec else dict(desc), 'origin': origin if rec else 'none', 'refusal': ref, 'error': err}
                 notes.append(f'sources/{from_fs}/{name} skipped: not a gateway record (invalid JSON or plain text)')
     fields = {k for k in desc if k not in ('title', 'id', 'url')}
