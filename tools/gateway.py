@@ -9,7 +9,7 @@ Command line:
              <command> <argument> [--n N]
   commands: sources | search-<engine> "<query>" | read <id> | citing <id> | references <id>
   wired engines: pubmed, europepmc, crossref, openalex, arxiv   (id: pmid:NNN | doi:10.x | arxiv:2501.01234)
-  law engines (plugins/law.md): eurlex, justice-administrative, hal, theses-fr
+  law engines (plugins/law.md): eurlex, justice-administrative [--court CE|TA75|CAA69] [--from YYYY-MM-DD] [--to YYYY-MM-DD], hal, theses-fr
     (id: celex:32016R0679 | ecli:ECLI:EU:... | ecli:ECLI:FR:... | ja:<court>/<file> | hal:hal-0123 | thesesfr:<nnt>)
   code engines (code_sources.py; served only when a plugin declares them): search-code "<pattern>" [--language L] [--repo owner/repo] |
     versions <pypi|npm|cargo>:<package>@<version> | paper-code <arxiv> | provenance <origin https://... | swh:1:...>
@@ -454,8 +454,28 @@ def search_eurlex(q, n, B):
                      'LIMIT 100 each, most recent first; Cellar gives no count')
 
 
+TEXT_HEAD = 20000      # characters of an official text served from its start (Cellar, administrative courts)
+OPERATIVE_MAX = 20000  # characters of the operative part appended when the judgment is longer than TEXT_HEAD
+OPERATIVE = re.compile(r'(On those grounds,?\s+(the\s+)?(Court|General Court|Tribunal)\b[^:]{0,160}?\bhereby\b'
+                       r'|Par ces motifs,?\s+(la\s+Cour|le\s+Tribunal)\b[^:]{0,160}?(dit pour droit|d[ée]clare|ordonne|d[ée]cide|rejette|annule))', re.I)
+
+
+def head_and_operative(t, case_law):
+    """(text served, how): the whole text when it fits in TEXT_HEAD; else its start, and for case law the operative part
+    ("On those grounds, the Court ... hereby rules" / "Par ces motifs") appended after an explicit elision mark."""
+    if len(t) <= TEXT_HEAD: return t, 'whole'
+    m = None
+    for m in (OPERATIVE.finditer(t) if case_law else ()): pass                 # the last one: the operative part closes the judgment
+    if m is None or m.start() < TEXT_HEAD:
+        return t[:TEXT_HEAD] + f' [... text cut at {TEXT_HEAD:,} of {len(t):,} characters ...]', 'start'
+    tail = t[m.start():m.start() + OPERATIVE_MAX]
+    return (t[:TEXT_HEAD] + f' [... characters {TEXT_HEAD:,} to {m.start():,} of {len(t):,} elided; operative part follows ...] ' + tail
+            + (f' [... cut at {OPERATIVE_MAX:,} characters of the operative part ...]' if len(t) - m.start() > OPERATIVE_MAX else '')), 'start + operative part'
+
+
 def read_celex(celex, B):
-    """CELEX notice (dates, validity under the barrier) + start of the official text through Cellar content negotiation (XHTML, EN then FR).
+    """CELEX notice (dates, validity under the barrier) + start of the official text through Cellar content negotiation (XHTML, EN then FR);
+    for a judgment longer than TEXT_HEAD, its operative part is appended (head_and_operative).
     EUR-Lex HTML (eur-lex.europa.eu) answers 202 with an empty body (bot challenge): not used (ACCESS-POLICY.md)."""
     if not re.fullmatch(CELEX_FORM, celex): return {'refusal': 'malformed CELEX'}
     if re.match(r'^6\d{4}CC', celex): return {'refusal': 'Advocate General opinion: excluded (law.non_binding, leakage risk)'}
@@ -470,7 +490,9 @@ def read_celex(celex, B):
         except Exception: continue
         t = html.unescape(re.sub(r'<[^>]+>', ' ', re.sub(r'(?is)<(head|script|style)\b.*?</\1>', ' ', x.decode('utf-8', 'replace'))))
         t = ' '.join(t.split())
-        if t: return dict(it, abstract=t[:20000], text_language=lang, text_source='Cellar (official text, start)')
+        if t:
+            t, how = head_and_operative(t, celex[0] == '6')
+            return dict(it, abstract=t, text_language=lang, text_source=f'Cellar (official text, {how})')
     return dict(it, abstract='(no text available from Cellar)')
 
 
@@ -506,16 +528,33 @@ def ja_item(h, B):
 def _ja_hits(r): return ((r.get('decisions') or {}).get('body') or {}).get('hits') or {}
 
 
-def search_justice_administrative(q, n, B):
+JA_COURT = r'CE|CAA\d{2}|TA\d{2,3}'   # exact court code (probe 2026-10-28: "TA" or "CAA" alone match nothing)
+
+
+def search_justice_administrative(q, n, B, court=None, date_from=None, date_to=None):
     """Administrative courts open data (level 2 `page`): JSON back end of the public engine, decision date bounded on the provider side
-    (model_searchANDdates, Date_Lecture range ending on the eve of T); several words = OR, exact phrase in quotes, numbers work."""
+    (model_searchANDdates, Date_Lecture range ending on the eve of T); several words = OR, exact phrase in quotes, numbers work.
+    The provider has no relevance order (no score; probe 2026-10-28): results come sorted by date, most recent first. To narrow:
+    court (exact code, model_search_date_juri route), date_from / date_to (decision-date window, kept inside [start, eve of T])."""
     qq = ' '.join(q.replace('/', ' ').split())
     if not qq: return [], 'empty query'
-    h = _ja_hits(jget(f'{JA}model_searchANDdates/openData/Date_Lecture/{urllib.parse.quote(qq, safe="")}/{B.start}/{B.eve}/100'))
+    if court and not re.fullmatch(JA_COURT, court): return [], f'court: exact code expected ({JA_COURT}, e.g. CE, TA75, CAA69)'
+    lo, hi = B.start, B.eve
+    for v, side in ((date_from, 'from'), (date_to, 'to')):
+        if v is None: continue
+        try: d = dt.date.fromisoformat(v)
+        except (TypeError, ValueError): return [], f'{side}: date YYYY-MM-DD expected'
+        if side == 'from': lo = max(lo, d)
+        else: hi = min(hi, d)
+    if lo > hi: return [], f'empty window ({lo} > {hi}; the end is at most the eve of T)'
+    route = f'model_search_date_juri/openData/Date_Lecture/{urllib.parse.quote(qq, safe="")}/{court}' if court else f'model_searchANDdates/openData/Date_Lecture/{urllib.parse.quote(qq, safe="")}'
+    h = _ja_hits(jget(f'{JA}{route}/{lo}/{hi}/100'))
     out = [x for x in (ja_item(i, B) for i in h.get('hits') or []) if x]
     tot = (h.get('total') or {}).get('value') if isinstance(h.get('total'), dict) else h.get('total')
     cov = ', '.join(f'{k} {v}' for k, v in JA_COVERAGE.items())
-    return out[:n], f'bounded: provider announces {tot} (false totals, capped at 1,000, 100 per call, most recent first); coverage_from {cov}'
+    return out[:n], (f'bounded: provider announces {tot} (false totals, capped at 1,000, 100 per call); sorted by date, most recent first (no relevance order): '
+                     f'search a known decision by its number or an exact phrase in quotes, or narrow with --court / --from / --to; window {lo} to {hi}'
+                     f'{", court " + court if court else ""}; coverage_from {cov}')
 
 
 def read_ja(ident, B):
@@ -1396,7 +1435,7 @@ class Gateway:
         return k + 1
 
     def call(self, cmd, arg, n=20, **opt):
-        """One counted and journaled command. opt: language, repo (search-code)."""
+        """One counted and journaled command. opt: language, repo (search-code); court, date_from, date_to (search-justice-administrative)."""
         if cmd == 'sources': return self.sources()
         n = max(1, min(int(n), 100 if cmd in ('citing', 'references') else 50))
         if cmd in CODE_ENGINES and CODE_ENGINES[cmd] not in self.code_engines:
@@ -1416,6 +1455,8 @@ class Gateway:
         if k is None:
             return {'refusal': f"CAP reached ({self.cap} calls): stop searching and return your list."}
         B = self.B; B.excluded = 0; err = None; extra = {}
+        ja_opt = {k: opt[k] for k in ('court', 'date_from', 'date_to') if opt.get(k)} if cmd == 'search-justice-administrative' else {}
+        if ja_opt: extra['filters'] = ja_opt
         engine = CODE_ENGINES.get(cmd) or (cmd[7:] if cmd.startswith('search-') else None)
         try:
             if cmd in CODE_ENGINES: res, total = self._code(cmd, arg, n, opt, B, extra), None
@@ -1423,7 +1464,7 @@ class Gateway:
             elif cmd == 'read': res, total = read(arg, B), None
             else:
                 fn = ENGINES[cmd[7:]] if cmd.startswith('search-') else {'citing': citing, 'references': references}[cmd]
-                res, total = fn(arg, n, B)
+                res, total = fn(arg, n, B, **ja_opt) if ja_opt else fn(arg, n, B)
         except Exception as e:
             res, total, err = {'error': f'{type(e).__name__}: {str(e)[:200]}'}, None, str(e)
         inv = sorted(sc.invalid_keys(self.state))                            # names of the keys rejected by their provider in this run
@@ -1431,7 +1472,7 @@ class Gateway:
                'excluded_post_T_or_forbidden': B.excluded, 'results': res, 'engine': engine, 'query': arg, 'n': n, **extra, **({'key_invalid': inv} if inv else {})}
         with open(self.state / 'journal.jsonl', 'a') as f:
             f.write(json.dumps({'utc': dt.datetime.now(dt.timezone.utc).isoformat(), 'run': self.run, 'T': B.T.isoformat(), 'call': cmd, 'engine': engine,
-                                'query': arg, 'n': n, 'count': len(res) if isinstance(res, list) else None, 'excluded': B.excluded, 'error': err, **({'key_invalid': inv} if inv else {}),
+                                'query': arg, **({'filters': ja_opt} if ja_opt else {}), 'n': n, 'count': len(res) if isinstance(res, list) else None, 'excluded': B.excluded, 'error': err, **({'key_invalid': inv} if inv else {}),
                                 'ids': [r.get('id') for r in res] if isinstance(res, list) else [res.get('id')] if isinstance(res, dict) else []},
                                ensure_ascii=False) + '\n')
         return out
@@ -1483,9 +1524,11 @@ def main():
     ap.add_argument('--since', default=None)
     ap.add_argument('cmd'); ap.add_argument('arg', nargs='*'); ap.add_argument('--n', type=int, default=20)
     ap.add_argument('--language', default=None); ap.add_argument('--repo', default=None, help='search-code: language / owner/repo filters')
+    ap.add_argument('--court', default=None, help='search-justice-administrative: exact court code (CE, TA75, CAA69)')
+    ap.add_argument('--from', dest='date_from', default=None); ap.add_argument('--to', dest='date_to', default=None, help='search-justice-administrative: decision-date window YYYY-MM-DD')
     a = ap.parse_args()
     g = Gateway(a.plugin, T=a.T, case=a.case, run=a.run, state=a.state, cap=a.cap, since=a.since)
-    print(json.dumps(g.call(a.cmd, ' '.join(a.arg), a.n, language=a.language, repo=a.repo), ensure_ascii=False))
+    print(json.dumps(g.call(a.cmd, ' '.join(a.arg), a.n, language=a.language, repo=a.repo, court=a.court, date_from=a.date_from, date_to=a.date_to), ensure_ascii=False))
 
 
 if __name__ == '__main__':

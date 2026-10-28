@@ -54,7 +54,10 @@ def load_texts(folder):
 
 
 if __name__ == "__main__":
-    v = json.load(open(sys.argv[1]))["verdicts"]
+    d = json.load(open(sys.argv[1]))
+    v = d["verdicts"] if "verdicts" in d else [dict(x, verdict={"INVALID": "DISTORTED", "UNVERIFIED": "SOURCE-UNAVAILABLE"}.get(x.get("status"), x.get("status")),
+                                                     source=re.sub(r"[^\w.-]+", "_", str(x.get("source") or "")).strip(".") or "source")
+                                               for x in d.get("claims", [])]   # verifier.py verify writes "claims" (status, card key)
     p = check(v, load_texts(sys.argv[2]))
     print(json.dumps(p, ensure_ascii=False, indent=1))
     sys.exit(1 if p else 0)

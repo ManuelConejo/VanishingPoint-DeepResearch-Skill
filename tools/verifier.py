@@ -11,14 +11,17 @@ Measured on our benches (n = 50 questions, downstream): -4.2 points of false cla
 Command line:
   verifier.py verify --card card.json --out verdicts.json [--sources DIR] [--T YYYY-MM-DD --plugin P.md ...] [--fulltext]
                      [--model M] [--host claude|openai] [--mode auto|card|source] [--work DIR] [--filter]
-  verifier.py check verdicts.json SOURCES_DIR          (citation_check.py)
+  verifier.py check verdicts.json SOURCES_DIR          (citation_check.py; reads `claims` as written by verify, or `verdicts`)
 Import:
   from verifier import verify, load_sources, filter_claims, model_call
   res = verify(card, texts, engine=model_call)         # engine: callable(prompt, workdir) -> (json_text, measure)
 
 Card: card.json (claims[].source.key -> card.sources[key] = {doi|arxiv|pmid|pmcid, title}).
 Sources: DIR/<KEY>/source.txt (full text); otherwise, with --T, record + dated abstract through the gateway (a claim
-about a point the abstract does not cover is then ABSENT); otherwise SOURCE-UNAVAILABLE.
+about a point the abstract does not cover is then ABSENT); otherwise SOURCE-UNAVAILABLE. Every gateway reading is saved under
+<--sources, else --work/sources, else the directory of --out/sources>/<KEY>/: record.json (the gateway answer, read by law_checks.py)
+and source.txt (the text the verifier received, for the fragment check); a source.txt next to a record.json is read back as
+"record + abstract", not as a full text.
 Statuses: FOUND | DISTORTED | ABSENT | SOURCE-UNAVAILABLE | INVALID (fragments not found after one retry) | UNVERIFIED (call failed).
 
 Model call: tools/config.json "model_command"[host] (host = env VP_HOST, else config "host", default claude); the command list
@@ -189,7 +192,10 @@ def load_sources(card, sources_dir=None, gateway=None, fulltext=False, out_dir=N
         txt = None; origin = 'missing'; note = ''
         if sources_dir:                                      # sources/<key>/source.txt (layout written by --fulltext) or sources/<key>.txt
             for f in (pathlib.Path(sources_dir) / fs_key(c) / 'source.txt', pathlib.Path(sources_dir) / (fs_key(c) + '.txt')):
-                if f.is_file(): txt = f.read_text(errors='replace'); origin = 'fulltext'; break
+                if f.is_file():
+                    txt = f.read_text(errors='replace'); origin = 'fulltext'
+                    if f.name == 'source.txt' and (f.parent / 'record.json').is_file(): origin = 'abstract'; note = '(record + abstract)'   # saved gateway reading
+                    break
         if txt is None and fulltext and out_dir and any(desc.get(x) for x in ('arxiv', 'doi', 'pmcid')):
             d = pathlib.Path(out_dir) / fs_key(c); d.mkdir(parents=True, exist_ok=True)
             arg = next(f'--{x}' for x in ('arxiv', 'doi', 'pmcid') if desc.get(x))
@@ -200,11 +206,13 @@ def load_sources(card, sources_dir=None, gateway=None, fulltext=False, out_dir=N
             ident = ident_of(desc) or (c if re.match(r'^(doi|arxiv|pmid|celex|ecli|ja|hal|thesesfr):', c) else None)   # law ids: gateway.read_law
             if ident:
                 rep = gateway.read(ident) or {}
-                if out_dir and re.match(r'^(celex|ecli|ja|hal|thesesfr):', ident):   # law record kept for tools/law_checks.py
-                    f = pathlib.Path(out_dir) / fs_key(c) / 'record.json'; f.parent.mkdir(parents=True, exist_ok=True); f.write_text(json.dumps(rep, ensure_ascii=False))
+                d = pathlib.Path(out_dir) / fs_key(c) if out_dir else None
+                if d:                                                  # every reading kept: record for tools/law_checks.py, text for the fragment check
+                    d.mkdir(parents=True, exist_ok=True); (d / 'record.json').write_text(json.dumps(rep, ensure_ascii=False))
                 r = rep.get('results') or {}
                 if isinstance(r, dict) and r.get('abstract') and not NO_ABSTRACT.match(str(r['abstract'])):
                     txt = f"{r.get('title') or ''}\n\n{r['abstract']}"; origin = 'abstract'; note = '(record + abstract)'
+                    if d: (d / 'source.txt').write_text(txt)
                 else: note = rep.get('refusal') or rep.get('error') or (r.get('refusal') or r.get('error') if isinstance(r, dict) else None) or 'no abstract'
         if txt is not None and not txt.strip(): txt = None; origin = 'missing'
         out[c] = {'text': txt or '', 'origin': origin, 'note': note, 'desc': desc}
@@ -304,6 +312,17 @@ def filter_claims(report):
     return {'kept': kept, 'removed': removed, 'to_flag': [a for a in kept if a['status'] != 'FOUND']}
 
 
+def check_entries(doc):
+    """verdicts file -> entries for citation_check.check: `claims` (written by verify: status, source = card key) or `verdicts`
+    (older files and the role format: verdict, source = file-system key). INVALID is checked again, UNVERIFIED has nothing to check."""
+    if not isinstance(doc, dict): raise ValueError('verdicts file: JSON object expected')
+    if isinstance(doc.get('claims'), list):
+        return [dict(v, verdict={'INVALID': 'DISTORTED', 'UNVERIFIED': 'SOURCE-UNAVAILABLE'}.get(v.get('status'), v.get('status') or ''),
+                     source=fs_key(v.get('source'))) for v in doc['claims'] if isinstance(v, dict)]
+    if isinstance(doc.get('verdicts'), list): return doc['verdicts']
+    raise ValueError('verdicts file: neither "claims" (verify) nor "verdicts" list')
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest='action', required=True)
@@ -318,14 +337,16 @@ def main():
     c = sub.add_parser('check'); c.add_argument('verdicts'); c.add_argument('sources_dir')
     a = ap.parse_args()
     if a.action == 'check':
-        p = check(json.loads(pathlib.Path(a.verdicts).read_text(encoding='utf-8'))['verdicts'], load_texts(a.sources_dir))
+        try: entries = check_entries(json.loads(pathlib.Path(a.verdicts).read_text(encoding='utf-8')))
+        except (OSError, ValueError) as e: print(str(e)); sys.exit(2)
+        p = check(entries, load_texts(a.sources_dir) if pathlib.Path(a.sources_dir).is_dir() else {})
         print(json.dumps(p, ensure_ascii=False, indent=1)); sys.exit(1 if p else 0)
     card = json.loads(pathlib.Path(a.card).read_text(encoding='utf-8'))
     gateway = None
     if a.T or a.plugin:
         sys.path.insert(0, str(HERE)); from gateway import Gateway
         gateway = Gateway(a.plugin, T=a.T, run=a.run, state=a.state)
-    sources = load_sources(card, a.sources, gateway, a.fulltext, out_dir=a.sources or (a.work and pathlib.Path(a.work) / 'sources'))
+    sources = load_sources(card, a.sources, gateway, a.fulltext, out_dir=a.sources or (pathlib.Path(a.work) / 'sources' if a.work else pathlib.Path(a.out).resolve().parent / 'sources'))
     engine = lambda prompt, workdir: model_call(prompt, workdir, a.model, a.host)
     res = verify(card, sources, engine, a.work, a.mode)
     if a.filter: res['filter'] = filter_claims(res)

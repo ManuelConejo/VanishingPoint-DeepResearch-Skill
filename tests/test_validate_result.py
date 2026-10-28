@@ -30,6 +30,22 @@ class Test(unittest.TestCase):
         self.assertIn('missing field: calls_used', V.problems({'studies': [], 'saturation': 'x'}))
         self.assertEqual(V.problems([]), ['root: JSON object expected'])
 
+    def test_every_gateway_id_kind(self):
+        """A law run keeps its CELEX, ECLI, administrative and thesis sources (seen dropped in the run of 2026-10-28), and so on for each
+        id kind the gateway serves (validate_card.IDS) and code ids <path>@<SHA>."""
+        import validate_card as C
+        ids = ['celex:62012CJ0131', 'ecli:ECLI:EU:C:2014:317', 'ja:CE/DCE_515092_20261027', 'hal:hal-05523091', 'thesesfr:2024PA100128',
+               'nct:NCT01234567', 'dblp:conf/acl/Xiong0LZ24', 'econbiz:10011386660', 'osv:GHSA-p6mc-m468-83gw', 'openreview:hSyW5go0v8',
+               'zenodo:1234567', 'biorxiv:10.1101/2020.01.01.123456', 'medrxiv:10.1101/2021.03.04.21252916', 'pmcid:PMC1234567',
+               'arxiv:hep-th/9901001', 'src/model.py@0123abc', 'local:lib/x.py@0123456789abcdef0123']
+        kinds = {i.split(':', 1)[0] for i in ids if ':' in i} | {'code'}
+        self.assertEqual(sorted(set(C.IDS) - kinds - {'pmid', 'doi', 'arxiv'}), [], 'a kind of validate_card.IDS without a test id')
+        r = good(); r['studies'] = [dict(r['studies'][0], id=i, confidence=0.5) for i in ids]
+        self.assertEqual(V.problems(r), [])
+        for bad in ('S1', 'celex:', 'foo:bar', 'nct:123', 'src/model.py@nothex', 'celex:62012CJ0131 extra'):
+            r['studies'][0]['id'] = bad
+            self.assertTrue(any('studies[0].id' in p for p in V.problems(r)), bad)
+
 
 if __name__ == '__main__':
     unittest.main()

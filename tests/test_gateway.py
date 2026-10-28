@@ -5,7 +5,7 @@
 Online (--online): the exact title of each review searched on the 4 engines + read of its DOI; the review must stay unfindable.
 Run: python3 -I tests/test_gateway.py
 """
-import datetime as dt, json, os, pathlib, re, sys, tempfile, unittest, urllib.error, urllib.parse
+import datetime as dt, html, json, os, pathlib, re, sys, tempfile, unittest, urllib.error, urllib.parse
 P = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(P.parent / 'tools')); import gateway as gw
 
@@ -369,6 +369,28 @@ class LawEngines(unittest.TestCase):
         self.clean(urls)
         self.assertEqual(gw.citing('celex:' + CELEX['old'], 5, B)[0], []); self.assertEqual(gw.references('celex:' + CELEX['old'], 5, B)[0], [])
 
+    def test_celex_operative_part_of_a_long_judgment(self):
+        """A judgment longer than TEXT_HEAD: start + marked elision + operative part ("On those grounds ... hereby rules" / "Par ces motifs");
+        a short text whole; a long act (not case law) cut with a mark. Run of 2026-10-28: no operative part of a CJEU judgment was read."""
+        body = 'Grounds of the judgment. ' * 1500                                   # 37,500 characters
+        op = 'On those grounds, the Court (Grand Chamber) hereby rules: 1. Article 2(b) and (d) of Directive 95/46/EC must be interpreted as meaning that. [Signatures]'
+        page = lambda t: f'<html><head><title>x</title><script>var a;</script></head><body><p>JUDGMENT</p><p>{t}</p></body></html>'.encode()
+        for text, celex, expect in ((body + op, CELEX['partial'].replace('2024', '2012'), 'start + operative part'),
+                                    (body.replace('Grounds', 'Motifs') + 'Par ces motifs, la Cour (grande chambre) dit pour droit : 1) X.', '62012CJ0131', 'start + operative part'),
+                                    (body, '62012CJ0131', 'start'), (body + op, '32020R0001', 'start'), ('Short. ' + op, '62012CJ0131', 'whole')):
+            t, how = gw.head_and_operative(' '.join(html.unescape(re.sub(r'<[^>]+>', ' ', re.sub(r'(?is)<(head|script|style)\b.*?</\1>', ' ', page(text).decode()))).split()), celex[0] == '6')
+            self.assertEqual(how, expect, celex)
+            if how == 'start + operative part':
+                self.assertTrue(t.startswith('JUDGMENT Grounds') or t.startswith('JUDGMENT Motifs'))
+                self.assertIn('elided; operative part follows', t); self.assertRegex(t, r'(hereby rules: 1\. Article 2|dit pour droit : 1\) X\.)')
+                self.assertLess(len(t), gw.TEXT_HEAD + gw.OPERATIVE_MAX + 200)
+            elif how == 'start': self.assertIn('text cut at 20,000', t); self.assertNotIn('hereby rules', t)
+        urls = []; f0 = cellar_fetch(urls)                                          # through read: the official-text request returns the long page
+        gw.fetch = lambda url, headers=None: page(body + op) if 'resource/celex/' in url else f0(url, headers)
+        r = gw.read('celex:' + CELEX['old'], law_barrier())
+        self.assertEqual(r['text_source'], 'Cellar (official text, start)')          # 3....: an act, not a judgment
+        self.assertIn('text cut at', r['abstract'])
+
     def test_eurlex_provider_error(self):
         def boom(url, headers=None): raise urllib.error.HTTPError(url, 500, 'VECSL internal error', {}, None)
         gw.fetch = boom
@@ -387,6 +409,17 @@ class LawEngines(unittest.TestCase):
         self.assertIn('bounded', tot); self.assertIn('coverage_from', tot); self.assertIn('CE 2021-09-30', tot)
         self.assertGreaterEqual(B.excluded, 6)
         self.assertIn(f'/model_searchANDdates/openData/Date_Lecture/"référé-liberté"/{B.start}/{B.eve}/100', urls[0])
+        self.assertIn('sorted by date, most recent first', tot)                    # no relevance order (probe 2026-10-28)
+        urls.clear(); out, tot = gw.search_justice_administrative('déréférencement', 20, B, court='CE', date_from='2021-09-30', date_to='2030-01-01')
+        self.assertIn(f'/model_search_date_juri/openData/Date_Lecture/déréférencement/CE/2021-09-30/{B.eve}/100', urls[0])   # window kept before T
+        self.assertIn('court CE', tot); self.assertIn(f'window 2021-09-30 to {B.eve}', tot)
+        for bad in ({'court': 'TA'}, {'court': 'CE/../x'}, {'date_from': '30/09/2021'}, {'date_from': '2030-01-01'}):
+            n0 = len(urls); self.assertEqual(gw.search_justice_administrative('x', 5, B, **bad)[0], [], bad); self.assertEqual(len(urls), n0, bad)
+        g = gw.Gateway([P.parent / 'plugins' / 'law.md'], T=LT, run='t-ja', state=pathlib.Path(self.tmp.name) / 's')
+        urls.clear(); r = g.call('search-justice-administrative', 'déréférencement', 5, court='TA75', date_to='2023-12-31')
+        self.assertEqual(r['filters'], {'court': 'TA75', 'date_to': '2023-12-31'}); self.assertIn('/TA75/', urls[0]); self.assertIn('/2023-12-31/100', urls[0])
+        self.assertEqual(json.loads((pathlib.Path(self.tmp.name) / 's' / 'journal.jsonl').read_text().splitlines()[-1])['filters']['court'], 'TA75')
+        urls.clear()
         r = gw.read('ja:CE/DCE_000000_20240314', B); self.assertIn('TEXT', r['abstract'])
         for i in range(1, 7): self.assertIn('refusal', gw.read(f'ja:CE/DCE_00000{i}_20240314', B), i)
         self.assertIn('refusal', gw.read('ja:CE/DCE_000009_20240314', B))           # uploaded after T
