@@ -173,10 +173,10 @@ Measured on our benches on 6 cases (the reports of the whole-reading duel) with 
 
 ## Context capsule
 
-This is the input that made the difference in real use (measured on our benches: pinned repository + named seams + registry -> the strong studies; URL alone -> WATCH then nothing). Built by `tools/code_capsule.py` from X, **reviewed by the owner before the study**.
+This is the input that made the difference in real use (measured on our benches: pinned repository + named seams + registry -> the strong studies; URL alone -> WATCH then nothing). Built by `tools/code_capsule.py` from X, **reviewed by the owner before the study**; when the user gives none, the engine builds it from the request ("Capsule built from the request" below) and the report says it was not reviewed.
 - Exact command: `python3 -I tools/code_capsule.py --repo <X> --sha <40 hex> [--registry <contributions.jsonl>] [--out <DIR>] [--max-bytes 65536] [--max-modules 200]` -> `<DIR>/capsule-<X>@<sha12>.md` + `.json`; everything is read at that SHA (`git show`), nothing of X is executed nor imported.
 - The tool fills identity (X@SHA, `tree_sha256`, commit date), licence, module map, entry points (`file:line@sha12`), tests and registry taken as is (path in X read at the SHA, or out-of-tree file pinned by its sha256); it leaves `target_seam`, `intention`, `refusals` (and `reviewed_by_owner: no`) at `TO BE FILLED BY THE OWNER`.
-- **The intention and the refusals are written by the owner**, never by the tool nor by the engine; a capsule where they are still to be filled stays `capsule not reviewed`.
+- **The intention and the refusals are written by the owner**, never invented by the tool nor by the engine; a capsule where they are still to be filled, or that was built from the request (below), stays `capsule not reviewed`.
 
 Template (`capsule.md` or `capsule.json`, one per request, in the working directory, filed with the report):
 ```
@@ -194,7 +194,17 @@ capsule:
   mode: Y given | need only
   Y: <repo>@<SHA> (if given), licence read: <SPDX or "to read">
 ```
-How the owner reviews it: (1) X@SHA is the intended freeze; (2) the seams are those that exist and that the owner accepts to touch (adapters and producers, never the core nor the gate); (3) the registry lists the live and removed contributions on these seams; (4) the intention is measurable; (5) the refusals are complete (a missing refusal is an implicit authorisation). A capsule that was not reviewed produces a report labelled `capsule not reviewed`. Without a capsule, or without `X@SHA` in it, the run stops before any collection: report labelled `capsule missing`, empty `result.json`, no invented value.
+How the owner reviews it: (1) X@SHA is the intended freeze; (2) the seams are those that exist and that the owner accepts to touch (adapters and producers, never the core nor the gate); (3) the registry lists the live and removed contributions on these seams; (4) the intention is measurable; (5) the refusals are complete (a missing refusal is an implicit authorisation). A capsule that was not reviewed produces a report labelled `capsule not reviewed`.
+
+**Capsule built from the request (no capsule given).** A request in plain words ("is https://github.com/<owner>/<repo> interesting as a contribution to my project?") does not stop: when the working directory holds no `capsule.md` / `capsule.json`, the engine builds one itself, before any collection, then goes on.
+1. **X**: the local path named in the request; or, when the request says "my project" (or "the current directory"), the current directory or its nearest parent holding `.git`. **X@SHA = HEAD**, frozen by the tool at that moment (uncommitted changes are not part of X).
+2. **Y**: the first GitHub URL of the request. **Y@SHA = HEAD of the default branch at the request date**: HEAD of the bare repository of Y when the host project supplies one (`--y-repo`), otherwise the 40-hex revision the engine read through the gateway (`--y-sha`); never a branch name, never invented (without either, `Y: ...@unresolved`, and the engine pins it through the gateway before reading Y). No URL: mode `need only`.
+3. **One command**, in the working directory of the request: `python3 -I tools/code_capsule.py --auto --repo <X> --question "<the request, word for word>" [--y-repo <bare Y> | --y-sha <40 hex>] [--request-date <T>] --out <run dir>` -> `<run dir>/capsule.md` + `capsule.json` (never overwrites an existing capsule). Same reading as the owner path: everything at the SHA, nothing of X is executed nor imported.
+4. **What the tool writes, and how it is marked**: `intention` = the request word for word, marked `inferred from the request`; `target_seam` = 1 to 3 seams taken from the module map (entry point of the module, else its largest source files, at their first top-level definition; tests, docs, examples and vendored code excluded), marked `proposed, not reviewed`; `refusals` empty, marked `none recorded: implicit authorisation`; `reviewed_by_owner: no`. The engine does not rewrite these fields; a proposed seam that the searches show to be wrong is said so in the report, not silently replaced.
+5. **One question at most**: in an interactive session, the engine may ask the user ONE short question ("anything in X that must not be touched: core, files, licences, dependencies?"); an answer is copied into `refusals` as `<answer> (user, <date>)`; no answer possible (non-interactive run, no reply) = continue at once, nothing waits.
+6. The report is labelled `capsule not reviewed` (Introduction and Methodology Appendix: "capsule built from the request: intention inferred, seams proposed, no refusal recorded"); the verdict rules are those of any capsule.
+
+The run stops before any collection only when X cannot be found (no local git repository at the path named nor in the current directory, or a repository without any commit; the tool answers `{"refusal": "capsule_missing", ...}`): report labelled `capsule missing`, with one sentence telling the user what to provide ("give the path of your project, a git repository with at least one commit, or ask from inside it"), empty `result.json`, no invented value.
 
 ## Modes
 

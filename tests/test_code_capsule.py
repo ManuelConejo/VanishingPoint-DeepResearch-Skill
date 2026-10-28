@@ -212,6 +212,83 @@ def test_no_stray_file_and_no_lab_name_in_outputs(repo):
     assert OWNER in text and all(ord(c) < 128 for c in pathlib.Path(res["markdown"]).read_text())
 
 
+QUESTION = "Is https://github.com/litl/backoff.git interesting as a contribution to my project in the current directory?"
+
+
+def run_auto(tmp_path, *args, cwd=None):  # CLI --auto under python3 -I in the environment set by the fixture; returns (rc, stdout JSON | text, doc | None)
+    out = tmp_path / f"auto{len(list(tmp_path.iterdir()))}"
+    p = subprocess.run([sys.executable, "-I", str(TOOLS / "code_capsule.py"), "--auto", "--out", str(out), *args],
+                       env=dict(os.environ), capture_output=True, text=True, cwd=cwd or tmp_path)
+    res = json.loads(p.stdout) if p.stdout.startswith("{") else p.stdout + p.stderr
+    return p.returncode, res, (json.loads(pathlib.Path(res["json"]).read_text()) if p.returncode == 0 else None)
+
+
+def test_auto_builds_a_marked_capsule_from_the_request(repo, tmp_path):
+    r, shas, _, run = repo
+    rc, res, doc = run_auto(tmp_path, "--repo", ".", "--question", QUESTION + "\n", "--y-sha", "a" * 40, "--request-date", "2026-10-29", cwd=r)
+    assert rc == 0 and res["markdown"].endswith("/capsule.md") and res["json"].endswith("/capsule.json"), res
+    assert doc["identity"]["sha"] == shas[1] and res["X"] == f"{r}@{shas[1]}" and res["label"] == "capsule not reviewed"   # HEAD frozen
+    assert (doc["intention"], doc["intention_status"]) == (QUESTION, "inferred from the request")                       # word for word
+    assert (doc["refusals"], doc["refusals_status"], doc["reviewed_by_owner"]) == ([], "none recorded: implicit authorisation", "no")
+    assert (doc["mode"], doc["Y"]["repo"], doc["Y"]["sha"], doc["request_date"]) == ("Y given", "github.com/litl/backoff", "a" * 40, "2026-10-29")
+    seams = doc["target_seam"]
+    assert 1 <= len(seams) <= 3 and all(s["status"] == "proposed, not reviewed" for s in seams), seams
+    assert seams[0]["where"] == f"pkg/__main__.py:1@{shas[1][:12]}" and not any(s["where"].startswith("tests/") for s in seams), seams
+    for s in seams:  # every proposed seam exists at the SHA
+        assert subprocess.run(["git", "-C", str(r), "cat-file", "-e", f"{shas[1]}:{s['where'].split(':')[0]}"]).returncode == 0, s
+    md = pathlib.Path(res["markdown"]).read_text()
+    for text in ("capsule not reviewed", "(inferred from the request)", "proposed, not reviewed", "refusals: none recorded: implicit authorisation", QUESTION):
+        assert text in md, text
+    assert OWNER not in md.split("## Identity")[0] and "evil" not in sys.modules and "pkg" not in sys.modules
+    sys.path.insert(0, str(TOOLS))
+    import whole_reading                                  # the whole reading finds the proposed seams in capsule.md
+    assert [m.group(0) for m in whole_reading.REF.finditer(whole_reading.seam_block(md))] == [s["where"] for s in seams]
+    rc, out, _ = run_auto(tmp_path, "--repo", str(r), "--question", QUESTION, "--out", str(pathlib.Path(res["json"]).parent))
+    assert (rc, out["refusal"]) == (2, "capsule_exists"), out                        # an existing capsule is never overwritten
+
+
+def test_auto_finds_x_from_a_subdirectory_and_y_at_head_of_a_bare_repository(repo, tmp_path):
+    r, shas, commit, run = repo
+    bare = tmp_path / "y.git"
+    subprocess.run(["git", "clone", "-q", "--bare", str(r), str(bare)], check=True, capture_output=True)
+    head = commit({"later.py": "x = 2\n"})                                           # X moves on; Y stays at the clone
+    rc, res, doc = run_auto(tmp_path, "--repo", str(r / "pkg"), "--sha", "HEAD", "--question", QUESTION, "--y-repo", str(bare))
+    assert rc == 0 and doc["identity"]["repo"] == str(r) and doc["identity"]["sha"] == head, res
+    assert doc["Y"]["sha"] == shas[1] and "bare repository" in doc["Y"]["sha_source"] and res["Y"] == f"github.com/litl/backoff@{shas[1]}"
+    rc, res, doc = run_auto(tmp_path, "--repo", str(r), "--question", "What could make my project faster?")
+    assert rc == 0 and (doc["mode"], doc["Y"]) == ("need only", "none (need only)") and res["Y"] is None
+    rc, res, doc = run_auto(tmp_path, "--repo", str(r), "--question", QUESTION)       # no SHA of Y supplied: unresolved, never invented
+    assert doc["Y"]["sha"] is None and "unresolved" in pathlib.Path(res["markdown"]).read_text()
+
+
+def test_auto_stops_with_capsule_missing_and_a_clear_message(repo, tmp_path):
+    r, shas, _, run = repo
+    (tmp_path / "plain").mkdir()
+    for where in (tmp_path / "plain", tmp_path / "absent"):
+        rc, out, _ = run_auto(tmp_path, "--repo", str(where), "--question", QUESTION)
+        assert (rc, out["refusal"]) == (2, "capsule_missing") and "give the path of your project" in out["detail"], out
+        assert not list(tmp_path.glob("auto*/capsule.*"))
+    empty = tmp_path / "empty"
+    subprocess.run(["git", "init", "-q", str(empty)], check=True)
+    rc, out, _ = run_auto(tmp_path, "--repo", str(empty), "--question", QUESTION)
+    assert (rc, out["refusal"]) == (2, "capsule_missing"), out                        # no commit: nothing to pin
+    assert run_auto(tmp_path, "--repo", str(r), "--question", "  ")[1]["refusal"] == "question_missing"
+    assert run_auto(tmp_path, "--repo", str(r), "--question", QUESTION, "--y", "https://gitlab.com/a/b")[1]["refusal"] == "y_not_github"
+    assert run_auto(tmp_path, "--repo", str(r), "--question", QUESTION, "--y-sha", "HEAD")[1]["refusal"] == "sha_format"
+    p = subprocess.run([sys.executable, "-I", str(TOOLS / "code_capsule.py"), "--repo", str(r)], capture_output=True, text=True)
+    assert p.returncode == 2 and "--sha is required" in p.stderr                     # without --auto the owner path is unchanged
+
+
+def test_auto_seams_follow_the_module_map_and_skip_tests(repo, tmp_path):
+    r, shas, commit, run = repo
+    commit({"retrying/__init__.py": "", "retrying/policy.py": "import os\n\n\nclass Policy:\n    pass\n", "retrying/tests/__init__.py": "",
+            "docs/conf.py": "def f():\n    pass\n"})
+    rc, res, doc = run_auto(tmp_path, "--repo", str(r), "--question", "Can backoff improve the retrying policy of my project?")
+    where = [s["where"].split("@")[0] for s in doc["target_seam"]]
+    assert where[0] == "retrying/policy.py:4" and len(where) <= 3, where              # module named by the request first, first definition cited
+    assert not any(w.startswith(("docs/", "retrying/tests/", "tests/")) for w in where), where
+
+
 if __name__ == "__main__":                               # standard library run; under pytest only the test_* functions are collected
     class _MonkeyPatch:
         """setenv / undo, the part of pytest's monkeypatch these tests use."""
