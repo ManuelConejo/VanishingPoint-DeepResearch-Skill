@@ -151,7 +151,7 @@ Everything in this release was either measured on our benches before being adopt
   European Parliament (planned). EUR-Lex HTML answers 202 empty to robots: not used. The legal verification rules
   (`in_force_at_date`...) stay documented, not automated.
 
-## v0.3.1, 2026-10-28 - more keyless engines, key fixes
+### v0.3.0 (continued) - more keyless engines, key fixes
 
 - Four keyless engines wired, each behind the same date barrier (provider filter at the eve of T where the API allows it,
   then every known date < T, forbidden identifiers and titles):
@@ -180,7 +180,7 @@ Everything in this release was either measured on our benches before being adopt
 - Tests: `tests/test_engines_extra.py` (18, offline); `test_code_sources.py` (host list + `api.osv.dev`) and
   `test_check_keys.py` (SWH now suggested) adjusted. Live probes at T 2026-10-26 and 2019-06-01: 0 date on/after T.
 
-## v0.3.2, 2026-10-28 - AI and code engines
+### v0.3.0 (continued) - AI and code engines
 
 - cs-ai: `openreview` wired on `/notes/search` (API v1 and v2; `/notes?id=`, `?forum=`, `/notes/edits` answer 403 ChallengeRequiredError: not used). No provider date filter: forum visible only when cdate, tcdate, odate, pdate, mdate < T; tmdate on/after T masks abstract, venue, decision; replies (reviews, decision) served only when cdate, tcdate, mdate, tmdate < T; a decision on/after T is never served. `read openreview:<id>` after a search (abstract, reviews, decision; decision notes often missed by the reply search). Terms: no anti-automation clause, comments CC BY 4.0.
 - cs-ai: `zenodo` wired (keyless; created and publication_date bounded on the provider side and rechecked; DataCite DOIs: no Crossref recheck; related identifiers checked against the forbidden list; description masked when updated on/after T); `read zenodo:<id>`.
@@ -476,11 +476,10 @@ Code only, tested offline; the optional tools run from the command line (`finish
 - `KEYS.md` and the `gateway.py` help list the new engines.
 - `tests/test_gateway.py` and `tests/test_validate_result.py` cover the new engines and identifier kinds.
 
-
+### Optional tools (packaging changes, tested, not measured)
 Three optional functions, all off by default: each runs only on an explicit request of the user or a tool option. No model call and
 no gateway call is added; the engine, the verifier and the standard deliverables do not change. Tested offline, not measured as methods.
 
-### Packaging changes (tested, not measured)
 - "Prior art?" mode (`tools/prior_art.py`, `validate_card.py --prior-art`, `finish_run.py --prior-art`): the idea is cut into
   essential elements (`prior_art.json`); the card holds one claim per (source, element) read as disclosed (`"element": "E<k>"`),
   checked by the unchanged verifier. The answer is decided by code: **Exists** (one source dated before T discloses every
@@ -500,9 +499,7 @@ no gateway call is added; the engine, the verifier and the standard deliverables
 - `validate_card.py`: the end-step fingerprints also cover `prior_art.json` and `PRIOR-ART.md` (absent in a standard run).
 - Tests: `tests/test_prior_art.py`, `tests/test_prisma.py`, `tests/test_followups.py`.
 
-
 ## v0.5.3, 2026-10-28 - optional evidence bank and contradiction candidates (command-line tools)
-
 
 Two optional modes, both off by default: each runs only on an explicit request of the user. No model call and no gateway call is added
 by the tools; the engine, the verifier, `finish_run.py`, `export_report.py` and the standard deliverables do not change. Tested offline,
@@ -530,8 +527,8 @@ not measured as methods.
 - Every quote and passage is data: inert fenced blocks in Markdown, HTML-escaped in the HTML pages, no script, no external resource.
 - Tests: `tests/test_evidence_bank.py`, `tests/test_contradictions.py`.
 
-### Not yet in SKILL.md
-- Both tools run from the command line; the optional SKILL.md sections that let the assistant use them wait for a duel.
+### Not in SKILL.md (still the case in v0.5.4)
+- Both tools run from the command line; the optional SKILL.md sections that let the assistant use them wait for a measure.
 
 ## v0.5.4, 2026-10-28 - "Prior art?" mode and PRISMA / follow-up questions usable by the assistant
 
@@ -545,3 +542,60 @@ not measured as methods.
   the gateway journal (248 identified, 61 duplicates, 14 included) and its five questions are traceable. One grader bug, found after
   the run and declared (records without identifier counted as duplicates), was corrected in writing, the frozen script unchanged.
 - "Quote-first writing" and "Contradiction hunt" stay command-line tools; their sections wait for a measure.
+
+## v0.5.5, 2026-10-28 - pre-release review fixes
+
+Code and documentation fixes from a full review before the public opening; no change to the engine, the gateway barrier, the
+verifier or the standard mode's behaviour. Offline suite: 34 files, 319 tests, green on a fresh copy as a normal user with an empty
+HOME and no pytest.
+
+### Fresh clone
+- The test fixture `tests/fixtures/finish_run/state/journal.jsonl` was excluded by `.gitignore` (`state/`, `*.jsonl`), so three test
+  files failed on a fresh clone; `.gitignore` now keeps `tests/fixtures/*/state/*.jsonl` and the fixture (3 synthetic lines) is
+  committed.
+
+### Tools
+- `validate_card.py --header` no longer overwrites `run.json` with an empty header when `state/journal.jsonl` is absent (injected
+  mode, copied run): nothing is written and a message goes to stderr.
+- `validate_result.py --help` and `verifier/citation_check.py --help` print their usage (exit 0); a wrong argument count prints it
+  with exit 2, instead of "unreadable JSON" or a Python traceback.
+- `verifier.py`: help and comment now say what the configuration does: full-text verification is off by default
+  (`verifier.fulltext: false`), `--fulltext` switches it on.
+- `evidence_bank.py`, attribution check (EB5): a quote counts for a source only when found in that source's own text:
+  `sources/<KEY>/source.txt`, `state/fulltext/<identifier>/source.txt`, or, inside a gateway cache answer, the record of that
+  identifier (the JSON object or XML element whose own short fields name it; new named parameter
+  `evidence_bank.record_id_max_chars`, 300). A result list that merely cites the identifier no longer lends another record's text
+  to it: such a quote is now `misattributed`. An answer that is neither JSON nor XML counts only when it names this identifier and no
+  other identifier of the run.
+- `evidence_bank.py --from-verdicts` never overwrites an existing bank: it writes to `--bank`, else `--out/evidence.json`, else
+  `DIR/evidence.json`, and refuses with exit 2 and a clear message when that file exists.
+- `sources/europarl.py`: the `procedure` field, taken from the `inverse_created_a_realization_of` relation, is no longer served; no
+  value of an `inverse_*` relation is served, as the source's barrier states.
+- `EVIDENCE.html` and `CONTRADICTIONS.html` carry the same Content-Security-Policy (`default-src 'none'`) as `REPORT.html`.
+- `verifier/windows.py`: the built-in default mode is `whole`, as in `tools/config.json` (no effect when the configuration is read).
+- Help and comments: `gateway.py` help (barrier figure 20/20 as in the v0.2.1 entry, "general engines" instead of a partial
+  "wired engines" list, internal version tags removed), `validate_card.py` check 2 (every identifier kind of `validate_card.IDS`),
+  version tags removed from the comments of `sources/_cs.py`, `_series.py`, `dbnomics.py`, `piste.py`.
+
+### Tests
+- `tests/test_code_capsule.py` runs with the standard library alone (`python3 -I tests/test_code_capsule.py`, unittest, with
+  minimal stand-ins for the pytest fixtures) and still runs under pytest; pytest is optional everywhere.
+- New tests: no `inverse_*` value served by europarl (search and read); EB5 refuses a quote taken from another record of a cached
+  result list (JSON, XML, plain page); `--from-verdicts` never overwrites a bank; CSP on the two HTML pages; `windows` default mode.
+
+### Documentation
+- README: Quick start step 5 (`--header` without journal), `finish_run.py` options (`--prisma --followups --prior-art --json`),
+  wired engines (hudoc, europarl, isidore added), Modes table (prior art, PRISMA / follow-ups), Layout (every tool listed;
+  `code_sources.py` marked as a library), test count (about 320, standard library only).
+- SKILL.md (editorial): header names the version (v0.5.4) instead of an internal name; the tool inventory of section 1 lists every
+  script, those SKILL.md never runs marked "never run by you"; "HTML/PDF exports" removed from "What we do not do" (section 8 runs
+  them).
+- `plugins/law.md`: wired engines list complete (hudoc, europarl, isidore); HUDOC entry rewritten to its current state, without a
+  browser route; theses.fr title says wired.
+- CHANGELOG: the two duplicate `v0.3.1` entries become "v0.3.0 (continued)" sections (as in git history), orphan paragraphs of
+  v0.5.2 and v0.5.3 get their own heading, "Not yet in SKILL.md" reworded.
+- KEYS.md, CONTRIBUTING.md: pytest is optional.
+
+### Documentation
+- New `USAGE.md`: first research in five minutes, reading the result, disciplines, optional modes, keys, costs and limits, tools by hand, troubleshooting, adding a source; linked from the README.
+- `examples/report-cs-ai/README.md`: only figures that can be checked in its files; says that `sources/` is not shipped and what that changes.

@@ -1,13 +1,36 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests of code_capsule.py on a throwaway git repository built in tmp_path (two commits; evil.py and pkg/__main__.py raise at
-import, which proves that nothing of X is executed). Hermetic: clean environment, throwaway HOME, GIT_CONFIG_GLOBAL=/dev/null."""
+import, which proves that nothing of X is executed). Hermetic: clean environment, throwaway HOME, GIT_CONFIG_GLOBAL=/dev/null.
+Runs under pytest (python3 -m pytest -q tests/test_code_capsule.py) or alone with the standard library (python3 -I tests/test_code_capsule.py:
+unittest, with a minimal stand-in for the tmp_path / monkeypatch fixtures and pytest.raises)."""
+import inspect
 import json
 import os
 import pathlib
 import subprocess
 import sys
+import tempfile
+import types
+import unittest
 
-import pytest
+try:
+    import pytest
+except ImportError:                                     # standard library only: the stand-ins below
+    class _Raises:
+        def __init__(self, exc):
+            self.exc, self.value = exc, None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, typ, val, tb):
+            if typ is None:
+                raise AssertionError(f"{self.exc.__name__} not raised")
+            if not issubclass(typ, self.exc):
+                return False
+            self.value = val
+            return True
+    pytest = types.SimpleNamespace(fixture=lambda *a, **k: (lambda f: f), raises=_Raises)
 
 HERE = pathlib.Path(__file__).resolve().parent
 TOOLS = HERE.parent / "tools"
@@ -29,8 +52,7 @@ def module():
     return code_capsule
 
 
-@pytest.fixture
-def repo(tmp_path, monkeypatch):
+def _repo(tmp_path, monkeypatch):
     env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": str(tmp_path / "home"), "GIT_CONFIG_GLOBAL": "/dev/null",
            "GIT_CONFIG_NOSYSTEM": "1", "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t",
            "GIT_AUTHOR_DATE": "2026-01-01T00:00:00Z", "GIT_COMMITTER_DATE": "2026-01-01T00:00:00Z"}
@@ -56,6 +78,9 @@ def repo(tmp_path, monkeypatch):
         return p.returncode, res, (json.loads(pathlib.Path(res["json"]).read_text()) if p.returncode == 0 else None)
     subprocess.run(["git", "-C", str(r), "init", "-q"], env=env, check=True)
     return r, [commit(FILES_1), commit(FILES_2)], commit, run
+
+
+repo = pytest.fixture(name="repo")(_repo)
 
 
 def test_refuses_sha_format_before_any_subprocess(repo, tmp_path):
@@ -185,3 +210,43 @@ def test_no_stray_file_and_no_lab_name_in_outputs(repo):
     rc, res, doc = run(shas[1])
     text = pathlib.Path(res["markdown"]).read_text() + json.dumps(doc)
     assert OWNER in text and all(ord(c) < 128 for c in pathlib.Path(res["markdown"]).read_text())
+
+
+if __name__ == "__main__":                               # standard library run; under pytest only the test_* functions are collected
+    class _MonkeyPatch:
+        """setenv / undo, the part of pytest's monkeypatch these tests use."""
+        def __init__(self):
+            self.saved = {}
+
+        def setenv(self, k, v):
+            self.saved.setdefault(k, os.environ.get(k))
+            os.environ[k] = v
+
+        def undo(self):
+            for k, v in self.saved.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+
+    class CodeCapsule(unittest.TestCase):
+        """Every test_* function above, each in its own temporary directory (standard library run)."""
+
+    def _method(fn):
+        def m(self):
+            with tempfile.TemporaryDirectory() as d:
+                tmp, mp = pathlib.Path(d), _MonkeyPatch()
+                try:
+                    made = {}
+                    for p in inspect.signature(fn).parameters:
+                        made[p] = tmp if p == "tmp_path" else _repo(tmp, mp)
+                    fn(**made)
+                finally:
+                    mp.undo()
+        return m
+
+    for _n, _f in list(globals().items()):
+        if _n.startswith("test_") and inspect.isfunction(_f):
+            setattr(CodeCapsule, _n, _method(_f))
+
+    unittest.main()

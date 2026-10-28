@@ -56,7 +56,6 @@ def ep_item(w, B):
     return {'id': 'europarl:' + did, 'europarl': did, 'doi': None, 'title': title, 'year': d[:4], 'date': d[:10],
             'reference': w.get('notation_publicRegister') or w.get('label'), 'work_type': (w.get('work_type') or '').rsplit('/', 1)[-1] or None,
             'parliamentary_term': (w.get('parliamentary_term') or '').rsplit('-', 1)[-1] or None, 'adopts': [x.rsplit('/', 1)[-1] for x in w.get('adopts') or []],
-            'procedure': [x.rsplit('/', 1)[-1] for x in w.get('inverse_created_a_realization_of') or []],
             'journal': 'European Parliament (Open Data API)', 'type': 'text', 'tier': 'grey', 'order': 'EU',
             'files_before_T': files_before, 'url': EP + 'eli/dl/doc/' + did}
 

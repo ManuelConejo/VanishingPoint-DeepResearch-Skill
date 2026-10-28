@@ -9,7 +9,7 @@ from sources._common import value
 from sources._series import DATA_NO_CHAIN
 
 
-# ---------------------------------------------------------------- finance data series (v0.4.9, plugins/finance.md sections 7-8): dbnomics, fred
+# ---------------------------------------------------------------- finance data series (plugins/finance.md sections 7-8): dbnomics, fred
 # A series value for period P is published, then often REVISED. "Known at T" = periods ending before T AND values as published before T.
 # FRED/ALFRED gives true vintages (realtime_start = realtime_end = eve of T); DBnomics serves CURRENT values only: each one is marked as_of "now".
 # Neither serves release dates: a period ending before T may have been released on/after T (DBnomics) - flagged, never hidden.

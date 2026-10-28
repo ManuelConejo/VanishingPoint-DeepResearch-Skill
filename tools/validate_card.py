@@ -5,7 +5,7 @@ Usage: validate_card.py DIR [--header] [--prior-art]      --header: derives run.
 --prior-art (optional "Prior art?" mode, SKILL.md; never by default): checks 1-5 and 9 and 13, plus the prior-art checks PA1-PA4 of
 tools/prior_art.py (prior_art.json, element claims, PRIOR-ART.md current and consistent with the verified claims, a NOT FOUND with a recorded
 search) in place of the report checks 6, 7, 8, 10, 11, 12 (no REPORT.md nor result.json in that mode).
-Checks: 1 card.json (minimal schema); 2 source keys (identifier doi/arxiv/pmid/pmcid, or `code` for a file read at a SHA); 3 placeholders;
+Checks: 1 card.json (minimal schema); 2 source keys (an identifier field of a known kind, validate_card.IDS: doi, pmid, arxiv, celex, ecli... as declared by tools/sources/, or `code` for a file read at a SHA); 3 placeholders;
 4 searches/ (>= 3, with queries); 5 verdicts.json handled (no ABSENT/INVALID left, known statuses); 6 REPORT.md: exactly the eight level-2
 sections of the output contract, in order (Executive Summary 200-400 words, Introduction, Main Analysis with 4 to 8 findings headed
 `### Finding n — <title>`, Synthesis & Insights, Limitations & Caveats, Recommendations, Bibliography, Methodology Appendix); 7 unverified claims
@@ -193,6 +193,9 @@ if __name__ == '__main__':
     d = pathlib.Path(args[0])
     if not d.is_dir(): print(f'validate_card.py: not a directory: {args[0]!r} (a relative path is read from the current directory {pathlib.Path.cwd()})'); sys.exit(2)
     if '--header' in sys.argv:
-        (d / 'run.json').write_text(json.dumps(header(d), ensure_ascii=False, indent=1)); print('run.json written')
+        if (d / 'state' / 'journal.jsonl').exists():
+            (d / 'run.json').write_text(json.dumps(header(d), ensure_ascii=False, indent=1)); print('run.json written')
+        else:                                                # injected mode or a copied run: never replace a header by an empty one
+            print('run.json not written: no state/journal.jsonl', file=sys.stderr)
     p = problems(d, prior_art='--prior-art' in sys.argv) + end_problems(d)
     print('\n'.join(p) if p else 'OK'); sys.exit(1 if p else 0)

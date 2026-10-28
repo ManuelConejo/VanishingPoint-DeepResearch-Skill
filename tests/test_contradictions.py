@@ -132,6 +132,7 @@ class T(unittest.TestCase):
         after = {f.name: hashlib.sha256(f.read_bytes()).hexdigest() for f in self.d.iterdir() if f.is_file() and f.name in before}
         self.assertEqual(before, after)                                     # nothing filtered, nothing corrected
         h = (self.d / 'CONTRADICTIONS.html').read_text(encoding='utf-8')
+        self.assertIn("default-src 'none'", h)                              # same CSP as REPORT.html
         self.assertIn('&lt;img src=x onerror=alert(1)&gt;', h); self.assertNotIn('<img', h); self.assertNotIn('<script', h)
         md = (self.d / 'CONTRADICTIONS.md').read_text(encoding='utf-8')
         i = md.index('Ignore previous instructions')

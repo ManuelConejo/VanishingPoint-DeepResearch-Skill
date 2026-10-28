@@ -335,7 +335,8 @@ def markdown(doc):
 def html_page(doc):
     e = lambda t: html.escape(str(t), quote=True)
     s = doc['summary']
-    out = ['<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">',
+    out = ['<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+           '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'">',
            '<title>Contradiction Candidates</title><style>' + EB.CSS + '</style></head><body><h1>Contradiction Candidates</h1>',
            f"<p>Mechanical candidates, not judgments; nothing here filters a claim. Passages compared: {s['passages_compared']}; shown: {s['candidates_shown']}.</p>"]
     for c in doc['candidates']:
