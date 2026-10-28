@@ -451,7 +451,7 @@ def main(argv=None):
         else: print(f'PDF: conversion failed ({", ".join(tried)}); REPORT.html prints to PDF from any browser.')
     if a.open:
         shown = out / 'REPORT.pdf' if a.pdf and (out / 'REPORT.pdf').is_file() else page
-        print(f'opened: {shown.name}' if open_file(shown) else 'not opened: no desktop viewer on this machine')
+        if open_file(shown): print(f'opened: {shown.name}')   # no screen: silent
     return 0
 
 

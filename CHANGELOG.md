@@ -218,5 +218,5 @@ Everything in this release was either measured on our benches before being adopt
 ## v0.3.4, 2026-10-28 - open the report
 
 - `export_report.py --open` shows the PDF (else the HTML) with the desktop viewer (`open` on macOS, `xdg-open` with a display on
-  Linux, `start` on Windows) and does nothing on a server or in a container (one line says so). SKILL.md runs export with
+  Linux, `start` on Windows) and does nothing, silently, on a server or in a container. SKILL.md runs export with
   `--pdf --open`. Test added.
