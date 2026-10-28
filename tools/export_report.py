@@ -415,9 +415,27 @@ def to_pdf(src, pdf):
     return None, tried
 
 
+def can_open():
+    """The viewer command of a desktop session: `open` on macOS, `xdg-open` with a display on Linux, `start` on Windows; else None
+    (a server or a container has no screen: nothing is opened)."""
+    if sys.platform == 'darwin': return ['open'] if shutil.which('open') else None
+    if os.name == 'nt': return ['cmd', '/c', 'start', '']
+    if (os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY')) and shutil.which('xdg-open'): return ['xdg-open']
+    return None
+
+
+def open_file(path):
+    """Opens the file with the desktop viewer when there is one; returns True if a viewer was launched (never waits for it)."""
+    cmd = can_open()
+    if not cmd: return False
+    try: subprocess.Popen(cmd + [str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=os.name != 'nt'); return True
+    except OSError: return False
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description='REPORT.md -> REPORT.html (always) and REPORT.pdf (--pdf), offline.')
     ap.add_argument('run_dir'); ap.add_argument('--pdf', action='store_true'); ap.add_argument('--out')
+    ap.add_argument('--open', action='store_true', help='open the PDF (else the HTML) with the desktop viewer, if the machine has a screen')
     a = ap.parse_args(argv)
     d = pathlib.Path(a.run_dir); src = d / 'REPORT.md'
     if not src.is_file(): print(f'no REPORT.md in {d}', file=sys.stderr); return 2
@@ -431,6 +449,9 @@ def main(argv=None):
         if name: print(f'{pdf.resolve()} ({name})')
         elif not tried: print('PDF: no converter found (WeasyPrint, Chromium/Chrome, wkhtmltopdf, pandoc); REPORT.html prints to PDF from any browser.')
         else: print(f'PDF: conversion failed ({", ".join(tried)}); REPORT.html prints to PDF from any browser.')
+    if a.open:
+        shown = out / 'REPORT.pdf' if a.pdf and (out / 'REPORT.pdf').is_file() else page
+        print(f'opened: {shown.name}' if open_file(shown) else 'not opened: no desktop viewer on this machine')
     return 0
 
 
