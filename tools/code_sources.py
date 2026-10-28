@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Code sources of the VanishingPoint gateway. CodeClient = HTTPS only, closed host list, no redirect, 5 MB cap, per-host
 interval from config.json, receipts without URL nor token; grep.app disabled; every key optional (GitHub token: VP_GITHUB_TOKEN
-resolved by key('VP_GITHUB_TOKEN'), sent to api.github.com only, never logged); VP_OFFLINE=1 = no network.
+resolved by key('VP_GITHUB_TOKEN'), sent to api.github.com only, never logged; SWH_TOKEN sent to archive.softwareheritage.org only);
+VP_OFFLINE=1 = no network. A key the provider rejects is remembered in <state>/keys-invalid.json (names only) and not sent again.
 key(NAME) is the single key rule of the skill (KEYS.md), also used by gateway.py."""
 import fcntl
 import hashlib
@@ -18,7 +19,8 @@ from urllib.parse import quote, urlencode, urlsplit
 CFG = json.loads((pathlib.Path(__file__).resolve().parent / 'config.json').read_text())
 INTERVAL = CFG['code_intervals']
 HOSTS = frozenset(('api.github.com', 'sourcegraph.com', 'api.deps.dev', 'pypi.org', 'registry.npmjs.org', 'crates.io',
-                   'huggingface.co', 'archive.softwareheritage.org'))
+                   'huggingface.co', 'archive.softwareheritage.org', 'api.osv.dev'))
+CRED_HOST = {'VP_GITHUB_TOKEN': 'api.github.com', 'SWH_TOKEN': 'archive.softwareheritage.org'}   # each credential goes to its own host only
 TOKEN_PATH = None     # no token file fallback (kept as a module variable so tests can monkeypatch it harmlessly)
 FALLBACK_DIRS = ()    # no fallback key directory (kept as a module variable so tests can monkeypatch it harmlessly)
 MAX_BYTES, MAX_QUERY = 5_000_000, 512
@@ -50,9 +52,10 @@ class CodeClient:
         self.clock, self.sleep = time.monotonic, time.sleep  # tests replace them; waited records every wait anyway
         self.opener = urllib.request.build_opener(_NoRedirect())
 
-    def _wait(self, host):
-        """Minimum interval per host: monotonic in-process, and shared with the other processes of the same state dir (locked file)."""
-        iv = self.interval.get(host, self.interval['default'])
+    def _wait(self, host, keyed=False):
+        """Minimum interval per host: monotonic in-process, and shared with the other processes of the same state dir (locked file);
+        '<host>+token' in config.json code_intervals = the interval when a credential is sent (Software Heritage token)."""
+        iv = self.interval[host + '+token'] if keyed and host + '+token' in self.interval else self.interval.get(host, self.interval['default'])
         with open(self.cache_dir / f'rate-code-{host}', 'a+') if self.cache_dir else io.StringIO() as f:
             if self.cache_dir:
                 fcntl.flock(f, fcntl.LOCK_EX)
@@ -66,8 +69,8 @@ class CodeClient:
             f.truncate()
             f.write(str(time.time()))
 
-    def _send(self, url, headers):
-        with self.opener.open(urllib.request.Request(url, headers=headers), timeout=30) as r:
+    def _send(self, url, headers, body=None):
+        with self.opener.open(urllib.request.Request(url, data=body, headers=headers), timeout=30) as r:
             return r.status, r.read(MAX_BYTES + 1)
 
     def _record(self, rec):
@@ -76,23 +79,25 @@ class CodeClient:
             with open(self.cache_dir / 'requests.jsonl', 'a') as f:
                 f.write(json.dumps(rec) + '\n')
 
-    def get(self, url, token=None):
+    def get(self, url, token=None, cred='VP_GITHUB_TOKEN', body=None):
+        """GET (POST JSON when body is given, e.g. OSV); token = value of the credential `cred`, sent to CRED_HOST[cred] only."""
         u = urlsplit(url)
         refuse(u.scheme != 'https' or u.port not in (None, 443) or u.username or u.password or u.hostname not in self.hosts, 'host_not_declared')
-        refuse(token and u.hostname != 'api.github.com', 'credential_host')
-        raw = self.cache_dir / 'cache' / hashlib.sha256(url.encode()).hexdigest() if self.cache_dir else None
+        refuse(token and u.hostname != CRED_HOST.get(cred), 'credential_host')
+        raw = self.cache_dir / 'cache' / hashlib.sha256(url.encode() + (b'\0' + body if body else b'')).hexdigest() if self.cache_dir else None
         if raw and raw.exists():
             return raw.read_bytes()
         if self.offline:
             raise RuntimeError('offline')
-        headers = {'Accept': 'application/json, text/event-stream', 'User-Agent': UA, **({'Authorization': 'Bearer ' + token} if token else {})}
-        self._wait(u.hostname)
+        headers = {'Accept': 'application/json, text/event-stream', 'User-Agent': UA, **({'Authorization': 'Bearer ' + token} if token else {}),
+                   **({'Content-Type': 'application/json'} if body else {})}
+        self._wait(u.hostname, keyed=bool(token))
         t0 = time.time()
         rec = {'utc': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(t0)), 'host': u.hostname,
                'path_sha256': hashlib.sha256((u.path + '?' + u.query).encode()).hexdigest(), 'status': None, 'bytes': 0, 'sha256': None, 'seconds': 0.0}
         code = None
         try:
-            status, body = self._send(url, headers)
+            status, data = self._send(url, headers) if body is None else self._send(url, headers, body)
         except urllib.error.HTTPError as e:
             code = 'rate_limited' if e.code in (429, 503) else f'provider_error:HTTP{e.code}'
             self._record(dict(rec, status=e.code, seconds=round(time.time() - t0, 3)))
@@ -102,18 +107,18 @@ class CodeClient:
         if code:
             raise ValueError(code)  # raised outside the except block: no __context__ that could carry a header value
         rec['seconds'] = round(time.time() - t0, 3)
-        if len(body) > MAX_BYTES:  # the receipt is written for this call too
-            self._record(dict(rec, status=status, bytes=len(body), failure='response_too_large'))
+        if len(data) > MAX_BYTES:  # the receipt is written for this call too
+            self._record(dict(rec, status=status, bytes=len(data), failure='response_too_large'))
             raise ValueError('response_too_large')
-        self._record(dict(rec, status=status, bytes=len(body), sha256=hashlib.sha256(body).hexdigest()))
+        self._record(dict(rec, status=status, bytes=len(data), sha256=hashlib.sha256(data).hexdigest()))
         if raw:
             raw.parent.mkdir(parents=True, exist_ok=True)
-            raw.write_bytes(body)
-        return body
+            raw.write_bytes(data)
+        return data
 
-    def json(self, url, token=None):
+    def json(self, url, token=None, **kw):
         try:
-            return json.loads(self.get(url, token))
+            return json.loads(self.get(url, token, **kw))
         except (json.JSONDecodeError, UnicodeError):
             raise ValueError('malformed_or_bot_challenge') from None
 
@@ -159,6 +164,35 @@ def read_token():
     token = key('VP_GITHUB_TOKEN')
     refuse(token is not None and not re.fullmatch(r'[\x21-\x7e]{8,}', token), 'credential_invalid')
     return token
+
+
+INVALID_FILE = 'keys-invalid.json'   # names of the keys a provider rejected during the run (in the state dir); never a value
+
+
+def invalid_keys(state):
+    """Names of the keys rejected by their provider in this state dir (empty without a state dir or file)."""
+    try: return set(json.loads((pathlib.Path(state) / INVALID_FILE).read_text())) if state else set()
+    except (OSError, ValueError, TypeError): return set()
+
+
+def mark_invalid(state, name):
+    """Remembers that the provider rejected key NAME: the rest of the run goes on without it (flag `key_invalid`, name only)."""
+    if not state: return
+    d = pathlib.Path(state); d.mkdir(parents=True, exist_ok=True)
+    with open(d / INVALID_FILE, 'a+') as f:
+        fcntl.flock(f, fcntl.LOCK_EX); f.seek(0)
+        try: names = set(json.loads(f.read() or '[]'))
+        except ValueError: names = set()
+        f.seek(0); f.truncate(); f.write(json.dumps(sorted(names | {name})))
+
+
+def swh_token(state=None):
+    """Optional Software Heritage token: key('SWH_TOKEN'); None when absent, already rejected in this state dir, or not printable
+    ASCII of at least 8 characters (then remembered as invalid, never sent)."""
+    t = key('SWH_TOKEN')
+    if t is None or 'SWH_TOKEN' in invalid_keys(state): return None
+    if not re.fullmatch(r'[\x21-\x7e]{8,}', t): mark_invalid(state, 'SWH_TOKEN'); return None
+    return t
 
 
 class CodeSearch:
@@ -256,23 +290,86 @@ class PaperCode:
 class Provenance:
     def __init__(self, client): self.c = client
 
-    def origins(self, q, limit=5): return self.c.json(SWH + 'api/1/origin/search/' + quote(q, safe='') + '/?' + urlencode({'limit': limit}))
+    def _json(self, url):
+        """SWH_TOKEN as Bearer (archive.softwareheritage.org only, never on a redirect); rejected (401/403) -> remembered as invalid,
+        one retry without it, and the rest of the run goes on anonymously."""
+        tok = swh_token(self.c.cache_dir)
+        if tok:
+            try: return self.c.json(url, tok, cred='SWH_TOKEN')
+            except ValueError as e:
+                if str(e) not in ('provider_error:HTTP401', 'provider_error:HTTP403'): raise
+            mark_invalid(self.c.cache_dir, 'SWH_TOKEN')
+        return self.c.json(url)
+
+    def origins(self, q, limit=5): return self._json(SWH + 'api/1/origin/search/' + quote(q, safe='') + '/?' + urlencode({'limit': limit}))
 
     def visit(self, origin):
         refuse(not re.fullmatch(ORIGIN, origin), 'origin')
-        d = self.c.json(SWH + 'api/1/origin/' + quote(origin, safe='') + '/visit/latest/?require_snapshot=true')
+        d = self._json(SWH + 'api/1/origin/' + quote(origin, safe='') + '/visit/latest/?require_snapshot=true')
         snp = 'swh:1:snp:' + d['snapshot'] if d.get('snapshot') else None
         return dict(origin=origin, swhid=snp, date_visited=d.get('date'), status=d.get('status'), permanent_url=SWH + (snp or ''))
 
     def resolve(self, swhid):
         refuse(not re.fullmatch(SWHID, swhid), 'swhid')
-        return self.c.json(SWH + 'api/1/resolve/' + quote(swhid, safe=':') + '/')
+        return self._json(SWH + 'api/1/resolve/' + quote(swhid, safe=':') + '/')
 
     def file(self, origin, sha, path):
         refuse(not re.fullmatch('[a-f0-9]{40}', sha) or path.startswith('/') or any(x in ('', '..', '.') for x in path.split('/')), 'reference')
-        rev = self.c.json(SWH + 'api/1/revision/' + sha + '/')
-        entry = self.c.json(SWH + 'api/1/directory/' + rev['directory'] + '/' + quote(path, safe='/') + '/?' + urlencode({'type': 'file'}))
+        rev = self._json(SWH + 'api/1/revision/' + sha + '/')
+        entry = self._json(SWH + 'api/1/directory/' + rev['directory'] + '/' + quote(path, safe='/') + '/?' + urlencode({'type': 'file'}))
         target = entry.get('target') or entry.get('checksums', {}).get('sha1_git')
         refuse(entry.get('type') != 'file' or not re.fullmatch('[a-f0-9]{40}', target or ''), 'not_file')
         return dict(origin=origin, swhid='swh:1:cnt:' + target, revision_swhid='swh:1:rev:' + sha, directory_swhid='swh:1:dir:' + rev['directory'],
                     date_visited=None, permanent_url=f'{SWH}swh:1:cnt:{target};origin={quote(origin, safe="")};anchor=swh:1:rev:{sha};path=/{quote(path, safe="/")}')
+
+
+
+OSV = 'https://api.osv.dev/v1/'
+OSV_ECOSYSTEM = {'pypi': 'PyPI', 'npm': 'npm', 'cargo': 'crates.io', 'go': 'Go', 'maven': 'Maven', 'rubygems': 'RubyGems', 'nuget': 'NuGet', 'packagist': 'Packagist'}
+OSV_FORM = r'(pypi|npm|cargo|go|maven|rubygems|nuget|packagist):([@A-Za-z0-9][\w.+\-/:]{0,200})@([A-Za-z0-9][\w.+\-]{0,100})'
+OSV_ID = r'[A-Za-z][A-Za-z0-9]{1,15}-[A-Za-z0-9._:-]{2,60}'
+
+
+class Vulns:
+    """OSV.dev (keyless): advisories of package@version (POST /v1/query, raw records, dated by the gateway) and one advisory by id."""
+    def __init__(self, client): self.c = client
+
+    def query(self, system, package, version):
+        refuse(system not in OSV_ECOSYSTEM or any(x in ('', '.', '..') for x in re.split(r'[/:]', package)) or version in ('.', '..'), 'reference')
+        body = json.dumps({'package': {'name': package, 'ecosystem': OSV_ECOSYSTEM[system]}, 'version': version}).encode()
+        return self.c.json(OSV + 'query', body=body).get('vulns') or []
+
+    def get(self, ident):
+        refuse(not re.fullmatch(OSV_ID, ident), 'osv_id')
+        return self.c.json(OSV + 'vulns/' + quote(ident, safe=''))
+
+
+# ---------------------------------------------------------------- package usage (ecosyste.ms), engine `usage` (plugins/code.md)
+USAGE_HOSTS = frozenset(('packages.ecosyste.ms',))
+USAGE_REGISTRY = {'pypi': 'pypi.org', 'npm': 'npmjs.org', 'cargo': 'crates.io', 'go': 'proxy.golang.org', 'maven': 'repo1.maven.org',
+                  'rubygems': 'rubygems.org', 'nuget': 'nuget.org', 'packagist': 'packagist.org', 'hex': 'hex.pm', 'pub': 'pub.dev', 'cran': 'cran.r-project.org'}
+USAGE_FORM = r'(' + '|'.join(USAGE_REGISTRY) + r'):(@?[A-Za-z0-9][\w.+:-]*(?:/[A-Za-z0-9][\w.+:-]*){0,3})'   # Maven group:artifact, npm @scope/name, Go paths
+USAGE_FORM_MSG = 'expected form <' + '|'.join(USAGE_REGISTRY) + '>:<package>'
+
+
+class Usage:
+    """packages.ecosyste.ms (data CC BY-SA 4.0, keyless common pool): current usage counts and the releases published before a date.
+    Never decides the barrier: returns the dates, gateway.code_usage applies it."""
+    def __init__(self, client):
+        self.c = client if USAGE_HOSTS <= client.hosts else CodeClient(hosts=client.hosts | USAGE_HOSTS, interval=client.interval, cache_dir=client.cache_dir, offline=client.offline)
+
+    def lookup(self, system, package, before):
+        refuse(system not in USAGE_REGISTRY, 'system')
+        refuse(not re.fullmatch(r'\d{4}-\d{2}-\d{2}', before), 'date')
+        refuse(not re.fullmatch(r'@?[A-Za-z0-9][\w.+:-]{0,200}(/[A-Za-z0-9][\w.+:-]{0,200}){0,3}', package) or any(s in ('.', '..') for s in package.split('/')), 'reference')
+        p = quote(package, safe='')                                         # npm @scope/name, Go and Maven paths: one URL segment
+        root = f'https://packages.ecosyste.ms/api/v1/registries/{USAGE_REGISTRY[system]}/packages/{p}'
+        d = self.c.json(root)
+        vs = self.c.json(root + '/versions?' + urlencode({'published_before': before, 'sort': 'published_at', 'order': 'desc', 'per_page': 100}))
+        return dict(package=package, system=system, registry=USAGE_REGISTRY[system], purl=d.get('purl'), repository_url=d.get('repository_url'),
+                    first_release_date=d.get('first_release_published_at'),
+                    releases_before_T=[dict(number=v.get('number'), date=v.get('published_at')) for v in vs if isinstance(v, dict)],
+                    dependent_packages_count=d.get('dependent_packages_count'), dependent_repos_count=d.get('dependent_repos_count'),
+                    docker_dependents_count=d.get('docker_dependents_count'), downloads=d.get('downloads'), downloads_period=d.get('downloads_period'),
+                    maintainers=[dict(login=m.get('login'), role=m.get('role')) for m in d.get('maintainers') or [] if isinstance(m, dict)],
+                    licenses=d.get('licenses'), source='packages.ecosyste.ms (CC BY-SA 4.0, attribution: ecosyste.ms)')

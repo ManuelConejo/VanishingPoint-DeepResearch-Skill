@@ -126,3 +126,66 @@ Everything in this release was either measured on our benches before being adopt
 - `check_keys.py --suggest` proposes only keys the gateway really sends today (`OPENALEX_KEY`, `NCBI_API_KEY`,
   `VP_GITHUB_TOKEN`): a key declared with no effect (engine not wired, or key not passed, such as `SWH_TOKEN`, `S2_API_KEY`,
   `PISTE_*`) is never suggested. Found in the 2026-10-28 end-to-end run, which suggested the NCBI key while it had no effect.
+
+## v0.3.0, 2026-10-28 - law engines wired
+
+- `gateway.py` wires four keyless law engines declared in `plugins/law.md`: `eurlex` (Cellar SPARQL, legislation and CJEU case
+  law: grouped by CELEX, `_RES`/`_INF`, Advocate General opinions `CC` and OJ judgment notices `CA`/`TA`/`FA` set aside, both
+  "declares void" predicates read, no `OPTIONAL` join; HTTP 5xx or timeout = `provider_error`), `justice-administrative`
+  (open data back end, level 2 `page`, 3 s, stop on 403/429, decision-date range on the server, `bounded` totals with
+  `coverage_from`, `"undefined"` ECLI removed), `hal` (`level1_domain_s:shs.droit`, production and deposit dates filtered on the
+  server), `theses-fr` (`dateSoutenance` range, 5 s). Each filters on the provider side to the eve of T and rechecks every record
+  locally (act, decision + upload, defence, production + deposit dates < T; forbidden DOI, CELEX, ECLI, NNT, HAL id, titles; no
+  date = refused). Cellar validity fields are post-T knowledge when the notice changed on or after T: then only dates before T are
+  served, the current "in force" flag is masked, voiding rulings dated on or after T are never served.
+- `read` serves `celex:` / `ecli:` (EU and FR administrative) / `ja:` / `hal:` / `thesesfr:` under the same barrier: official text
+  start through Cellar content negotiation, administrative decision full text, HAL and theses.fr abstracts; `citing` and
+  `references` refuse law ids cleanly. `verifier.py` passes these ids to `read`. `fetch` takes optional headers (in the cache key),
+  per-host timeouts and immediate stops (`STOP`).
+- Tests: 6 offline tests added to `test_gateway.py` (per engine: before T visible; after T, day T, partial date at the year of T,
+  forbidden id or title, no date refused; provider-side filter on the eve of T in the URL; no key nor e-mail in any URL; read under
+  the barrier; Cellar 500 typed). Full offline suite green as uid 1000 on a copy (8 files).
+- Live probes (T 2026-10-26 and early T 2019-06-01 / 2023-01-01, plus reads): every engine answered; 0 record dated on or after
+  T. Known limit: a first Cellar free-text query on a common single word can take 60-90 s (`provider_error` past 90 s).
+- Not wired: HUDOC (re-probe planned), Judilibre and Legifrance (PISTE token / POST API, HTML behind a bot challenge), Isidore and
+  European Parliament (planned). EUR-Lex HTML answers 202 empty to robots: not used. The legal verification rules
+  (`in_force_at_date`...) stay documented, not automated.
+
+## v0.3.1, 2026-10-28 - more keyless engines, key fixes
+
+- Four keyless engines wired, each behind the same date barrier (provider filter at the eve of T where the API allows it,
+  then every known date < T, forbidden identifiers and titles):
+  - `clinicaltrials` (biology): ClinicalTrials.gov API v2, `search-clinicaltrials`, `read nct:<id>`; registered trials,
+    published or not (publication-bias check). First submitted AND first posted < T (provider: `AREA[StudyFirstPostDate]
+    RANGE[MIN,<eve>]`); results only when posted < T; a record updated on/after T keeps id, title, conditions, first dates and
+    masks status, phase, enrollment, start date, texts.
+  - `dblp` (cs-ai): through the SPARQL endpoint `sparql.dblp.org` (title word index, year < year of T on the provider side).
+    The search API `dblp.org/search/publ/api` answers an Anubis anti-robot page (HTTP 202): not used, never worked around.
+    Every year (publication AND event) < year of T; CoRR dated by its arXiv id (month of v1 < T); other DOIs rechecked on
+    Crossref. 429 -> `rate_limited` with Retry-After, server timeout -> `provider_error`, non-JSON -> `bot_challenge`.
+    `read dblp:<key>` (metadata only).
+  - `econbiz` (finance): ZBW EconBiz API, `search-econbiz`, `read econbiz:<id>`; indexing date `econbiz_created` and year
+    bounded on the provider side; free-text dates parsed (EN/DE months, quarters, intervals), year alone -> `year_before_T`;
+    DOI rechecked on Crossref. Terms read: free, polite use, no AI clause.
+  - `osv` (code engine): `vulns <ecosystem>:<package>@<version>` (POST `api.osv.dev/v1/query` through `CodeClient`) and
+    `read osv:<id>`, only when a plugin declares `osv`. `published` absent or >= T -> refused; modified on/after T ->
+    summary, details, ranges, severity masked; no count of today's advisories.
+- `SWH_TOKEN` is now sent (`Authorization: Bearer`, `archive.softwareheritage.org` only, never on a redirect; interval 3 s
+  instead of 6 s, both in `config.json` `code_intervals`); `check_keys.py` marks it `passed`, so `--suggest` may propose it.
+  Checked live with a fake token: 403 `AuthenticationFailed`, then the anonymous retry answered 200.
+- A key the provider rejects no longer breaks its source: NCBI 400 "API key invalid", OpenAlex 401/403, Software Heritage
+  401/403 -> one retry without the key, key dropped for the rest of the run (`<state>/keys-invalid.json`, names only), flag
+  `key_invalid: [NAME]` on every answer, in `sources` and in the journal. Checked live with `NCBI_API_KEY=invalid-test-key-000`
+  (search and read return results) and a fake `OPENALEX_KEY`. The NCBI 400 body echoes the key: it is read, never kept.
+- Tests: `tests/test_engines_extra.py` (18, offline); `test_code_sources.py` (host list + `api.osv.dev`) and
+  `test_check_keys.py` (SWH now suggested) adjusted. Live probes at T 2026-10-26 and 2019-06-01: 0 date on/after T.
+
+## v0.3.2, 2026-10-28 - AI and code engines
+
+- cs-ai: `openreview` wired on `/notes/search` (API v1 and v2; `/notes?id=`, `?forum=`, `/notes/edits` answer 403 ChallengeRequiredError: not used). No provider date filter: forum visible only when cdate, tcdate, odate, pdate, mdate < T; tmdate on/after T masks abstract, venue, decision; replies (reviews, decision) served only when cdate, tcdate, mdate, tmdate < T; a decision on/after T is never served. `read openreview:<id>` after a search (abstract, reviews, decision; decision notes often missed by the reply search). Terms: no anti-automation clause, comments CC BY 4.0.
+- cs-ai: `zenodo` wired (keyless; created and publication_date bounded on the provider side and rechecked; DataCite DOIs: no Crossref recheck; related identifiers checked against the forbidden list; description masked when updated on/after T); `read zenodo:<id>`.
+- cs-ai: `hal-info` (HAL `level0_domain_s:(info OR stat)`); the law `hal` engine keeps `shs.droit`. `paper-code` (HF Papers) declared by cs-ai, same barrier as code.
+- code: `usage <registry>:<package>` (engine `ecosyste.ms`): release before T required, latest release before T (`published_before`), counts, maintainers, licences marked `as_of: "now"`.
+- code: Stack Exchange left `tos_forbidden` (Acceptable Use Policy forbids automated collection for building, testing or benchmarking generative AI tools; the official MCP forbids caching).
+- check_keys: names served by a declared wired code engine (github, sourcegraph -> code; deps.dev, pypi, npm, crates -> versions; hf-papers -> paper-code; software-heritage -> provenance) shown "served by", no longer "not wired".
+- Tests: `tests/test_engines_b3.py` (11, offline). Live probes 2026-10-28 at T 2026-10-26 and 2021-01-01: 0 post-T leak.

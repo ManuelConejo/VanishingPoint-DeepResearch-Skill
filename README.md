@@ -157,7 +157,7 @@ The gateway reads, in the Sources section, a fenced block:
 
 ````
 ```sources
-engines: openalex, crossref, arxiv     # wired engines: pubmed, europepmc, crossref, openalex, arxiv ; code, versions, paper-code, provenance
+engines: openalex, crossref, arxiv     # wired engines: pubmed, europepmc, crossref, openalex, arxiv, clinicaltrials, dblp, econbiz ; law: eurlex, justice-administrative, hal, theses-fr ; ai: openreview, zenodo, hal-info ; code, versions, paper-code, provenance, osv, ecosyste.ms
 since: 2015                            # optional lower bound (year)
 cap: 60                                # optional safety cap on calls
 keys: OPENALEX_KEY                     # optional keys, resolved as in KEYS.md, never required

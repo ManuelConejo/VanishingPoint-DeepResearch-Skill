@@ -6,7 +6,7 @@ Empty template. Copy it to `plugins/<discipline>.md` and fill the four sections 
 
 Block read by `tools/gateway.py` (exact format: README.md, "Where to put a plugin"). Declare **all** the engines of the table below, wired or not: an engine that is not wired is listed `not_wired` and refused cleanly, it breaks nothing.
 ```sources
-engines: <e1>, <e2>                      # required ; wired on day 1: pubmed, europepmc, crossref, openalex, arxiv
+engines: <e1>, <e2>                      # required ; wired: pubmed, europepmc, crossref, openalex, arxiv, eurlex, justice-administrative, hal, theses-fr
 since: <YYYY>                            # optional: lower bound (year)
 cap: 60                                  # optional: safety cap on calls
 keys: <VARIABLE_1>, <VARIABLE_2>         # optional: resolved by key() (env NAME, ~/.config/vp/<name in lowercase>.key ; KEYS.md), never required, never displayed

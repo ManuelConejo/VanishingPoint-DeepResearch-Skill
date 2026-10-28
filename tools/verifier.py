@@ -197,7 +197,7 @@ def load_sources(card, sources_dir=None, gateway=None, fulltext=False, out_dir=N
             if (d / 'source.txt').exists() and (d / 'source.txt').stat().st_size > 0:
                 txt = (d / 'source.txt').read_text(errors='replace'); origin = 'fulltext'
         if txt is None and gateway is not None:
-            ident = ident_of(desc) or (c if re.match(r'^(doi|arxiv|pmid):', c) else None)
+            ident = ident_of(desc) or (c if re.match(r'^(doi|arxiv|pmid|celex|ecli|ja|hal|thesesfr):', c) else None)   # law ids: gateway.read_law
             if ident:
                 rep = gateway.read(ident) or {}
                 r = rep.get('results') or {}
