@@ -110,5 +110,12 @@
    "openai": ""
   },
   "note": "Optional contradictor after the report (tools/contradictor.py). families: empty = option absent; set it here, or VP_CONTRADICTORS, or ~/.config/vp/contradictors. A family is <via>[:<model>]: openai[:<model>] = the Codex CLI (openai host profile), claude[:<model>] = claude -p (claude host profile), <provider>:<model> = an OpenAI-compatible chat-completions API named in providers (url, key = name of the key variable resolved as in KEYS.md or null for no key, extra = fields merged into the request body); add your own provider here or in VP_CONTRADICTOR_PROVIDERS (JSON). No model name is fixed in the code or here: the model id is given in the family (required for an API; for a CLI, empty = the CLI's own default model, so the choice follows the vendor); the models measured on 2026-10-27 are recorded in CHANGELOG.md and plugins/code.md. request = body fields of the measure (temperature 0, 8,000 output tokens). y_cap_chars = the cut of Y used in the measure. max_usd = ceiling on the match call and the rereads (host model) per run, checked before each call with reread_usd_per_call as the estimate; a CLI on a subscription (openai profile) reports 0, so the ceiling only bites on metered hosts; reread_model per host profile: empty = the host CLI's default model (--model / VP_MODEL override it)."
+ },
+ "cs_engines": {
+  "pmlr_volumes": 6,
+  "cvf_conferences": 2,
+  "w3c_lookups": 8,
+  "hf_commit_pages": 10,
+  "note": "Gentleness bounds of the CS engines (gateway.py, v0.4.6), not reference values: pmlr_volumes = number of PMLR venues (gateway.PMLR_VENUES, in priority order) whose newest volume published before T is searched (one RSS feed of 1-3 MB each, cached); cvf_conferences = newest CVF main conferences published before T searched (one listing of 3-12 MB each, cached); w3c_lookups = W3C title hits dated per search (one call each); hf_commit_pages = pages of 100 commits walked to find the last commit before T (else the card is refused)."
  }
 }

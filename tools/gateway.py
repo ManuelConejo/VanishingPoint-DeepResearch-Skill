@@ -7,7 +7,7 @@ the forbidden DOIs and titles, and the engines that no plugin declared.
 Command line:
   gateway.py [--plugin P.md ...] [--T YYYY-MM-DD | --case ID] [--run NAME] [--state DIR] [--cap N] [--since YEAR]
              <command> <argument> [--n N]
-  commands: sources | search-<engine> "<query>" | read <id> | citing <id> | references <id>
+  commands: sources | search-<engine> "<query>" | read <id> | citing <id> | references <id> | related <id> (OpenAlex related works, same barrier)
   wired engines: pubmed, europepmc, crossref, openalex, arxiv   (id: pmid:NNN | doi:10.x | arxiv:2501.01234)
   law engines (plugins/law.md): eurlex, justice-administrative [--court CE|TA75|CAA69] [--from YYYY-MM-DD] [--to YYYY-MM-DD], hal, theses-fr
     (id: celex:32016R0679 | ecli:ECLI:EU:... | ecli:ECLI:FR:... | ja:<court>/<file> | hal:hal-0123 | thesesfr:<nnt>)
@@ -16,13 +16,15 @@ Command line:
   extra keyless engines: clinicaltrials (biology), dblp (cs-ai), econbiz (finance)   (id: nct:NCT01234567 | dblp:conf/acl/Xiong0LZ24 | econbiz:10011386660);
     code engine osv: vulns <pypi|npm|cargo|go|maven|rubygems|nuget|packagist>:<package>@<version> ; read osv:<id>
   preprint engines (plugins/biology.md): biorxiv, medrxiv (Europe PMC words, versions dated on api.biorxiv.org; id doi:<preprint DOI>; read biorxiv:<DOI> | medrxiv:<DOI>)
+  CS engines (plugins/cs-ai.md, v0.4.6): hf-models, hf-datasets (read hfmodel:<owner/name> | hfdataset:<owner/name>: card at the last commit before T),
+    standards (rfc:<n> | pep:<n> | w3c:<shortname>), proceedings (acl:<Anthology id> | pmlr:v<vol>/<key> | cvf:content/<CONF>/html/<name>_paper)
   AI engines (plugins/cs-ai.md): openreview, zenodo, hal-info (id: openreview:<forum id> | zenodo:<record id>); code engine usage <pypi|npm|cargo|...>:<package> (ecosyste.ms)
   A key the provider rejects (NCBI 400 "API key invalid", OpenAlex 401/403, Software Heritage 401/403) is dropped for the rest of the run
   (<state>/keys-invalid.json, names only), the call is retried once without it, and every answer carries key_invalid: [NAME].
 Import:
   from gateway import Gateway
   g = Gateway(plugins=['plugins/cs-ai.md'], T='2026-10-26', run='q1')
-  g.search('openalex', 'query', n=20) ; g.read('doi:...') ; g.citing('pmid:...') ; g.references('arxiv:...')
+  g.search('openalex', 'query', n=20) ; g.read('doi:...') ; g.citing('pmid:...') ; g.references('arxiv:...') ; g.related('doi:...')
 
 `sources` block read in each plugin (in its Sources section, fenced ```sources):
   engines: openalex, crossref, arxiv      # required ; engines that are not wired are tolerated but refused when called
@@ -1375,6 +1377,540 @@ def references(ident, n, B):
 ENGINES.update({'biorxiv': search_biorxiv, 'medrxiv': search_medrxiv})   # registry of the preprint engines
 
 
+# ---------------------------------------------------------------- CS engines (v0.4.6, plugins/cs-ai.md): hf-models, hf-datasets, standards, proceedings; command related
+# All keyless (probes 2026-10-28). Index files (RFC index, PEP index, W3C list, ACL bib, PMLR volume feeds, CVF listings) are fetched once,
+# kept in the fetch cache, parsed once into <state>/cs-index/<name>.json; the title search is local. Hosts stop at once on 403/404/429.
+
+CS = CFG.get('cs_engines') or {}
+CS_HOSTS = ('huggingface.co', 'www.rfc-editor.org', 'peps.python.org', 'api.w3.org', 'www.w3.org', 'api.github.com', 'raw.githubusercontent.com',
+            'aclanthology.org', 'proceedings.mlr.press', 'openaccess.thecvf.com')
+INTERVAL.update({h: 2.0 for h in CS_HOSTS}); INTERVAL.update({'huggingface.co': 1.0, 'api.w3.org': 1.0})   # HF 500 req/5 min, W3C 6,000/10 min (doc)
+STOP.update({h: (401, 403, 404, 410, 429) for h in CS_HOSTS})
+CS_PREFIX = ('hfmodel:', 'hfdataset:', 'rfc:', 'pep:', 'w3c:', 'acl:', 'pmlr:', 'cvf:')
+
+
+def cs_index(name, build):
+    """Parsed index <state>/cs-index/<name>.json (built once from cached index files; not T-dependent: the barrier is applied per item)."""
+    f = STATE / 'cs-index' / (re.sub(r'[^\w.-]', '_', name) + '.json')
+    if f.exists(): return json.loads(f.read_text())
+    x = build()
+    if x: f.parent.mkdir(parents=True, exist_ok=True); f.write_text(json.dumps(x))   # an empty parse is never kept
+    return x
+
+
+def cs_match(q, recs, text):
+    """Local title search: every query word (3 letters or more) present in text(rec); -> [(words in the title, rec)]."""
+    qt = tokens(q)
+    if not qt: return []
+    out = []
+    for r in recs:
+        tt = tokens(r.get('title') or '')
+        if qt <= tt or qt <= tt | tokens(text(r)): out.append((len(qt & tt), r))
+    return out
+
+
+def cs_text(s, k=6000): return ' '.join(html.unescape(re.sub(r'<[^>]+>', ' ', s or '')).split())[:k]
+
+
+def http_code(e): return getattr(e, 'code', None)
+
+
+# ---- Hugging Face Hub (models, datasets). Terms: no clause against automated use; robots "Allow: /"; anonymous 500 req / 5 min / IP.
+HF = 'https://huggingface.co/'
+HF_KIND = {'hfmodel': 'models', 'hfdataset': 'datasets'}
+HF_LEGACY = '2022-03-02'   # Hub migration day: every older repo carries this createdAt (probe 2026-10-28) -> existence attested by a commit dated < T
+HF_REPO = r'[A-Za-z0-9][\w.-]{0,95}(/[A-Za-z0-9][\w.-]{0,95})?'
+
+
+def hf_licence(card, tags):
+    l = (card or {}).get('license')
+    return l if isinstance(l, str) else next((t[8:] for t in tags or [] if str(t).startswith('license:')), None)
+
+
+def hf_commit(kind, rid, B):
+    """Last commit of main dated < T (newest-first pages of 100, at most cs_engines.hf_commit_pages) -> (commit, newer commits seen) or (None, n)."""
+    newer = 0
+    for p in range(int(CS.get('hf_commit_pages', 10))):
+        page = jget(f'{HF}api/{kind}/{rid}/commits/main?limit=100&p={p}')
+        for c in page or []:
+            if _before(c.get('date'), B): return c, newer
+            newer += 1
+        if len(page or []) < 100: break
+    return None, newer
+
+
+def hf_item(r, kind, B, legacy_check=None):
+    """Hub repo: created < T (createdAt; a repo of the migration day is attested by a commit dated < T); its id, linked arXiv papers
+    (tags arxiv:) checked against the forbidden lists. Downloads and likes are current (as_of "now"); licence, task and tags only when
+    lastModified < T (nothing changed since), else masked (read the card at the revision before T). legacy_check: [remaining commit lookups]."""
+    rid = r.get('id') or r.get('modelId'); tags = r.get('tags') or []; created = r.get('createdAt'); pre = 'hfmodel' if kind == 'models' else 'hfdataset'
+    ids = [rid, f'{pre}:{rid}'] + ['10.48550/arxiv.' + t[6:] for t in tags if str(t).startswith('arxiv:')]
+    dates = [created]
+    if created and str(created)[:10] == HF_LEGACY and not _before(created, B):
+        if not legacy_check or legacy_check[0] <= 0: dates = [None]              # lookup budget spent: not datable -> refused
+        else: legacy_check[0] -= 1; c, _ = hf_commit(kind, rid, B); dates = [c.get('date') if c else None]
+    if not rid or not law_ok(B, ids, dates, [rid]): return None
+    fresh = _before(r.get('lastModified'), B) is not None
+    it = {'id': f'{pre}:{rid}', pre: rid, 'title': rid, 'date': str(dates[0])[:10], 'date_created': str(created)[:10] if _before(created, B) else None, 'journal': 'Hugging Face Hub',
+          'type': 'model' if kind == 'models' else 'dataset', 'first_author': r.get('author') or rid.split('/')[0],
+          'downloads': r.get('downloads'), 'likes': r.get('likes'), 'as_of': 'now', 'url': HF + ('datasets/' if kind == 'datasets' else '') + rid,
+          'metadata': 'unchanged since before T (lastModified < T)' if fresh else 'modified on/after T: licence, task and tags masked (read the card at the revision before T)'}
+    if fresh:
+        it.update(licence=hf_licence(r.get('cardData'), tags), task=r.get('pipeline_tag') or [t[16:] for t in tags if str(t).startswith('task_categories:')] or None,
+                  library=r.get('library_name'), arxiv=[t[6:] for t in tags if str(t).startswith('arxiv:')])
+    if dates[0] != created: it['date_note'] = 'repository older than the Hub migration (createdAt 2022-03-02): existence dated by its last commit before T'
+    return it
+
+
+def search_hf(kind, q, n, B):
+    """Hub search (`search=` on the repo id, most downloaded first; no provider-side date filter): local barrier on createdAt."""
+    if not q.strip(): return [], 'empty query'
+    rs = jget(f'{HF}api/{kind}?' + urllib.parse.urlencode({'search': q.strip(), 'limit': min(100, 3 * n), 'full': 'true', 'sort': 'downloads', 'direction': -1}))
+    out, budget = [], [n]                                                    # at most n commit lookups for repos of the migration day
+    for r in rs or []:
+        if len(out) >= n: break
+        x = hf_item(r, kind, B, budget)
+        if x: out.append(x)
+    return out, (f'{len(rs or [])} repos returned (search on the repo id, no provider-side date filter: local barrier on createdAt; repos of the 2022-03-02 '
+                 f'migration day dated by a commit, {n - budget[0]} lookups); downloads and likes as_of now')
+
+
+def search_hf_models(q, n, B): return search_hf('models', q, n, B)
+
+
+def search_hf_datasets(q, n, B): return search_hf('datasets', q, n, B)
+
+
+def hf_evals(mi):
+    """model-index (declared in the card at the revision) -> flat list of self-reported results."""
+    out = []
+    for m in mi if isinstance(mi, list) else []:
+        for r in (m or {}).get('results') or [] if isinstance(m, dict) else []:
+            if not isinstance(r, dict): continue
+            t, d = r.get('task') or {}, r.get('dataset') or {}
+            for x in r.get('metrics') or []:
+                if isinstance(x, dict): out.append({'task': t.get('type') or t.get('name'), 'dataset': d.get('name') or d.get('type'), 'config': d.get('config'),
+                                                    'split': d.get('split'), 'metric': x.get('name') or x.get('type'), 'value': x.get('value'), 'verified': bool(x.get('verified'))})
+    return out[:60]
+
+
+def read_hf(pre, rid, B):
+    """Repo created < T; the card (metadata, model-index, README text) is read at the last commit of main dated < T, never today's."""
+    if not re.fullmatch(HF_REPO, rid) or '..' in rid: return {'refusal': f'expected form {pre}:<owner>/<name>, e.g. hfmodel:google-bert/bert-base-uncased'}
+    kind = HF_KIND[pre]
+    try: info = jget(f'{HF}api/{kind}/{rid}')
+    except urllib.error.HTTPError as e:
+        if http_code(e) in (401, 403, 404, 410): return {'refusal': f'not found, private or gated (HTTP {http_code(e)})'}
+        raise
+    c, newer = hf_commit(kind, rid, B)
+    if not c: B.excluded += 1; return {'refusal': 'no commit dated before T (repository absent or empty at T)'}
+    leg = str(info.get('createdAt'))[:10] == HF_LEGACY and not _before(info.get('createdAt'), B)   # migration day on/after T: the commit < T attests existence
+    it = hf_item(dict(info, lastModified=None, createdAt=c.get('date') if leg else info.get('createdAt')), kind, B)
+    if not it: return {'refusal': 'after T or forbidden'}
+    if leg: it.update(date_created=None, date_note='repository older than the Hub migration (createdAt 2022-03-02): existence dated by its last commit before T')
+    sha = c['id']
+    try: rev = jget(f'{HF}api/{kind}/{rid}/revision/{sha}')
+    except urllib.error.HTTPError as e:
+        if http_code(e) not in (401, 403, 404): raise
+        rev = {}                                                              # gated: metadata at the revision not readable, nothing else served
+    card = rev.get('cardData') if isinstance(rev.get('cardData'), dict) else {}
+    try:
+        txt = fetch(f"{HF}{'datasets/' if kind == 'datasets' else ''}{rid}/raw/{sha}/README.md").decode('utf-8', 'replace')
+        txt = re.sub(r'(?s)\A---\n.*?\n---\n', '', txt).strip()[:6000] or '(empty card)'
+    except Exception as e: txt = f'(card text not available at this revision: {str(e)[:60]})'
+    it.update(metadata='read at the revision before T', revision=sha, revision_date=str(c.get('date'))[:10], later_commits_masked=newer,
+              licence=hf_licence(card, rev.get('tags')), task=card.get('pipeline_tag') or rev.get('pipeline_tag') or card.get('task_categories'),
+              library=card.get('library_name') or rev.get('library_name'), datasets=card.get('datasets'), language=card.get('language'),
+              eval_results=hf_evals(card.get('model-index') or rev.get('model-index')), eval_note='self-reported in the model card (model-index); verified=true only when the Hub marks it',
+              abstract=txt, as_of_note='downloads and likes: observed now (date of the call), not as of T; everything else at the revision before T')
+    return it
+
+
+# ---- Standards: IETF RFCs (rfc-editor.org index and text), Python PEPs (peps.python.org index; text from python/peps at a commit), W3C (api.w3.org)
+RFC_INDEX = 'https://www.rfc-editor.org/rfc-index.xml'
+PEP_INDEX = 'https://peps.python.org/api/peps.json'
+W3C = 'https://api.w3.org/specifications'
+
+
+def rfc_index():
+    def build():
+        root = ET.fromstring(fetch(RFC_INDEX)); out = {}
+        for e in root.findall('{*}rfc-entry'):
+            g = lambda t: (e.findtext('{*}' + t) or '').strip()
+            ids = lambda t: [x.text.strip() for x in e.findall('{*}' + t + '/{*}doc-id') if x.text]
+            d = e.find('{*}date'); dd = lambda t: ((d.findtext('{*}' + t) if d is not None else '') or '').strip()
+            out[g('doc-id')] = {'n': g('doc-id')[3:].lstrip('0'), 'title': g('title'), 'date': ' '.join(x for x in (dd('year'), dd('month'), dd('day')) if x),
+                                'abstract': ' '.join(' '.join(p.itertext()) for p in e.findall('{*}abstract/{*}p')), 'kw': [k.text for k in e.findall('{*}keywords/{*}kw') if k.text],
+                                'author': (e.findtext('{*}author/{*}name') or '').strip(), 'status': g('publication-status'), 'stream': g('stream'), 'doi': g('doi'),
+                                'obsoletes': ids('obsoletes'), 'obsoleted_by': ids('obsoleted-by'), 'updates': ids('updates'), 'updated_by': ids('updated-by')}
+        return out
+    return cs_index('rfc-index', build)
+
+
+def rfc_item(rec, idx, B):
+    """RFC: publication month < T (upper bound of the month, strict). Obsoleted-by / updated-by only through RFCs published < T; the current
+    status (undated reclassification) is never served, the status at publication is. RFC DOIs were deposited retroactively: no Crossref recheck."""
+    n = rec['n']
+    if not law_ok(B, [rec.get('doi'), f'rfc:{n}', f'RFC{n}'], [rec.get('date')], [rec.get('title')]): return None
+    seen = lambda xs: [x for x in xs if x in idx and _before(idx[x]['date'], B)]
+    return {'id': f'rfc:{n}', 'rfc': n, 'doi': rec.get('doi') or None, 'title': rec['title'], 'year': rec['date'][:4], 'date': rec['date'], 'journal': 'IETF RFC',
+            'type': 'standard', 'first_author': rec.get('author'), 'status_at_publication': rec.get('status'), 'stream': rec.get('stream'),
+            'obsoletes': rec.get('obsoletes'), 'updates': rec.get('updates'), 'obsoleted_by': seen(rec.get('obsoleted_by') or []), 'updated_by': seen(rec.get('updated_by') or []),
+            'status_note': 'current status not served (undated); obsoleted_by and updated_by list only RFCs published before T', 'url': f'https://www.rfc-editor.org/rfc/rfc{n}'}
+
+
+def pep_date(s):
+    for f in ('%d-%b-%Y', '%Y-%m-%d', '%d %B %Y', '%d-%B-%Y'):
+        try: return dt.datetime.strptime(str(s).strip(), f).date().isoformat()
+        except ValueError: pass
+    return None
+
+
+def pep_index(): return cs_index('pep-index', lambda: jget(PEP_INDEX))
+
+
+def pep_item(rec, idx, B):
+    """PEP: created < T. Status, Python version and resolution are not served from the index (they change without a date): read pep:<n>
+    gives them from the header of the text at the last commit before T. superseded_by only when the superseding PEP was created < T."""
+    n = str(rec.get('number')); d = pep_date(rec.get('created'))
+    if not law_ok(B, [f'pep:{n}'], [d], [rec.get('title')]): return None
+    sup = [x.strip() for x in str(rec.get('superseded_by') or '').split(',') if x.strip()]
+    return {'id': f'pep:{n}', 'pep': n, 'title': rec.get('title'), 'year': d[:4], 'date': d, 'journal': 'Python PEP', 'type': 'standard',
+            'first_author': (rec.get('author_names') or [None])[0], 'pep_type': rec.get('type'), 'topic': rec.get('topic') or None,
+            'superseded_by': [x for x in sup if x in idx and _before(pep_date(idx[x].get('created')), B)], 'replaces': rec.get('replaces'),
+            'status': None, 'status_note': f'status not served from the index (undated changes): read pep:{n} (header at the last commit before T)', 'url': rec.get('url')}
+
+
+def w3c_index():
+    def build():
+        out = []
+        for p in (1, 2, 3):
+            r = jget(f'{W3C}?items=1000&page={p}')
+            out += [{'sn': x['href'].rstrip('/').rsplit('/', 1)[-1], 'title': x.get('title') or ''} for x in (r.get('_links') or {}).get('specifications') or []]
+            if p >= int(r.get('pages') or 1): break
+        return out
+    return cs_index('w3c-index', build)
+
+
+def w3c_item(sn, title, B):
+    """W3C specification: first published version < T; served = the latest version dated < T (its status, title, dated URI); later masked."""
+    if not re.fullmatch(r'[\w.-]{1,80}', sn): return None
+    try: r = jget(f'{W3C}/{sn}/versions?embed=true&items=1000')
+    except urllib.error.HTTPError as e:
+        if http_code(e) in (404, 410): return None
+        raise
+    vs = sorted((v for v in (r.get('_embedded') or {}).get('version-history') or [] if v.get('date')), key=lambda v: v['date'])
+    if not vs: B.excluded += 1; return None
+    if not law_ok(B, [f'w3c:{sn}'], [vs[0]['date']], [title or vs[-1].get('title')]): return None
+    seen = [v for v in vs if _before(v['date'], B)]
+    if not seen: B.excluded += 1; return None
+    cur = seen[-1]
+    return {'id': f'w3c:{sn}', 'w3c': sn, 'title': cur.get('title') or title, 'year': vs[0]['date'][:4], 'date': vs[0]['date'], 'date_version': cur['date'],
+            'journal': 'W3C', 'type': 'standard', 'status': cur.get('status'), 'status_note': 'status of the latest version dated before T',
+            'later_versions_masked': len(vs) - len(seen), 'url': cur.get('uri')}
+
+
+def search_standards(q, n, B):
+    """RFC index (title, keywords, abstract), PEP index (title), W3C list (title): every query word present; most title words first, then
+    most recent; W3C hits are dated one call each (at most cs_engines.w3c_lookups per search)."""
+    if not tokens(q): return [], 'no usable word (3 letters or more)'
+    ri, pi = rfc_index(), pep_index()
+    hits = [(s, 'rfc', r) for s, r in cs_match(q, ri.values(), lambda r: ' '.join([r.get('abstract') or ''] + (r.get('kw') or [])))]
+    hits += [(s, 'pep', r) for s, r in cs_match(q, pi.values(), lambda r: r.get('topic') or '')]
+    w3 = [(s, 'w3c', r) for s, r in cs_match(q, w3c_index(), lambda r: r['sn'].replace('-', ' '))]
+    key = lambda h: (h[0], str(date_upper(h[2].get('date') or pep_date(h[2].get('created')) or '') or ''))
+    hits = sorted(hits, key=key, reverse=True); w3 = sorted(w3, key=lambda h: h[0], reverse=True)[:int(CS.get('w3c_lookups', 8))]
+    out, ordered = [], [h for pair in zip(hits, w3) for h in pair] + hits[len(w3):] + w3[len(hits):]   # W3C hits interleaved (no date before lookup)
+    for s, k, r in ordered:
+        if len(out) >= n: break
+        x = rfc_item(r, ri, B) if k == 'rfc' else pep_item(r, pi, B) if k == 'pep' else w3c_item(r['sn'], r['title'], B)
+        if x: out.append(x)
+    nr = sum(1 for h in hits if h[1] == 'rfc')
+    return out, f'local indexes, all dates: RFC {nr}, PEP {len(hits) - nr}, W3C {len(w3)} looked up (rfc-index.xml, peps.json, api.w3.org list)'
+
+
+def read_standard(p, v, B):
+    v = v.strip()
+    if p == 'rfc':
+        n = v.upper().removeprefix('RFC').lstrip('0')
+        if not n.isdigit(): return {'refusal': 'expected form rfc:<number>, e.g. rfc:8446'}
+        ri = rfc_index(); rec = ri.get('RFC' + n.zfill(4)) or ri.get('RFC' + n)
+        if not rec: return {'refusal': 'not found in the RFC index'}
+        it = rfc_item(rec, ri, B)
+        if not it: return {'refusal': 'after T or forbidden'}
+        try: txt = fetch(f'https://www.rfc-editor.org/rfc/rfc{n}.txt').decode('utf-8', 'replace')
+        except Exception as e: txt = f'(text not available: {str(e)[:60]})'
+        return dict(it, abstract=' '.join((rec.get('abstract') or '(no abstract in the index)').split())[:6000], text=txt[:TEXT_HEAD],
+                    text_note=f'RFC text, immutable once published; first {TEXT_HEAD} characters')
+    if p == 'pep':
+        if not v.isdigit(): return {'refusal': 'expected form pep:<number>, e.g. pep:484'}
+        pi = pep_index(); rec = pi.get(str(int(v)))
+        if not rec: return {'refusal': 'not found in the PEP index'}
+        it = pep_item(rec, pi, B)
+        if not it: return {'refusal': 'after T or forbidden'}
+        k = int(v)
+        for path in (f'peps/pep-{k:04d}.rst', f'pep-{k:04d}.rst', f'pep-{k:04d}.txt'):   # files moved to peps/ in 2023; .txt before .rst
+            cs = jget('https://api.github.com/repos/python/peps/commits?' + urllib.parse.urlencode({'path': path, 'until': f'{B.eve}T23:59:59Z', 'per_page': 1}))
+            c = (cs or [None])[0]
+            if not c: continue
+            cd = [((c.get('commit') or {}).get(w) or {}).get('date') for w in ('author', 'committer')]
+            if not all(_before(x, B) for x in cd): continue
+            txt = fetch(f"https://raw.githubusercontent.com/python/peps/{c['sha']}/{path}").decode('utf-8', 'replace')
+            head = dict(re.findall(r'(?m)^([A-Z][\w-]+):\s*(.*)$', txt.split('\n\n', 1)[0]))
+            return dict(it, status=head.get('Status'), status_note='from the header of the text at the last commit before T', python_version=head.get('Python-Version'),
+                        superseded_by_at_T=head.get('Superseded-By'), resolution=head.get('Resolution'), revision=c['sha'], revision_date=str(cd[1])[:10],
+                        abstract=txt[:TEXT_HEAD], text_note=f'python/peps {path} at {c["sha"][:12]} (last commit before T); first {TEXT_HEAD} characters')
+        B.excluded += 1
+        return {'refusal': 'no version of the PEP text dated before T found in python/peps (GitHub)'}
+    it = w3c_item(v, None, B)
+    if not it: return {'refusal': 'not found, after T or forbidden'}
+    try:
+        page = fetch(it['url']).decode('utf-8', 'replace')
+        m = re.search(r'(?is)<(section|div)[^>]*\bid=["\']?abstract["\']?[^>]*>(.*?)</\1>', page) or re.search(r'(?is)<h2[^>]*>(?:<[^>]+>)*\s*Abstract\s*(?:<[^>]+>)*</h2>(.*?)<h2', page)
+        ab = cs_text(m.group(m.lastindex)) if m else '(no abstract found in the dated version)'
+    except Exception as e: ab = f'(dated version not available: {str(e)[:60]})'
+    return dict(it, abstract=ab, text_note='abstract of the dated version (www.w3.org/TR/<year>/...), immutable')
+
+
+# ---- Open-access proceedings: ACL Anthology (anthology.bib.gz, CC BY 4.0), PMLR (volume RSS feeds), CVF open access (conference listings)
+ACL = 'https://aclanthology.org/'
+PMLR = 'https://proceedings.mlr.press/'
+CVF = 'https://openaccess.thecvf.com/'
+MO3 = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+BIB_FIELD = re.compile(r'(\w+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|\{((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)\}|(\w+(?:\s*#\s*(?:"[^"]*"|\w+))*))', re.S)   # bare value: `jun # "--" # jul` kept whole
+
+
+def bib_entries(txt):
+    """BibTeX -> [dict] (inproceedings and article only); braces dropped from values."""
+    out = []
+    for chunk in re.split(r'\n(?=@)', '\n' + txt):
+        m = re.match(r'\s*@(\w+)\s*\{\s*([^,\s]+)\s*,', chunk)
+        if not m or m.group(1).lower() not in ('inproceedings', 'article'): continue
+        f = {k.lower(): ' '.join(re.sub(r'[{}]', '', a or b or c).split()) for k, a, b, c in BIB_FIELD.findall(chunk[m.end():])}
+        out.append(f)
+    return out
+
+
+def acl_rec(f):
+    mons = [w for w in re.findall(r'[a-z]+', (f.get('month') or '').lower()) if w[:3] in MO3]
+    return {'id': (f.get('url') or '').rstrip('/').rsplit('/', 1)[-1], 'title': f.get('title'), 'year': f.get('year'), 'month': mons[-1][:3] if mons else None,
+            'venue': f.get('booktitle') or f.get('journal'), 'doi': f.get('doi') or None, 'author': (f.get('author') or '').split(' and ')[0].split(',')[0].strip() or None}
+
+
+def acl_index():
+    import gzip
+    return cs_index('acl-anthology', lambda: [r for r in (acl_rec(f) for f in bib_entries(gzip.decompress(fetch(ACL + 'anthology.bib.gz')).decode('utf-8', 'replace'))) if r['id']])
+
+
+def acl_item(r, B):
+    """ACL paper: month of the volume < T (upper bound of the month; the LAST month of a range), year only -> strictly before the year of T;
+    a DOI is rechecked on Crossref afterwards (doi_recheck)."""
+    d = f"{r['year']} {r['month'].capitalize()}" if r.get('month') and r.get('year') else year_before_T(r.get('year'), B)
+    if not law_ok(B, [r.get('doi'), 'acl:' + r['id']], [d], [r.get('title')]): return None
+    return {'id': 'acl:' + r['id'], 'acl': r['id'], 'doi': r.get('doi'), 'title': r.get('title'), 'year': r.get('year'), 'date': d if r.get('month') else r.get('year'),
+            'journal': r.get('venue'), 'venue': 'ACL Anthology', 'type': 'proceedings', 'first_author': r.get('author'), 'url': ACL + r['id'] + '/'}
+
+
+PMLR_VENUES = ('ICML', 'AISTATS', 'COLT', 'UAI', 'CoRL', 'ALT', 'ACML', 'L4DC', 'CLeaR', 'MIDL', 'CHIL', 'LoG')   # main conferences, in order of priority
+PMLR_MAIN = r'(?:Proceedings of (?:the )?)?(' + '|'.join(PMLR_VENUES) + r') (\d{4})(?: Proceedings)?'
+
+
+def pmlr_volumes():
+    """PMLR main-conference volumes listed on the home page -> [(volume, venue, year)] by volume number, newest first."""
+    def build():
+        t = fetch(PMLR).decode('utf-8', 'replace'); out = []
+        for v, label in re.findall(r'<a href="/?(v\d+)/?"><b>Volume \d+</b></a>\s*([^<]+)', t):
+            m = re.fullmatch(PMLR_MAIN, label.strip())
+            if m: out.append([v, m.group(1), int(m.group(2))])
+        return sorted(out, key=lambda x: -int(x[0][1:]))
+    return cs_index('pmlr-volumes', build)
+
+
+def pmlr_volume(v):
+    """Volume RSS feed -> {'date': publication of the volume, 'label', 'papers': [{id, title, abstract}]}."""
+    def build():
+        root = ET.fromstring(fetch(f'{PMLR}{v}/assets/rss/feed.xml')); ch = root.find('channel')
+        desc = ch.findtext('description') or ''
+        m = re.search(r'Published as Volume \d+ by the Proceedings of Machine Learning Research on (\d{1,2} \w+ \d{4})', desc)
+        d = None
+        if m:
+            try: d = dt.datetime.strptime(m.group(1), '%d %B %Y').date().isoformat()
+            except ValueError: d = None
+        ps = []
+        for it in ch.findall('item'):
+            link = it.findtext('link') or ''; k = re.search(r'/(v\d+/[\w.-]+?)\.html', link)
+            if k: ps.append({'id': k.group(1), 'title': ' '.join((it.findtext('title') or '').split()), 'abstract': cs_text(it.findtext('description'), 2000)})
+        return {'date': d, 'label': ' '.join(desc.split('\n', 1)[0].split()), 'papers': ps}
+    return cs_index('pmlr-' + v, build)
+
+
+def pmlr_item(r, vol, year, B):
+    d = vol.get('date') or year_before_T(year, B)
+    if not law_ok(B, ['pmlr:' + r['id']], [d], [r.get('title')]): return None
+    return {'id': 'pmlr:' + r['id'], 'pmlr': r['id'], 'doi': None, 'title': r.get('title'), 'year': str(year), 'date': vol.get('date') or str(year),
+            'journal': vol.get('label'), 'venue': 'PMLR', 'type': 'proceedings', 'url': f"{PMLR}{r['id']}.html"}
+
+
+def cvf_confs():
+    """CVF main conferences (menu) -> [(conference, year, published date or None)], newest first."""
+    def build():
+        t = fetch(CVF + 'menu').decode('utf-8', 'replace'); out = []
+        for c, d in re.findall(r'\[<a href="/?((?:CVPR|ICCV|WACV)\d{4})(?:\.py)?">Main Conference</a>\]\s*(?:<span[^>]*>\(Published: ([^)]+)\))?', t):
+            try: d = dt.datetime.strptime(d.strip(), '%B %d, %Y').date().isoformat() if d else None
+            except ValueError: d = None
+            out.append([c, int(c[-4:]), d])
+        return sorted(out, key=lambda x: (x[1], x[2] or ''), reverse=True)
+    return cs_index('cvf-confs', build)
+
+
+def cvf_papers(conf):
+    def build():
+        t = fetch(f'{CVF}{conf}?day=all').decode('utf-8', 'replace'); pages = [t]
+        if 'paper.html' not in t:                                         # older conferences: one listing per day, linked from the bare page
+            t = fetch(CVF + conf).decode('utf-8', 'replace')
+            pages = [fetch(f'{CVF}{conf}?day={d}').decode('utf-8', 'replace') for d in sorted(set(re.findall(r'href="/?' + conf + r'(?:\.py)?\?day=([\w-]+)"', t))) if d != 'all']
+        ps = {}
+        for p in pages:
+            for path, title in re.findall(r'<dt class="ptitle">\s*(?:<br>)?\s*<a href="/?([\w./-]+?_paper)\.html">(.*?)</a>', p, re.S): ps[path] = cs_text(title, 400)
+        return [{'id': k, 'title': v} for k, v in ps.items()]
+    return cs_index('cvf-' + conf, build)
+
+
+def cvf_item(r, conf, year, d, B):
+    dd = d or year_before_T(year, B)
+    if not law_ok(B, ['cvf:' + r['id']], [dd], [r.get('title')]): return None
+    return {'id': 'cvf:' + r['id'], 'cvf': r['id'], 'doi': None, 'title': r.get('title'), 'year': str(year), 'date': d or str(year), 'journal': f'{conf[:-4]} {year}',
+            'venue': 'CVF open access', 'type': 'proceedings', 'url': f"{CVF}{r['id']}.html", 'version_note': 'open-access version provided by CVF (identical to the accepted paper except the watermark)'}
+
+
+def proc_sources(B):
+    """Volumes searched: PMLR = the newest volume published < T of each of the first cs_engines.pmlr_volumes venues of PMLR_VENUES (at most
+    two feeds tried per venue); CVF = the cs_engines.cvf_conferences newest main conferences published < T (undated: of a year < year of T);
+    ACL Anthology entirely (one index)."""
+    pv, vols = [], pmlr_volumes()
+    for ven in PMLR_VENUES[:int(CS.get('pmlr_volumes', 6))]:
+        for v, vv, y in [x for x in vols if x[1] == ven and x[2] <= B.T.year][:2]:
+            d = pmlr_volume(v).get('date')
+            if (d and _before(d, B)) or (not d and y < B.T.year): pv.append((v, ven, y)); break
+    cv = [x for x in cvf_confs() if (x[2] and _before(x[2], B)) or (not x[2] and x[1] < B.T.year)][:int(CS.get('cvf_conferences', 2))]
+    return pv, cv
+
+
+def search_proceedings(q, n, B):
+    """Local title search over the ACL Anthology, recent PMLR volumes and CVF conferences (proc_sources); every query word in the title
+    (PMLR: or the abstract); most title words first, then most recent; ACL DOIs rechecked on Crossref."""
+    if not tokens(q): return [], 'no usable word (3 letters or more)'
+    pv, cv = proc_sources(B); hits = []
+    for s, r in cs_match(q, acl_index(), lambda r: ''): hits.append((s, str(date_upper(f"{r.get('year')} {r.get('month') or ''}".strip()) or ''), 'acl', r, None))
+    for v, ven, y in pv:
+        vol = pmlr_volume(v)
+        hits += [(s, vol.get('date') or str(y), 'pmlr', r, (vol, y)) for s, r in cs_match(q, vol['papers'], lambda r: r.get('abstract') or '')]
+    for c, y, d in cv: hits += [(s, d or str(y), 'cvf', r, (c, y, d)) for s, r in cs_match(q, cvf_papers(c), lambda r: '')]
+    hits.sort(key=lambda h: (h[0], h[1]), reverse=True)
+    out, cand, rounds = [], [], 0
+    for i, (s, _, k, r, ctx) in enumerate(hits):                          # Crossref recheck by chunks of 2n candidates, at most 4 rounds
+        x = acl_item(r, B) if k == 'acl' else pmlr_item(r, ctx[0], ctx[1], B) if k == 'pmlr' else cvf_item(r, *ctx, B)
+        if x: cand.append(x)
+        if len(cand) >= 2 * n or (i == len(hits) - 1 and cand):
+            out += doi_recheck(cand, B); cand = []; rounds += 1
+            if len(out) >= n or rounds >= 4: break
+    out = out[:n]
+    return out, (f"{len(hits)} title matches, all dates (ACL Anthology all volumes; PMLR {', '.join(f'{v} {ven} {y}' for v, ven, y in pv) or 'none'}; "
+                 f"CVF {', '.join(c for c, _, _ in cv) or 'none'}), local index")
+
+
+def cit_meta(page):
+    """Highwire citation_* meta tags -> {name: first value} (the first citation_author is the first author)."""
+    out = {}
+    for k, v in re.findall(r'<meta name="citation_([a-z_]+)" content="([^"]*)"', page): out.setdefault(k, v)
+    return out
+
+
+def read_proceedings(p, v, B):
+    v = v.strip()
+    if p == 'acl':
+        if not re.fullmatch(r'[A-Za-z0-9][\w.-]{2,40}', v) or '..' in v: return {'refusal': 'expected form acl:<Anthology id>, e.g. acl:2024.acl-long.1'}
+        try: es = bib_entries(fetch(f'{ACL}{v}.bib').decode('utf-8', 'replace'))
+        except urllib.error.HTTPError as e:
+            if http_code(e) in (404, 410): return {'refusal': 'not found'}
+            raise
+        it = acl_item(dict(acl_rec(es[0]), id=v), B) if es else None
+        if not it or not doi_recheck([it], B): return {'refusal': 'not found, after T, forbidden or deposit not attested'}
+        m = re.search(r'(?s)acl-abstract.*?<span>(.*?)</span>', fetch(f'{ACL}{v}/').decode('utf-8', 'replace'))
+        return dict(it, abstract=cs_text(m.group(1)) if m else '(no abstract on the Anthology page)', full_text='PDF only (not parsed)')
+    if p == 'pmlr':
+        if not re.fullmatch(r'v\d+/[\w.-]+', v) or '..' in v: return {'refusal': 'expected form pmlr:v<volume>/<paper key>, e.g. pmlr:v202/aamand23a'}
+        try: page = fetch(f'{PMLR}{v}.html').decode('utf-8', 'replace')
+        except urllib.error.HTTPError as e:
+            if http_code(e) in (404, 410): return {'refusal': 'not found'}
+            raise
+        meta = cit_meta(page)
+        d = (meta.get('publication_date') or '').replace('/', '-')
+        if not law_ok(B, ['pmlr:' + v], [d or None], [meta.get('title')]): return {'refusal': 'after T, forbidden or undated'}
+        m = re.search(r'(?s)<div id="abstract"[^>]*>(.*?)</div>', page)
+        return {'id': 'pmlr:' + v, 'pmlr': v, 'doi': None, 'title': html.unescape(meta.get('title') or ''), 'year': d[:4], 'date': d, 'venue': 'PMLR',
+                'journal': html.unescape(meta.get('conference_title') or meta.get('journal_title') or ''), 'type': 'proceedings',
+                'first_author': html.unescape(meta.get('author') or '') or None, 'url': f'{PMLR}{v}.html', 'abstract': cs_text(m.group(1)) if m else '(no abstract)', 'full_text': 'PDF only (not parsed)'}
+    if not re.fullmatch(r'content[\w/.-]+_paper', v) or '..' in v: return {'refusal': 'expected form cvf:<path of the paper page>, e.g. cvf:content/CVPR2024/html/<Name>_CVPR_2024_paper'}
+    cm = re.match(r'content[_/]((?:CVPR|ICCV|WACV))_?(\d{4})', v)
+    if not cm: return {'refusal': 'unknown CVF conference in the path'}
+    conf, y = cm.group(1) + cm.group(2), int(cm.group(2))
+    d = next((x[2] for x in cvf_confs() if x[0] == conf), None)
+    try: page = fetch(f'{CVF}{v}.html').decode('utf-8', 'replace')
+    except urllib.error.HTTPError as e:
+        if http_code(e) in (404, 410): return {'refusal': 'not found'}
+        raise
+    meta = cit_meta(page)
+    it = cvf_item({'id': v, 'title': html.unescape(meta.get('title') or '')}, conf, y, d, B)
+    if not it: return {'refusal': 'after T or forbidden'}
+    m = re.search(r'(?s)<div id="abstract"[^>]*>(.*?)</div>', page)
+    return dict(it, first_author=html.unescape(meta.get('author') or '') or None, abstract=cs_text(m.group(1)) if m else '(no abstract)', full_text='PDF only (not parsed)')
+
+
+def read_cs(ident, B):
+    p, _, v = ident.partition(':'); p = p.lower()
+    if p in HF_KIND: return read_hf(p, v.strip(), B)
+    if p in ('rfc', 'pep', 'w3c'): return read_standard(p, v, B)
+    return read_proceedings(p, v, B)
+
+
+# ---- related works (OpenAlex related_works of a work; same barrier as citing/references)
+
+def related(ident, n, B):
+    """OpenAlex related_works of a work dated < T (arXiv: v1 < T; other: OpenAlex publication date < T); each related work rechecked like an
+    OpenAlex search result (publication < T, then Crossref deposit AND publication < T; no Crossref DOI -> refused)."""
+    s = ident.strip().lower()
+    if s.startswith(CS_PREFIX + EXTRA_PREFIX + LAW_PREFIX + B3_PREFIX): return [], 'related works served only for doi:, pmid:, arxiv: or OpenAlex W identifiers'
+    r = rxiv_ident(ident)
+    if r and 'refusal' in read_rxiv(r[0], r[1], B, published=False): return [], 'document after T, forbidden or not found'
+    if s.startswith('arxiv:'):
+        if not _arxiv_ok(ident, B): return [], 'document after T or forbidden'
+    w = oa_work('doi:' + r[1] if r else ident.strip())
+    if not s.startswith('arxiv:') and not r and not oa_item(w, B): return [], 'document after T or forbidden'
+    out, tot = _references_openalex({'referenced_works': w.get('related_works') or []}, n, B)
+    return out[:n], f'{tot} related works in OpenAlex (all dates), {len(out)} before T (Crossref recheck)'
+
+
+_read_rx, _citing_rx, _references_rx = read, citing, references
+
+
+def read(ident, B):
+    return read_cs(ident.strip(), B) if ident.strip().lower().startswith(CS_PREFIX) else _read_rx(ident, B)
+
+
+def citing(ident, n, B):
+    if ident.strip().lower().startswith(CS_PREFIX): return [], 'citation chaining not served for hfmodel:, hfdataset:, rfc:, pep:, w3c:, acl:, pmlr:, cvf: identifiers (read the DOI or arXiv id)'
+    return _citing_rx(ident, n, B)
+
+
+def references(ident, n, B):
+    if ident.strip().lower().startswith(CS_PREFIX): return [], 'citation chaining not served for hfmodel:, hfdataset:, rfc:, pep:, w3c:, acl:, pmlr:, cvf: identifiers (read the DOI or arXiv id)'
+    return _references_rx(ident, n, B)
+
+
+ENGINES.update({'hf-models': search_hf_models, 'hf-datasets': search_hf_datasets, 'standards': search_standards, 'proceedings': search_proceedings})
+
+
 # ---------------------------------------------------------------- plugins and interface
 
 def read_plugin(path):
@@ -1418,7 +1954,7 @@ class Gateway:
                 'engines': self.engines, 'not_wired': self.not_wired, 'served_by': self.served_by, 'code_engines': self.code_engines,
                 'keys_present': sorted({k for p in self.plugins for k in p['keys'] if live_key(k)} | self._github_state()),
                 'key_invalid': sorted(sc.invalid_keys(self.state)),
-                'commands': ['search-' + m for m in self.engines] + ['read', 'citing', 'references'] + [c for c, m in CODE_ENGINES.items() if m in self.code_engines],
+                'commands': ['search-' + m for m in self.engines] + ['read', 'citing', 'references', 'related'] + [c for c, m in CODE_ENGINES.items() if m in self.code_engines],
                 'plugins': [{'name': p['name'], 'file': p['file'], 'sources_block': p['declared']} for p in self.plugins]}
 
     def _github_state(self):
@@ -1437,7 +1973,7 @@ class Gateway:
     def call(self, cmd, arg, n=20, **opt):
         """One counted and journaled command. opt: language, repo (search-code); court, date_from, date_to (search-justice-administrative)."""
         if cmd == 'sources': return self.sources()
-        n = max(1, min(int(n), 100 if cmd in ('citing', 'references') else 50))
+        n = max(1, min(int(n), 100 if cmd in ('citing', 'references', 'related') else 50))
         if cmd in CODE_ENGINES and CODE_ENGINES[cmd] not in self.code_engines:
             return {'refusal': f"engine '{CODE_ENGINES[cmd]}' not declared by the plugins (sources block); available code engines: {', '.join(self.code_engines) or 'none'}"}
         if cmd == 'versions' and not re.fullmatch(VERSION_FORM, arg):
@@ -1449,7 +1985,7 @@ class Gateway:
             return {'refusal': "engine 'osv' not declared by the plugins (sources block); available code engines: " + (', '.join(self.code_engines) or 'none')}
         if cmd.startswith('search-') and cmd[7:] not in self.engines and cmd not in CODE_ENGINES:
             return {'refusal': f"engine '{cmd[7:]}' not declared by the plugins (sources block) or not wired; available engines: {', '.join(self.engines)}"}
-        if not (cmd.startswith('search-') or cmd in ('read', 'citing', 'references') or cmd in CODE_ENGINES):
+        if not (cmd.startswith('search-') or cmd in ('read', 'citing', 'references', 'related') or cmd in CODE_ENGINES):
             return {'refusal': f"unknown command '{cmd}'"}
         k = self._count()
         if k is None:
@@ -1463,7 +1999,7 @@ class Gateway:
             elif cmd == 'read' and arg.strip().lower().startswith('osv:'): res, total = read_osv(arg.strip()[4:].strip(), self.client, B), None
             elif cmd == 'read': res, total = read(arg, B), None
             else:
-                fn = ENGINES[cmd[7:]] if cmd.startswith('search-') else {'citing': citing, 'references': references}[cmd]
+                fn = ENGINES[cmd[7:]] if cmd.startswith('search-') else {'citing': citing, 'references': references, 'related': related}[cmd]
                 res, total = fn(arg, n, B, **ja_opt) if ja_opt else fn(arg, n, B)
         except Exception as e:
             res, total, err = {'error': f'{type(e).__name__}: {str(e)[:200]}'}, None, str(e)
@@ -1513,6 +2049,7 @@ class Gateway:
     def read(self, ident): return self.call('read', ident)
     def citing(self, ident, n=25): return self.call('citing', ident, n)
     def references(self, ident, n=50): return self.call('references', ident, n)
+    def related(self, ident, n=25): return self.call('related', ident, n)
 
 
 def main():
