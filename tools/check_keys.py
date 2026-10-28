@@ -17,38 +17,27 @@ contradictors() -> [family names]."""
 import argparse, json, os, pathlib, re, sys, unicodedata
 P = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(P)); import gateway as gw, code_sources as sc   # noqa: E702  (python3 -I does not add the script directory)
+import sources as _reg   # noqa: E402  (source registry: the key catalogue below is derived from it)
 
-# Catalogue taken from KEYS.md: variable -> open source, gateway engine concerned (None = not wired), effect without a key,
-# whether it is free, URL. `passed`: the gateway really sends the key today (otherwise it is only detected).
-CATALOGUE = {
-    'OPENALEX_KEY': dict(source='openalex', engine='openalex', without='degraded', passed=True,
-                         reason='budget shared per IP, 429 possible from the 1st call -> Crossref fallback flagged',
-                         free='free, personal account', url='https://openalex.org/signup (Settings -> API key)'),
-    'NCBI_API_KEY': dict(source='pubmed', engine='pubmed', without='degraded', passed=True, reason='3 req/s instead of 10',
-                         free='free, NCBI account', url='https://ncbiinsights.ncbi.nlm.nih.gov/2017/11/02/new-api-keys-for-the-e-utilities/'),
-    'S2_API_KEY': dict(source='semantic-scholar', engine=None, without='skipped', passed=False, reason='search only with a key (429 without)',
-                       free='free by form, CC BY-NC, no redistribution', url='https://www.semanticscholar.org/product/api#api-key-form'),
-    'OPENAIRE_TOKEN': dict(source='openaire', engine=None, without='degraded', passed=False, reason='60 req/h instead of 7,200',
-                           free='free, account', url='https://develop.openaire.eu/personal-token'),
-    'VP_GITHUB_TOKEN': dict(source='github (GitHub side of search-code)', engine='code', without='skipped', passed=True,
-                            reason='search/code and GraphQL require a token: {"status":"skipped","reason":"credential_missing"}; Sourcegraph continues',
-                            free='free, GitHub account, read-only token', url='https://github.com/settings/tokens'),
-    'SWH_TOKEN': dict(source='software-heritage', engine='provenance', without='degraded', passed=True, reason='120 req/h instead of 1,200 (interval 6 s instead of 3 s)',
-                      free='free, account', url='https://archive.softwareheritage.org/ (profile -> API token)'),
-    'PISTE_CLIENT_ID': dict(source='judilibre', engine='judilibre', without='skipped', passed=True, reason='Judilibre and Legifrance: 0 request, not_configured (token required by the service)',
-                            free='free, personal PISTE registration', url='https://piste.gouv.fr/', pair='PISTE_CLIENT_SECRET'),
-    'PISTE_CLIENT_SECRET': dict(source='judilibre', engine='judilibre', without='skipped', passed=True, reason='Judilibre and Legifrance: 0 request, not_configured (token required by the service)',
-                                free='free, personal PISTE registration', url='https://piste.gouv.fr/', pair='PISTE_CLIENT_ID'),
-    'FRED_API_KEY': dict(source='fred', engine='fred', without='skipped', passed=True, reason='FRED / ALFRED: 0 request, credential_missing (the API returns 400 without a key); search-dbnomics stays (current values)',
-                         free='free, FRED account', url='https://fred.stlouisfed.org/docs/api/api_key.html'),
-}
+
+def _catalogue():
+    """variable -> source, gateway engine concerned (None = not wired), effect without the key (degraded | skipped), whether the gateway really
+    sends it today (`passed`; otherwise only detected), reason, free or not, URL, and the other variable of a pair. Derived from the `key` spec
+    of each source declaration (tools/sources/, CONTRIBUTING.md); KEYS.md documents the same keys for humans."""
+    out = {}
+    for _, k in _reg.key_specs():
+        for v in k['vars']:
+            other = [x for x in k['vars'] if x != v]
+            out[v] = dict(source=k['source'], engine=k['engine'], without=k['without'], passed=k['passed'], reason=k['reason'], free=k['free'], url=k['url'],
+                          **({'pair': other[0]} if other else {}))
+    return out
+
+
+CATALOGUE = _catalogue()
 WIRED = set(gw.ENGINES) | set(gw.CODE_ENGINES.values())
 # Suggestion (--suggest): displayed name, registration delay, and whether the source may be proposed (free registration, non-restrictive licence).
-SUGGESTION = {'OPENALEX_KEY': ('OpenAlex', '~2 min', True), 'NCBI_API_KEY': ('PubMed with an NCBI key', '~5 min', True),
-              'S2_API_KEY': ('Semantic Scholar', 'form, key sent by e-mail; data CC BY-NC, attribution', True),
-              'OPENAIRE_TOKEN': ('OpenAIRE Graph', '~5 min', True), 'VP_GITHUB_TOKEN': ('GitHub search/code', '~2 min, read-only token', True),
-              'SWH_TOKEN': ('Software Heritage', '~2 min', True), 'PISTE_CLIENT_ID': ('Judilibre and Legifrance (PISTE)', '~5 min, then subscription to the APIs', True),
-              'PISTE_CLIENT_SECRET': ('Judilibre and Legifrance (PISTE)', '~5 min', True), 'FRED_API_KEY': ('FRED / ALFRED', '~2 min', True)}
+SUGGESTION = {v: tuple(k['suggest']) for _, k in _reg.key_specs() if k.get('suggest') for v in k['vars']}
+PRESENT = {v: k['present'] for _, k in _reg.key_specs() if k.get('present') for v in k['vars']}   # own resolution (GitHub token: read_token)
 STOPWORDS = {'the', 'and', 'for', 'with', 'from', 'into', 'over', 'that', 'this', 'are', 'not', 'when', 'between', 'without', 'non', 'about', 'any', 'all'}
 NOTE_NOT_WIRED = 'engine not wired: the key has no effect until the engine is wired'
 NOTE_NOT_PASSED = 'declared, no effect until wired (the gateway does not pass it yet)'
@@ -151,9 +140,10 @@ def suggest(rep, angles, maxi=2):
 
 
 def present(name):
-    """Real resolution: read_token() for the GitHub token (None absent, 'invalid' if refused), key() for the rest. Never the value."""
-    if name == 'VP_GITHUB_TOKEN':
-        try: return bool(sc.read_token())
+    """Real resolution: the key spec's own `present` (GitHub token: read_token(), None absent, 'invalid' if refused), key() for the rest.
+    Never the value."""
+    if name in PRESENT:
+        try: return bool(PRESENT[name]())
         except ValueError: return 'invalid'
     return bool(gw.key(name))
 

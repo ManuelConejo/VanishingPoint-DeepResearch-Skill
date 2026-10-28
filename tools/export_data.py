@@ -17,6 +17,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from export_report import BIB_LINE, IDLINK, _json            # noqa: E402
 from validate_card import IDS, sections                     # noqa: E402
 from validate_result import CRITERIA                        # noqa: E402
+import sources as _reg                                      # noqa: E402  (source registry: export types)
 
 STATUSES = ['FOUND', 'DISTORTED', 'ABSENT', 'INVALID', 'SOURCE-UNAVAILABLE', 'UNVERIFIED']
 VPID = re.compile(r'(?<![\w/.-])(' + '|'.join(i for i in IDS if i != 'code') + r'):(\S+)', re.I)
@@ -53,19 +54,16 @@ def bib_entries(report):
     return [tuple(e) for e in out]
 
 
+EXPORT = sorted(((i['export_rank'], n, i['prefix'], i['export']) for n, i in enumerate(_reg.IDS) if i['export']))   # (rank, -, prefix, type or fn)
+
+
 def kind(ids, code, url, venue):
+    """Export type of a source: code (or a bare code-host URL) = software; else the declared `export` of its identifier prefixes
+    (tools/sources/; lowest export_rank first; a callable gets the first identifier with that prefix and the venue); else article with a venue."""
     p = {i.split(':', 1)[0] for i in ids}
-    if code or p & {'osv', 'hfmodel'} or (url and CODEHOST.match(url) and not p): return 'software'
-    if p & {'rfc', 'pep', 'w3c'}: return 'standard'
-    if 'nct' in p: return 'trial'
-    if 'thesesfr' in p: return 'thesis'
-    if 'ecli' in p or 'ja' in p or 'judilibre' in p: return 'case'
-    if p & {'legi', 'jorf'}: return 'legislation'
-    if 'celex' in p: return 'case' if next(i for i in ids if i.startswith('celex:'))[6:7] == '6' else 'legislation'
-    if p & {'zenodo', 'hfdataset', 'dbnomics', 'fred'}: return 'dataset'
-    if p & {'acl', 'pmlr', 'cvf'}: return 'paper'
-    if ('arxiv' in p or 'hal' in p or 'openreview' in p) and not venue: return 'preprint'
-    if p & {'doi', 'pmid', 'pmcid', 'arxiv', 'hal', 'openreview', 'dblp', 'econbiz'}: return 'article'
+    if code or (url and CODEHOST.match(url) and not p): return 'software'
+    for _, _, pre, t in EXPORT:
+        if pre in p: return t(next(i for i in ids if i.startswith(pre + ':')), venue) if callable(t) else t
     return 'article' if venue else ''
 
 

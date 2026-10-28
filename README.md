@@ -178,6 +178,13 @@ disabled: ssrn=tos_forbidden           # listed, never called, with the reason
 An engine declared but not wired is listed `not_wired` by `sources` and refused with a receipt. Several plugins: union of
 the engines, lowest cap, oldest lower bound. The rest of the section is text for the engine and the searchers.
 
+## Adding a source
+
+One source = one file `tools/sources/<name>.py` (copy `tools/sources/_TEMPLATE.py`): its `SOURCE` declaration (engine, identifier
+prefix, hosts and pacing, access level, terms, date-barrier notes, optional key) and its `search` / `read` functions. Everything else
+(gateway engines and routing, `check_keys.py`, `setup_keys.py`, validators, exports) is derived from the registry. Your own sources
+can live in `~/.config/vp/sources/` (loaded with `VP_USER_SOURCES=1`). Rules, barrier, keys and tests: [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Tests
 
 ```
@@ -191,11 +198,11 @@ Run the tests as a normal user (not root): the code-capsule and whole-reading te
 
 ```
 SKILL.md            the engine (one file, read by the host)        plugins/     cs-ai, code, finance, biology, law, _TEMPLATE
-tools/gateway.py    date-bounded documentary access                tools/verifier.py (+ verifier/ROLE.md, citation_check.py, fetch_fulltext.py)
+tools/gateway.py    date-bounded documentary access (sources: tools/sources/, one file each)   tools/verifier.py (+ verifier/ROLE.md, citation_check.py, fetch_fulltext.py)
 tools/check_keys.py keys and mode (setup_keys.py: install + live check) tools/validate_card.py, validate_result.py   mechanical checks
 tools/finish_run.py all end steps in one command (checks, retractions, law checks, exports; not yet in SKILL.md)
 tools/code_capsule.py, condense_repo.py, whole_reading.py, contradictor.py   code plugin tools (capsule, Y condensation, whole reading, contradictor)
-tools/config.json   caps, models, host command profiles             tests/  examples/  KEYS.md  ACCESS-POLICY.md  CHANGELOG.md  LICENSE  NOTICE
+tools/config.json   caps, models, host command profiles             tests/  examples/  KEYS.md  ACCESS-POLICY.md  CONTRIBUTING.md  CHANGELOG.md  LICENSE  NOTICE
 ```
 
 ## Attribution

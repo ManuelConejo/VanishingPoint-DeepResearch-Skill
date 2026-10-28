@@ -35,6 +35,7 @@ ROLE_DIR = HERE / 'verifier'
 ROLE_FILE = ROLE_DIR / 'ROLE.md'
 sys.path.insert(0, str(ROLE_DIR))
 from citation_check import check, norm, load_texts     # noqa: E402
+sys.path.insert(0, str(HERE)); import sources as _reg   # noqa: E402,E702  (source registry: identifier kinds)
 
 try:
     CONFIG = json.loads((HERE / 'config.json').read_text(encoding='utf-8'))
@@ -211,9 +212,12 @@ def fs_key(c):
     return s or 'source'
 
 
+READ_IDS = tuple(i['field'] for i in _reg.IDS if i['read'] and i['card'])   # card fields the gateway reads, registry order (tools/sources/)
+
+
 def ident_of(desc):
     """{doi|arxiv|pmid|pmcid|celex|ecli|ja|hal|thesesfr|nct|dblp|econbiz|osv|openreview|zenodo|biorxiv|medrxiv|hfmodel|hfdataset|rfc|pep|w3c|acl|pmlr|cvf|judilibre|legi|jorf|dbnomics|fred} -> gateway identifier (pmcid is not read by the gateway: None)."""
-    for x in ('doi', 'arxiv', 'pmid', 'celex', 'ecli', 'ja', 'hal', 'thesesfr', 'nct', 'dblp', 'econbiz', 'osv', 'openreview', 'zenodo', 'biorxiv', 'medrxiv', 'hfmodel', 'hfdataset', 'rfc', 'pep', 'w3c', 'acl', 'pmlr', 'cvf', 'judilibre', 'legi', 'jorf', 'dbnomics', 'fred'):
+    for x in READ_IDS:
         if desc.get(x): return f'{x}:{desc[x]}'
     return None
 
