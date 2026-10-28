@@ -117,3 +117,12 @@ Everything in this release was either measured on our benches before being adopt
 - Known limits found: OpenAlex may return fewer than `--n` under the strict date barrier; `provenance` reads only the latest
   Software Heritage visit; the verifier under Codex needs Codex's sandbox (user namespaces) to read its files, otherwise every claim
   stays UNVERIFIED (safe, flagged). Not changed: they touch measured components.
+
+## v0.2.2, 2026-10-28 - NCBI key wired, suggestions limited to keys that act
+
+- `NCBI_API_KEY` is now sent as `api_key=` on every PubMed E-utilities call (esearch, esummary, efetch), with the 10 req/s
+  interval (0.11 s) instead of 3 req/s (0.45 s); without the key nothing changes. Offline test added; PubMed checked online
+  without a key. Not checked with a real NCBI key.
+- `check_keys.py --suggest` proposes only keys the gateway really sends today (`OPENALEX_KEY`, `NCBI_API_KEY`,
+  `VP_GITHUB_TOKEN`): a key declared with no effect (engine not wired, or key not passed, such as `SWH_TOKEN`, `S2_API_KEY`,
+  `PISTE_*`) is never suggested. Found in the 2026-10-28 end-to-end run, which suggested the NCBI key while it had no effect.

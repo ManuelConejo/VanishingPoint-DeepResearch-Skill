@@ -141,6 +141,29 @@ class Offline(unittest.TestCase):
                 self.assertIn(f'TO+{eve:%Y%m%d}2359]', urls[-1])
                 self.assertFalse(any('@' in u for u in urls), 'no e-mail literal in any URL')
 
+    def test_ncbi_key_sent_to_eutils_only(self):
+        """NCBI_API_KEY: absent -> no api_key and 0.45 s; present -> api_key on esearch/esummary/efetch and 0.11 s; never on other hosts."""
+        saved = os.environ.pop('NCBI_API_KEY', None); home = os.environ.get('HOME')
+        with tempfile.TemporaryDirectory() as h:
+            os.environ['HOME'] = h
+            orig = gw.fetch
+            try:
+                urls = []
+                gw.fetch = lambda u: (urls.append(u) or (b'{"esearchresult":{"idlist":["1"],"count":"1"},"result":{}}' if 'eutils' in u else b'{"message":{"items":[],"total-results":0}}'))
+                B = gw.Barrier(dt.date(2024, 1, 1))
+                gw.search_pubmed('x', 5, B)
+                self.assertFalse(any('api_key' in u for u in urls)); self.assertEqual(gw.interval('eutils.ncbi.nlm.nih.gov'), 0.45)
+                os.environ['NCBI_API_KEY'] = 'test-ncbi-key-0000'; urls.clear()
+                gw.search_pubmed('x', 5, B)
+                self.assertEqual(len(urls), 2); self.assertTrue(all(u.endswith('&api_key=test-ncbi-key-0000') for u in urls), urls)
+                self.assertEqual(gw.interval('eutils.ncbi.nlm.nih.gov'), 0.11); self.assertEqual(gw.interval('api.crossref.org'), 0.25)
+                urls.clear(); gw.search_crossref('x', 5, B)
+                self.assertFalse(any('api_key' in u for u in urls))
+            finally:
+                gw.fetch = orig; os.environ.pop('NCBI_API_KEY', None)
+                if saved is not None: os.environ['NCBI_API_KEY'] = saved
+                if home is not None: os.environ['HOME'] = home
+
     def test_dates(self):
         self.assertEqual(gw.date_upper('2024 Feb'), dt.date(2024, 2, 28)); self.assertEqual(gw.date_upper('2024 Spring'), dt.date(2024, 12, 30))
         self.assertEqual(gw.date_upper('2024/04/12 00:00'), dt.date(2024, 4, 12)); self.assertIsNone(gw.date_upper(''))

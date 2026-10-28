@@ -67,7 +67,7 @@ class Test(unittest.TestCase):
         self.assertEqual([i['variable'] for i in law['keyed_not_wired']], ['PISTE_CLIENT_ID + PISTE_CLIENT_SECRET'])
         self.assertEqual(law['keyed_not_wired'][0]['note'], ck.NOTE_NOT_WIRED)
         bio = next(r for r in rep['plugins'] if r['plugin'] == 'biology')
-        self.assertEqual({i['variable']: i.get('note') for i in bio['degraded']}, {'OPENALEX_KEY': None, 'NCBI_API_KEY': ck.NOTE_NOT_PASSED})
+        self.assertEqual({i['variable']: i.get('note') for i in bio['degraded']}, {'OPENALEX_KEY': None, 'NCBI_API_KEY': None})
         self.assertIn('VP_GITHUB_TOKEN', rep['missing_keys']); self.assertFalse(rep['ok']); self.assertEqual(rep['mode'], 'standard')
         t = ck.text(rep)
         for word in ('biology.md', 'active', 'skipped', 'degraded', 'not wired', 'VP_GITHUB_TOKEN', 'KEYS.md'): self.assertIn(word, t)
@@ -120,18 +120,22 @@ class Test(unittest.TestCase):
         self.assertEqual((p.returncode, p.stdout), (0, ''), p.stderr)
 
     def test_suggest_free_source_when_the_question_gains(self):
-        law, csai = self.plugins['law'], self.plugins['cs-ai']
-        s = ck.suggest(ck.report([law]), 'case law Court of Cassation commercial lease')          # without a PISTE key -> Judilibre
-        self.assertEqual([x['source'] for x in s], ['Judilibre (French Court of Cassation)']); self.assertIn('PISTE_CLIENT_ID', s[0]['variable'])
-        self.assertIn('https://piste.gouv.fr/', s[0]['text']); self.assertIn('free registration', s[0]['text'])
+        bio, law, csai, code = self.plugins['biology'], self.plugins['law'], self.plugins['cs-ai'], self.plugins['code']
+        s = ck.suggest(ck.report([bio]), 'vitamin D meta-analysis of clinical trials, systematic review')   # NCBI key is sent -> suggested
+        self.assertEqual([x['source'] for x in s], ['PubMed with an NCBI key']); self.assertEqual(s[0]['variable'], 'NCBI_API_KEY')
+        self.assertIn('free registration', s[0]['text'])
+        # A declared key with no effect today (engine not wired, or key not passed) is never suggested, however well it matches.
+        self.assertEqual(ck.suggest(ck.report([law]), 'case law Court of Cassation commercial lease'), [])            # Judilibre: not wired
+        self.assertEqual(ck.suggest(ck.report([csai]), 'citation graph and citing articles in recent AI'), [])       # Semantic Scholar: not wired
+        self.assertEqual(ck.suggest(ck.report([code]), 'provenance of many repositories in archives'), [])           # SWH_TOKEN: not passed
+        self.assertEqual(ck.suggest(ck.report([code]), 'licence of a specific repository file')[0]['variable'], 'VP_GITHUB_TOKEN')
         self.assertEqual(ck.suggest(ck.report([csai, law]), 'graph neural networks'), [])          # "graph" alone is not enough
-        self.assertEqual(ck.suggest(ck.report([csai]), 'citation graph and citing articles in recent AI')[0]['source'], 'Semantic Scholar')
-        self.assertLessEqual(len(ck.suggest(ck.report(self.all), 'case law Court of Cassation citations reference graph macroeconomic series inflation')), 2)
+        self.assertLessEqual(len(ck.suggest(ck.report(self.all), 'meta-analysis clinical trials systematic review citation chaining specific repository licence file')), 2)
         for f in self.all: self.assertTrue(ck.useful_when(f), f.name)                                # each fixture declares useful_when
-        p = subprocess.run([sys.executable, '-I', str(TOOLS / 'check_keys.py'), '--suggest', 'case law Court of Cassation commercial lease', '--plugin', str(law)],
+        p = subprocess.run([sys.executable, '-I', str(TOOLS / 'check_keys.py'), '--suggest', 'vitamin D meta-analysis of clinical trials, systematic review', '--plugin', str(bio)],
                            capture_output=True, text=True, env={**os.environ, 'HOME': self.tmp.name}, timeout=60)
-        self.assertEqual(p.returncode, 0, p.stderr); self.assertIn('Judilibre', p.stdout)
-        p = subprocess.run([sys.executable, '-I', str(TOOLS / 'check_keys.py'), '--suggest', 'graph neural networks', '--plugin', str(csai)],
+        self.assertEqual(p.returncode, 0, p.stderr); self.assertIn('NCBI_API_KEY', p.stdout)
+        p = subprocess.run([sys.executable, '-I', str(TOOLS / 'check_keys.py'), '--suggest', 'case law Court of Cassation commercial lease', '--plugin', str(law)],
                            capture_output=True, text=True, env={**os.environ, 'HOME': self.tmp.name}, timeout=60)
         self.assertEqual((p.returncode, p.stdout), (0, ''), p.stderr)
 

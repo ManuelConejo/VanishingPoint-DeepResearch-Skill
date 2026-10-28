@@ -24,7 +24,7 @@ CATALOGUE = {
     'OPENALEX_KEY': dict(source='openalex', engine='openalex', without='degraded', passed=True,
                          reason='budget shared per IP, 429 possible from the 1st call -> Crossref fallback flagged',
                          free='free, personal account', url='https://openalex.org/signup (Settings -> API key)'),
-    'NCBI_API_KEY': dict(source='pubmed', engine='pubmed', without='degraded', passed=False, reason='3 req/s instead of 10',
+    'NCBI_API_KEY': dict(source='pubmed', engine='pubmed', without='degraded', passed=True, reason='3 req/s instead of 10',
                          free='free, NCBI account', url='https://ncbiinsights.ncbi.nlm.nih.gov/2017/11/02/new-api-keys-for-the-e-utilities/'),
     'S2_API_KEY': dict(source='semantic-scholar', engine=None, without='skipped', passed=False, reason='search only with a key (429 without)',
                        free='free by form, CC BY-NC, no redistribution', url='https://www.semanticscholar.org/product/api#api-key-form'),
@@ -131,11 +131,13 @@ def useful_when(path):
 
 
 def suggest(rep, angles, maxi=2):
-    """Sources missing for lack of a key whose `useful_when` shares >= 2 keywords with the angles; free ones only; <= maxi, best first."""
+    """Sources missing for lack of a key whose `useful_when` shares >= 2 keywords with the angles; free ones only, and only keys the
+    gateway really sends today (a declared key with no effect is never suggested); <= maxi, best first."""
     q = words(angles); seen = {}; out = []
     for r in rep['plugins']:
         uw = useful_when(r['file'])
-        for i in r['skipped'] + r['degraded'] + r.get('keyed_not_wired', []):
+        for i in r['skipped'] + r['degraded']:
+            if not i.get('passed_by_gateway'): continue
             var = i['variable'].split(' + ')[0]
             name, delay, ok = SUGGESTION.get(var, (None, None, False))
             text_uw = uw.get(CATALOGUE[var]['source'].split(' ')[0]) if var in CATALOGUE else None
