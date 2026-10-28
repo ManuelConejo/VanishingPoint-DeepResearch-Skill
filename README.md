@@ -80,7 +80,9 @@ or `.agents/skills/vanishingpoint/SKILL.md`), then the plugin it selects.
    receipts without URL nor key). The code plugin adds `capsule.md` (input) and `mechanisms.json` (output).
 5. Check before using the report: `python3 -I "$SKILL/tools/validate_card.py" <dir> --header` (12 numbered mechanical checks; empty output
    = valid). A report that keeps ABSENT or INVALID claims unhandled is not delivered as valid.
-6. Export: `python3 -I "$SKILL/tools/export_report.py" <dir> [--pdf] [--open]` writes `REPORT.html` (one self-contained page, prints to PDF from any browser) and, with `--pdf`, `REPORT.pdf` through WeasyPrint, Chromium, wkhtmltopdf or pandoc when one is installed (nothing is installed, no network).
+6. Export: `python3 -I "$SKILL/tools/export_report.py" <dir> [--pdf] [--open]` writes `REPORT.html` (one self-contained page, prints to PDF from any browser) and, with `--pdf`, `REPORT.pdf` through WeasyPrint, Chromium, wkhtmltopdf or pandoc when one is installed (nothing is installed, no network). Then `python3 -I "$SKILL/tools/export_data.py" <dir>` writes `studies.csv` (one row per study, criteria and verification counts) and `references.bib` / `.ris` / `.json` (CSL-JSON) for reference managers.
+
+Update of a previous run (living review): ask "update my review of <dir>"; the skill reruns the question at today's T in a new directory, then `python3 -I "$SKILL/tools/living_diff.py" <old dir> <new dir>` writes `UPDATE.md` and `update.json` (what changed since the old T); neither report is edited by the tool.
 
 Manual gateway test (no agent, no key, needs network; run from anywhere, `SKILL` as above):
 
@@ -158,7 +160,7 @@ The gateway reads, in the Sources section, a fenced block:
 
 ````
 ```sources
-engines: openalex, crossref, arxiv     # wired engines: pubmed, europepmc, crossref, openalex, arxiv, clinicaltrials, dblp, econbiz ; law: eurlex, justice-administrative, hal, theses-fr ; ai: openreview, zenodo, hal-info ; code, versions, paper-code, provenance, osv, ecosyste.ms
+engines: openalex, crossref, arxiv     # wired engines: pubmed, europepmc, crossref, openalex, arxiv, clinicaltrials, biorxiv, medrxiv, dblp, econbiz ; law: eurlex, justice-administrative, hal, theses-fr ; ai: openreview, zenodo, hal-info ; code, versions, paper-code, provenance, osv, ecosyste.ms
 since: 2015                            # optional lower bound (year)
 cap: 60                                # optional safety cap on calls
 keys: OPENALEX_KEY                     # optional keys, resolved as in KEYS.md, never required

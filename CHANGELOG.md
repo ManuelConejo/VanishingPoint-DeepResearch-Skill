@@ -220,3 +220,36 @@ Everything in this release was either measured on our benches before being adopt
 - `export_report.py --open` shows the PDF (else the HTML) with the desktop viewer (`open` on macOS, `xdg-open` with a display on
   Linux, `start` on Windows) and does nothing, silently, on a server or in a container. SKILL.md runs export with
   `--pdf --open`. Test added.
+
+## v0.4.0, 2026-10-28 - study table and bibliography exports
+
+- `tools/export_data.py <run dir> [--out DIR]` (stdlib, offline), run after `export_report.py` in section 8:
+  - `studies.csv`: one row per study of `result.json` (id, title, year, every criteria key met, confidence, basis,
+    claims citing it counted per `verdicts.json` status, its `[n]`); RFC 4180, UTF-8 without BOM, formula injection
+    neutralised (a cell starting with = + - @ gets a leading apostrophe).
+  - `references.bib`, `references.ris`, `references.json` (CSL-JSON): one record per bibliography entry, completed by
+    `card.json` and `result.json`; type guessed from the identifier (article, preprint, software, dataset, legislation,
+    case, trial, thesis); a field the run does not give stays empty; VP id in note / AN; stable unique BibTeX keys,
+    special characters escaped.
+- `tests/test_export_data.py` (offline, 7 tests). SKILL.md (inventory, section 8) and README (export step): one line each.
+
+## v0.4.1, 2026-10-28 - living review (update of a previous run)
+
+Packaging feature, tested offline, not measured.
+- `tools/living_diff.py OLD_DIR NEW_DIR [--out FILE]` (offline, stdlib, no model): compares two runs of the same question at T1 < T2 and writes
+  `UPDATE.md` + `update.json`; never edits either run. Sources matched by normalised identifier (DOI case and resolver prefix, arXiv
+  version, pmid, PMC/NCT/CELEX, code `file@SHA7`; fallback title + year); added sources split into new evidence (dated on or after T1)
+  and older ones (seen at T1 but not kept / not found at T1 / undetermined); dropped sources (seen at T2 or not retrieved); finding verdicts
+  matched by title similarity, verdict words compared; first sentences and one-line summaries side by side; verification counts;
+  newly DISTORTED sources and retraction/erratum/concern mentions. Exit 2 when a dir lacks card.json or REPORT.md.
+- SKILL.md section 8, "Updating a previous run": normal run at today's T in a new directory, then the tool; its paragraph goes under
+  `### What changed since <T1>` in the Methodology Appendix (no ninth section, `validate_card.py` unchanged). Inventory and README updated.
+- `tests/test_living_diff.py`: fixture runs and a smoke test on a real run whose updated report still passes `validate_card.py`.
+
+## v0.4.2, 2026-10-28 - bioRxiv and medRxiv preprints
+
+- New keyless engines `biorxiv` and `medrxiv` (plugins/biology.md, section 10; `access: api`). api.biorxiv.org has no keyword search: the words go to Europe PMC (`SRC:PPR AND PUBLISHER:"bioRxiv"|"medRxiv"`, provider bound `FIRST_PDATE` and `FIRST_IDATE` <= eve of T), each hit is dated on `api.biorxiv.org/details/<server>/<DOI>` (one row per version). Preprint DOIs `10.1101/...` and `10.64898/...` (openRxiv).
+- Barrier: version 1 posted < T (and Europe PMC first publication and indexing < T); served metadata and abstract = latest version posted < T, later versions never read (`later_versions_masked`); preprint DOI, published-article DOI (any date) and every version title checked against the forbidden lists; no date -> refused. `published_doi` (journal, year) shown only when Crossref attests deposit AND publication < T. Items `doi:<preprint DOI>`, `type: preprint`, `peer_review: not peer reviewed (preprint)`.
+- `read biorxiv:<DOI>` / `read medrxiv:<DOI>`; `read doi:<preprint DOI>` now routed there (the Europe PMC core record carried the latest version, possibly after T); `citing` / `references` of a preprint gated on v1 < T. `validate_card.py` and `verifier.py` accept `biorxiv` / `medrxiv` keys.
+- Rate 1 req/s on api.biorxiv.org, stop on 403/429; a failing host stops the call (typed `provider_error`, never an empty result).
+- Tests: `tests/test_engines_rxiv.py` (6, offline). Live "SARS-CoV-2 spike antibody": bioRxiv 20/20 at T 2026-10-26 (4,027 announced), 20/20 at T 2020-06-01 (296), medRxiv 20/20 at T 2020-06-01 (148); 0 date on/after T; reads at T 2020-03-25 (v2 of 3 served, Nature link hidden) and T 2020-03-20 (refused, v1 on 2020-03-22).
