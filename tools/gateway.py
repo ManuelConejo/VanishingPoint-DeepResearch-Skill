@@ -21,7 +21,9 @@ Command line:
   PISTE engines (plugins/law.md, credentials PISTE_CLIENT_ID + PISTE_CLIENT_SECRET, else skipped with 0 request): judilibre [--court cc|ca|tj|tcom]
     [--chamber civ1|soc|cr...] [--from] [--to], legifrance [--fund code|loda|jorf] (read judilibre:<id> | legi:LEGIARTI.../LEGITEXT... | jorf:JORFTEXT...)
   AI engines (plugins/cs-ai.md): openreview, zenodo, hal-info (id: openreview:<forum id> | zenodo:<record id>); code engine usage <pypi|npm|cargo|...>:<package> (ecosyste.ms)
-  A key the provider rejects (NCBI 400 "API key invalid" or "not wellformed", OpenAlex 401/403, Software Heritage 401/403) is dropped for the rest of the run
+  finance data engines (plugins/finance.md, v0.4.9): dbnomics (keyless; current values marked as_of "now"; read dbnomics:<provider>/<dataset>/<series>),
+    fred (FRED_API_KEY, else skipped with 0 request; ALFRED vintage of the eve of T; read fred:<series id>); observations kept only when their period ends before T
+  A key the provider rejects (NCBI 400 "API key invalid" or "not wellformed", OpenAlex 401/403, Software Heritage 401/403; FRED 400 about api_key: no key-less FRED, skipped) is dropped for the rest of the run
   (<state>/keys-invalid.json, names only), the call is retried once without it, and every answer carries key_invalid: [NAME].
 Import:
   from gateway import Gateway
@@ -2314,6 +2316,209 @@ def related(ident, n, B): return ([], PISTE_NO_CHAIN) if ident.strip().lower().s
 
 
 ENGINES.update({'judilibre': search_judilibre, 'legifrance': search_legifrance})   # registry of the PISTE engines
+
+
+# ---------------------------------------------------------------- finance data series (v0.4.9, plugins/finance.md sections 7-8): dbnomics, fred
+# A series value for period P is published, then often REVISED. "Known at T" = periods ending before T AND values as published before T.
+# FRED/ALFRED gives true vintages (realtime_start = realtime_end = eve of T); DBnomics serves CURRENT values only: each one is marked as_of "now".
+# Neither serves release dates: a period ending before T may have been released on/after T (DBnomics) - flagged, never hidden.
+DBNOMICS = 'https://api.db.nomics.world/v22/'
+FRED = 'https://api.stlouisfed.org/fred/'
+DATA_PREFIX = ('dbnomics:', 'fred:')
+DATA_CFG = CFG['data_series']   # obs_max, dbnomics_datasets (config.json, note)
+INTERVAL.update({'api.db.nomics.world': 2.0, 'api.stlouisfed.org': 2.0})   # DBnomics: robots Disallow / on the API host, rate not published -> level-2 pacing; FRED: robots Crawl-delay 2
+STOP.update({'api.db.nomics.world': (403, 429), 'api.stlouisfed.org': (400, 403, 404, 429)})   # FRED 400 = key or argument error: never retried
+AS_OF_NOW = 'now (revised values; first releases not available)'
+DBN_CAVEAT = ('current values as DBnomics serves them today (possibly revised after T); a period ending before T may have been released on/after T '
+              '(no release date served); not the as-of-T value')
+SERIES_ID = r'[A-Za-z0-9_.@+-]+/[A-Za-z0-9_.@+-]+/[A-Za-z0-9_.@+%:=-]+'   # dbnomics:<provider>/<dataset>/<series>
+FRED_ID = r'[A-Za-z0-9_.-]{1,40}'
+DATA_NO_CHAIN = 'citation chaining not served for data series (dbnomics:, fred:)'
+
+
+class DataSkip(Exception):
+    """A keyed data engine is skipped (credential_missing, key_invalid): a receipt, never "nothing found"."""
+    def __init__(self, reason, detail): super().__init__(reason); self.reason, self.detail = reason, detail
+
+
+def data_forbidden(B, ids, titles):
+    """Forbidden identifier or title (same lists as the DOIs and titles of the barrier): counted, True."""
+    if any(i and str(i).lower() in B.forbidden for i in ids) or any(t and any(title_sim(tokens(t), f) >= CFG['review_title_threshold'] for f in B.titles) for t in titles):
+        B.excluded += 1; return True
+    return False
+
+
+def month_end(y, m): return dt.date(y + m // 12, m % 12 + 1, 1) - dt.timedelta(days=1)
+
+
+def period_end(p, freq=None):
+    """Last day of an observation period, or None (unknown form: refused). DBnomics periods: 2024, 2024-Q3, 2024-S1/H1, 2024-B3 (bimonthly),
+    2024-07, 2024-W05, 2024-07-15. FRED dates (period START) with freq A/Q/M/SA/W/BW/D: the end is derived; weekly -> +6 days (conservative)."""
+    p = str(p or '').strip()
+    try:
+        if freq:
+            d = dt.date.fromisoformat(p[:10]); f = freq.upper()
+            k = {'A': 12, 'SA': 6, 'Q': 3, 'M': 1}.get(f)
+            if k: return month_end(d.year, d.month + k - 1)
+            return d + dt.timedelta(days={'W': 6, 'BW': 13, 'D': 0}[f]) if f in ('W', 'BW', 'D') else None
+        if re.fullmatch(r'\d{4}', p): return dt.date(int(p), 12, 31)
+        m = re.fullmatch(r'(\d{4})-([QSHB])(\d)', p)
+        if m and 1 <= int(m.group(3)) <= {'Q': 4, 'S': 2, 'H': 2, 'B': 6}[m.group(2)]: return month_end(int(m.group(1)), int(m.group(3)) * {'Q': 3, 'S': 6, 'H': 6, 'B': 2}[m.group(2)])
+        m = re.fullmatch(r'(\d{4})-W(\d{2})', p)
+        if m: return dt.date.fromisocalendar(int(m.group(1)), int(m.group(2)), 7)
+        if re.fullmatch(r'\d{4}-(0[1-9]|1[0-2])', p): return month_end(int(p[:4]), int(p[5:]))
+        if re.fullmatch(r'\d{4}-\d{2}-\d{2}', p): return dt.date.fromisoformat(p)
+    except (ValueError, KeyError): return None
+    return None
+
+
+def obs_before_T(rows, B):
+    """[(period, value, extra)] -> (kept rows with period end < T and > since, number dropped). Unknown period form = dropped (counted)."""
+    keep, drop = [], 0
+    for per, val, freq, extra in rows:
+        e = period_end(per, freq)
+        if e is None or e >= B.T: drop += 1; continue
+        if B.since and e.year < B.since: continue
+        keep.append(dict({'period': per, 'period_end': e.isoformat(), 'value': None if val in (None, '', '.', 'NA', 'NaN') else val}, **extra))
+    B.excluded += drop
+    return keep, drop
+
+
+def obs_cap(keep):
+    n = int(DATA_CFG['obs_max'])
+    return keep[-n:], (f'last {n} of {len(keep)} observations before T (data_series.obs_max)' if len(keep) > n else None)
+
+
+# DBnomics (keyless aggregator: ECB, Eurostat, IMF, OECD, INSEE, BIS, World Bank...). Search = datasets (/search), then series of the best datasets
+# (/series/<provider>/<dataset>?q=); read = observations of one series. indexed_at is the LAST re-indexing, not a first-availability date: not a barrier.
+
+def dbn_item(s):
+    sid = f"{s.get('provider_code')}/{s.get('dataset_code')}/{s.get('series_code')}"
+    return {'id': 'dbnomics:' + sid, 'title': s.get('series_name'), 'provider': s.get('provider_code'), 'dataset': s.get('dataset_code'),
+            'dataset_name': s.get('dataset_name'), 'frequency': s.get('@frequency') or (s.get('dimensions') or {}).get('FREQ'), 'type': 'dataset',
+            'last_reindexed': (s.get('indexed_at') or '')[:10] or None, 'url': 'https://db.nomics.world/' + sid}   # informative, not a barrier date
+
+
+def search_dbnomics(q, n, B):
+    r = jget(DBNOMICS + 'search?' + urllib.parse.urlencode({'q': q, 'limit': int(DATA_CFG['dbnomics_datasets'])})).get('results') or {}
+    out = []
+    for d in [x for x in r.get('docs') or [] if x.get('nb_matching_series')]:
+        if len(out) >= n: break
+        path = '/'.join(urllib.parse.quote(str(d.get(k) or ''), safe='') for k in ('provider_code', 'code'))
+        try: ss = jget(DBNOMICS + f'series/{path}?' + urllib.parse.urlencode({'q': q, 'limit': n - len(out), 'observations': 0})).get('series') or {}
+        except urllib.error.HTTPError as e:
+            if e.code == 404: continue
+            raise
+        for s in ss.get('docs') or []:
+            it = dbn_item(s)
+            if not data_forbidden(B, [it['id']], [it['title']]):   # no first-availability date: the read checks existence by an observation before T
+                out.append(dict(it, dating='existence before T checked at read (an observation period ending before T); values: ' + AS_OF_NOW))
+    return out[:n], r.get('num_found')
+
+
+def read_dbnomics(sid, B):
+    if not re.fullmatch(SERIES_ID, sid): return {'refusal': 'expected form dbnomics:<provider>/<dataset>/<series>, e.g. dbnomics:ECB/ICP/M.U2.N.000000.4.ANR'}
+    try: r = jget(DBNOMICS + 'series/' + '/'.join(urllib.parse.quote(x, safe='') for x in sid.split('/', 2)) + '?observations=1')
+    except urllib.error.HTTPError as e:
+        if e.code in (400, 404): return {'refusal': 'not found'}
+        raise
+    docs = (r.get('series') or {}).get('docs') or []
+    if not docs: return {'refusal': 'not found'}
+    s = docs[0]; it = dbn_item(s)
+    keep, drop = obs_before_T([(p, v, None, {'as_of': AS_OF_NOW}) for p, v in zip(s.get('period') or [], s.get('value') or [])], B)
+    if not keep or not extra_ok(B, [it['id']], [keep[-1]['period_end']], [it['title']]):
+        return {'refusal': 'no observation period ending before T, or forbidden'}
+    keep, note = obs_cap(keep); pv = r.get('provider') or {}
+    return dict(it, date=keep[-1]['period_end'], as_of=AS_OF_NOW, vintage=None, caveat=DBN_CAVEAT, observations=keep, dropped_at_or_after_T=drop,
+                **({'truncated': note} if note else {}), terms_of_use=pv.get('terms_of_use'),
+                licence='DBnomics aggregation ODbL; data under the licence and terms of use of the original provider (terms_of_use)')
+
+
+# FRED / ALFRED (St. Louis Fed, free key FRED_API_KEY sent as api_key=, never shown). Vintage = eve of T: values as KNOWN that day.
+
+def fred_key():
+    k = key('FRED_API_KEY')
+    if not k: raise DataSkip('credential_missing', 'FRED_API_KEY absent (free key, KEYS.md); 0 request; key-less alternative: search-dbnomics')
+    if 'FRED_API_KEY' in sc.invalid_keys(STATE): raise DataSkip('key_invalid', 'FRED refused FRED_API_KEY earlier in this run; 0 request; key-less alternative: search-dbnomics')
+    return k
+
+
+def fred_json(path, B, **params):
+    """GET <FRED>/<path> at the vintage of the eve of T. 400 about api_key -> key marked invalid, DataSkip; other 400 -> ValueError(message)."""
+    k = fred_key()
+    q = dict(params, realtime_start=B.eve.isoformat(), realtime_end=B.eve.isoformat(), file_type='json')
+    try: return jget(FRED + path + '?' + urllib.parse.urlencode(q) + '&api_key=' + urllib.parse.quote(k))
+    except urllib.error.HTTPError as e:
+        if e.code != 400: raise
+        try: msg = str(json.loads(e.read() or b'{}').get('error_message') or '')
+        except ValueError: msg = ''
+        msg = msg.replace(k, '***')[:200]
+        if 'api_key' in msg.lower(): sc.mark_invalid(STATE, 'FRED_API_KEY'); raise DataSkip('key_invalid', 'FRED refused FRED_API_KEY (HTTP 400); key-less alternative: search-dbnomics')
+        raise ValueError(msg or 'HTTP 400')
+
+
+def fred_item(s, B):
+    sid = s.get('id')
+    if not sid or not extra_ok(B, [sid, 'fred:' + sid], [s.get('observation_start')], [s.get('title')]): return None
+    return {'id': 'fred:' + sid, 'title': s.get('title'), 'frequency': s.get('frequency_short') or s.get('frequency'), 'units': s.get('units'),
+            'seasonal_adjustment': s.get('seasonal_adjustment_short'), 'observation_start': s.get('observation_start'), 'type': 'dataset',
+            'as_of': B.eve.isoformat() + ' (ALFRED vintage: metadata as known on the eve of T)', 'url': 'https://alfred.stlouisfed.org/series?seid=' + sid}
+
+
+def data_engine(search):
+    """DataSkip -> skipped receipt (search: (receipt, reason); read: receipt); credential_missing / key_invalid before any request = 0 request."""
+    def deco(fn):
+        def run(*a, **k):
+            try: return fn(*a, **k)
+            except DataSkip as e:
+                r = {'status': 'skipped', 'reason': e.reason, 'refusal': f'{e.reason}: {e.detail}'}
+                return (r, e.reason + ': ' + e.detail) if search else r
+        run.__name__ = fn.__name__; run.__doc__ = fn.__doc__
+        return run
+    return deco
+
+
+@data_engine(True)
+def search_fred(q, n, B):
+    r = fred_json('series/search', B, search_text=q, limit=n)
+    return [x for x in (fred_item(s, B) for s in r.get('seriess') or []) if x][:n], r.get('count')
+
+
+@data_engine(False)
+def read_fred(sid, B):
+    if not re.fullmatch(FRED_ID, sid): return {'refusal': 'expected form fred:<series id>, e.g. fred:UNRATE'}
+    try:
+        meta = (fred_json('series', B, series_id=sid).get('seriess') or [None])[0]
+        it = fred_item(meta or {}, B)
+        if not it: return {'refusal': 'not found, after T or forbidden'}
+        r = fred_json('series/observations', B, series_id=sid, observation_end=B.eve.isoformat(), **({'observation_start': B.start.isoformat()} if B.since else {}))
+    except ValueError as e: return {'refusal': f'not served at the vintage of the eve of T ({e})'}
+    fq = (meta.get('frequency_short') or '').upper()
+    rows = [(o.get('date'), o.get('value'), fq, {'vintage': o.get('realtime_start')}) for o in r.get('observations') or []
+            if (o.get('realtime_start') or '9999') <= B.eve.isoformat()]   # a value published after the eve of T never passes
+    keep, drop = obs_before_T(rows, B)
+    if not keep: return {'refusal': 'no observation period ending before T at the vintage of the eve of T'}
+    keep, note = obs_cap(keep)
+    return dict(it, date=keep[-1]['period_end'], as_of=B.eve.isoformat() + ' (ALFRED vintage: values as known on the eve of T)', vintage=B.eve.isoformat(),
+                observations=keep, dropped_at_or_after_T=drop, **({'truncated': note} if note else {}),
+                licence='FRED terms of use; some series are copyrighted by their source (notes of the series)')
+
+
+def read_data(ident, B):
+    p, _, v = ident.partition(':'); v = v.strip()
+    return read_dbnomics(v, B) if p.lower() == 'dbnomics' else read_fred(v, B)
+
+
+_read_lw, _citing_lw, _references_lw, _related_lw = read, citing, references, related
+
+
+def read(ident, B): return read_data(ident.strip(), B) if ident.strip().lower().startswith(DATA_PREFIX) else _read_lw(ident, B)
+def citing(ident, n, B): return ([], DATA_NO_CHAIN) if ident.strip().lower().startswith(DATA_PREFIX) else _citing_lw(ident, n, B)
+def references(ident, n, B): return ([], DATA_NO_CHAIN) if ident.strip().lower().startswith(DATA_PREFIX) else _references_lw(ident, n, B)
+def related(ident, n, B): return ([], DATA_NO_CHAIN) if ident.strip().lower().startswith(DATA_PREFIX) else _related_lw(ident, n, B)
+
+
+ENGINES.update({'dbnomics': search_dbnomics, 'fred': search_fred})   # registry of the finance data engines
 
 
 # ---------------------------------------------------------------- plugins and interface

@@ -6,7 +6,7 @@ first, confidence, basis, claims citing it in card.json counted per verdicts.jso
 RFC 4180 (comma, double quotes, CRLF), UTF-8 without BOM; a text cell starting with = + - @ (or tab, CR) gets a leading apostrophe.
 references.bib / references.ris / references.json (CSL-JSON): one record per [n] entry of `## Bibliography` of REPORT.md, completed by
 card.json (`sources` S<n> = [n]) and result.json (same identifier). Type guessed from the identifier: article, preprint (arxiv, hal, or
-openreview without venue), software (`path@SHA`, osv:, a code host URL), dataset (zenodo, hfdataset), model (hfmodel, as software), standard (rfc, pep, w3c), conference paper (acl, pmlr, cvf), legal (celex, ecli, ja), trial (nct), thesis
+openreview without venue), software (`path@SHA`, osv:, a code host URL), dataset (zenodo, hfdataset, dbnomics, fred), model (hfmodel, as software), standard (rfc, pep, w3c), conference paper (acl, pmlr, cvf), legal (celex, ecli, ja), trial (nct), thesis
 (thesesfr). Authors, title, year, venue, DOI are taken from these files only, never guessed beyond them: a field not found stays empty;
 the URL is the one written in the entry, else the stable link of its doi/pmid/arxiv/pmcid. The VP identifier goes in note (BibTeX),
 AN + N1 (RIS), note (CSL). BibTeX keys: author + year + first title word, ASCII, deduplicated by a, b, c in bibliography order.
@@ -62,7 +62,7 @@ def kind(ids, code, url, venue):
     if 'ecli' in p or 'ja' in p or 'judilibre' in p: return 'case'
     if p & {'legi', 'jorf'}: return 'legislation'
     if 'celex' in p: return 'case' if next(i for i in ids if i.startswith('celex:'))[6:7] == '6' else 'legislation'
-    if p & {'zenodo', 'hfdataset'}: return 'dataset'
+    if p & {'zenodo', 'hfdataset', 'dbnomics', 'fred'}: return 'dataset'
     if p & {'acl', 'pmlr', 'cvf'}: return 'paper'
     if ('arxiv' in p or 'hal' in p or 'openreview' in p) and not venue: return 'preprint'
     if p & {'doi', 'pmid', 'pmcid', 'arxiv', 'hal', 'openreview', 'dblp', 'econbiz'}: return 'article'

@@ -212,8 +212,8 @@ def fs_key(c):
 
 
 def ident_of(desc):
-    """{doi|arxiv|pmid|pmcid|celex|ecli|ja|hal|thesesfr|nct|dblp|econbiz|osv|openreview|zenodo|biorxiv|medrxiv|hfmodel|hfdataset|rfc|pep|w3c|acl|pmlr|cvf|judilibre|legi|jorf} -> gateway identifier (pmcid is not read by the gateway: None)."""
-    for x in ('doi', 'arxiv', 'pmid', 'celex', 'ecli', 'ja', 'hal', 'thesesfr', 'nct', 'dblp', 'econbiz', 'osv', 'openreview', 'zenodo', 'biorxiv', 'medrxiv', 'hfmodel', 'hfdataset', 'rfc', 'pep', 'w3c', 'acl', 'pmlr', 'cvf', 'judilibre', 'legi', 'jorf'):
+    """{doi|arxiv|pmid|pmcid|celex|ecli|ja|hal|thesesfr|nct|dblp|econbiz|osv|openreview|zenodo|biorxiv|medrxiv|hfmodel|hfdataset|rfc|pep|w3c|acl|pmlr|cvf|judilibre|legi|jorf|dbnomics|fred} -> gateway identifier (pmcid is not read by the gateway: None)."""
+    for x in ('doi', 'arxiv', 'pmid', 'celex', 'ecli', 'ja', 'hal', 'thesesfr', 'nct', 'dblp', 'econbiz', 'osv', 'openreview', 'zenodo', 'biorxiv', 'medrxiv', 'hfmodel', 'hfdataset', 'rfc', 'pep', 'w3c', 'acl', 'pmlr', 'cvf', 'judilibre', 'legi', 'jorf', 'dbnomics', 'fred'):
         if desc.get(x): return f'{x}:{desc[x]}'
     return None
 

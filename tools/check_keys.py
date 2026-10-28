@@ -39,7 +39,7 @@ CATALOGUE = {
                             free='free, personal PISTE registration', url='https://piste.gouv.fr/', pair='PISTE_CLIENT_SECRET'),
     'PISTE_CLIENT_SECRET': dict(source='judilibre', engine='judilibre', without='skipped', passed=True, reason='Judilibre and Legifrance: 0 request, not_configured (token required by the service)',
                                 free='free, personal PISTE registration', url='https://piste.gouv.fr/', pair='PISTE_CLIENT_ID'),
-    'FRED_API_KEY': dict(source='fred', engine=None, without='skipped', passed=False, reason='disabled, no call (the API returns 400 without a key)',
+    'FRED_API_KEY': dict(source='fred', engine='fred', without='skipped', passed=True, reason='FRED / ALFRED: 0 request, credential_missing (the API returns 400 without a key); search-dbnomics stays (current values)',
                          free='free, FRED account', url='https://fred.stlouisfed.org/docs/api/api_key.html'),
 }
 WIRED = set(gw.ENGINES) | set(gw.CODE_ENGINES.values())

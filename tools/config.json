@@ -3,6 +3,11 @@
   "default": 60
  },
  "review_title_threshold": 0.8,
+ "data_series": {
+  "obs_max": 240,
+  "dbnomics_datasets": 3,
+  "note": "Finance data engines (gateway dbnomics, fred). obs_max = observations returned per read (the last ones before T; 240 = 20 years monthly, a reading budget, not a measured optimum). dbnomics_datasets = datasets of the DBnomics search whose matching series are listed (one request each, 2 s pacing)."
+ },
  "code_intervals": {
   "api.github.com": 6.1,
   "archive.softwareheritage.org": 6.0,
