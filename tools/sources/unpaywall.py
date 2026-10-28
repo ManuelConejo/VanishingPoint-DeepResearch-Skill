@@ -6,6 +6,7 @@ not_configured, 0 request."""
 import os
 import re
 import urllib.error, urllib.parse
+import code_sources as sc
 from sources._common import CFG, _before, date_upper, extra_ok, jget
 from sources._series import DataSkip, data_engine
 from sources.crossref import crossref_deposit
@@ -18,7 +19,7 @@ FULLTEXT = 'tools/verifier/fetch_fulltext.py --doi <DOI> --T <T> (pins the last 
 
 def contact():
     """The e-mail Unpaywall requires (`email=`): VP_CONTACT when it holds an address, else a not_configured skip before any request."""
-    c = os.environ.get('VP_CONTACT', '').strip()
+    c = sc.contact()
     m = re.search(r'[^\s<>(),;:]+@[^\s<>(),;:]+\.[A-Za-z]{2,}', c)
     if not m: raise DataSkip('not_configured', 'Unpaywall requires an e-mail address in VP_CONTACT (KEYS.md, "Identification contact"); 0 request')
     return m.group(0)

@@ -8,6 +8,7 @@ import json
 import os
 import re
 import urllib.error, urllib.parse
+import code_sources as sc
 from sources._common import CFG, ProviderError, extra_ok, fetch, plain, value, window
 from sources._series import DataSkip, data_engine
 
@@ -24,7 +25,7 @@ FTS_FROM = '2001-01-01'                     # first day covered by EDGAR full-te
 def need_contact():
     """The declared User-Agent the SEC asks for (tool name and e-mail contact), built at call time from VP_CONTACT; no e-mail address in it
     -> not_configured skip before any request."""
-    c = os.environ.get('VP_CONTACT', '').strip()
+    c = sc.contact()
     if not re.search(r'[^\s@]+@[^\s@]+\.[A-Za-z]{2,}', c):
         raise DataSkip('not_configured', 'the SEC requires a declared User-Agent with an e-mail contact: set VP_CONTACT to a team or project '
                                          'address (KEYS.md, "Identification contact"); 0 request')
