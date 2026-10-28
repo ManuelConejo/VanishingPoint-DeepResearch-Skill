@@ -360,3 +360,21 @@ Fix of a temporal leak: `tools/verifier/fetch_fulltext.py` (`verifier.py --fullt
   skipped with 0 request, key_invalid on 401, not_subscribed on 403, barrier per engine, version at the eve of T with exclusive end,
   operative part, law_checks on a Legifrance record); `test_check_keys.py`, `test_gateway.py`, `test_validate_result.py` updated for the
   wiring. Live: only the key-less path was run (skipped, 0 request); the authenticated path awaits credentials.
+
+## v0.4.8, 2026-10-28 - setup_keys: install and check a key in one command
+
+### Packaging changes (tested offline; live: absent key and fake NCBI key only)
+- `tools/setup_keys.py [NAME] [--check | --remove]`: without a name, lists the keys (check_keys catalogue + contradictor providers,
+  present/absent, what each unlocks) and asks which one; `NAME` = variable in any case or a short name derived from it (`piste`,
+  `openalex`, `ncbi`, `github`, `swh`, `openrouter`, ...). Value typed with `getpass` (PISTE: Client ID then Client Secret), or read
+  from stdin one per line when not a terminal; stripped, written to `~/.config/vp/<name lowercase>.key` (dir 0700, file 0600,
+  atomic). Never printed nor logged. Then one LIVE request per source through the gateway's own paths (gateway.fetch for OpenAlex
+  and PubMed, CodeSearch/Provenance for GitHub and Software Heritage, the PISTE token + `search_judilibre` / `search_legifrance`;
+  a free GET for a contradictor key: `check_url`, else `<url>/models`), one plain line per source: `OK`, `key refused`,
+  `identifiers accepted but the application is not subscribed to this API (piste.gouv.fr > Applications > tick <API>)`,
+  `not installed`. Exit 0 ok, 1 check failed or not installed, 2 usage. Declared keys with no wired engine: written, no live check.
+- `tools/config.json` contradictor providers: `keys_url` (where to get the key) and `check_url` (OpenRouter `/api/v1/key`).
+- Fix (`tools/gateway.py` KEY_REJECTED): NCBI answers a mistyped key with 400 "API key not wellformed" (measured 2026-10-28), not
+  only "API key invalid"; the old marker missed it (5 retries then PubMed failed). Both now drop the key for the run, `key_invalid`.
+- `check_keys.py` text, KEYS.md (new "Installing a key" section, table column) and README point to `setup_keys.py <NAME>` first,
+  the manual file method second. Tests: `tests/test_setup_keys.py` (7, offline, stubbed network and input, temp HOME).

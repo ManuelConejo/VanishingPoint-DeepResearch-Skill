@@ -77,19 +77,24 @@
      "usage": {
       "include": true
      }
-    }
+    },
+    "keys_url": "https://openrouter.ai/settings/keys",
+    "check_url": "https://openrouter.ai/api/v1/key"
    },
    "gemini": {
     "url": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-    "key": "GEMINI_API_KEY"
+    "key": "GEMINI_API_KEY",
+    "keys_url": "https://aistudio.google.com/apikey"
    },
    "openai-api": {
     "url": "https://api.openai.com/v1/chat/completions",
-    "key": "OPENAI_API_KEY"
+    "key": "OPENAI_API_KEY",
+    "keys_url": "https://platform.openai.com/api-keys"
    },
    "mistral": {
     "url": "https://api.mistral.ai/v1/chat/completions",
-    "key": "MISTRAL_API_KEY"
+    "key": "MISTRAL_API_KEY",
+    "keys_url": "https://console.mistral.ai/api-keys"
    },
    "ollama": {
     "url": "http://localhost:11434/v1/chat/completions",
@@ -109,7 +114,7 @@
    "claude": "",
    "openai": ""
   },
-  "note": "Optional contradictor after the report (tools/contradictor.py). families: empty = option absent; set it here, or VP_CONTRADICTORS, or ~/.config/vp/contradictors. A family is <via>[:<model>]: openai[:<model>] = the Codex CLI (openai host profile), claude[:<model>] = claude -p (claude host profile), <provider>:<model> = an OpenAI-compatible chat-completions API named in providers (url, key = name of the key variable resolved as in KEYS.md or null for no key, extra = fields merged into the request body); add your own provider here or in VP_CONTRADICTOR_PROVIDERS (JSON). No model name is fixed in the code or here: the model id is given in the family (required for an API; for a CLI, empty = the CLI's own default model, so the choice follows the vendor); the models measured on 2026-10-27 are recorded in CHANGELOG.md and plugins/code.md. request = body fields of the measure (temperature 0, 8,000 output tokens). y_cap_chars = the cut of Y used in the measure. max_usd = ceiling on the match call and the rereads (host model) per run, checked before each call with reread_usd_per_call as the estimate; a CLI on a subscription (openai profile) reports 0, so the ceiling only bites on metered hosts; reread_model per host profile: empty = the host CLI's default model (--model / VP_MODEL override it)."
+  "note": "Optional contradictor after the report (tools/contradictor.py). families: empty = option absent; set it here, or VP_CONTRADICTORS, or ~/.config/vp/contradictors. A family is <via>[:<model>]: openai[:<model>] = the Codex CLI (openai host profile), claude[:<model>] = claude -p (claude host profile), <provider>:<model> = an OpenAI-compatible chat-completions API named in providers (url, key = name of the key variable resolved as in KEYS.md or null for no key, extra = fields merged into the request body, keys_url = where to obtain the key, check_url = a free GET that answers 401/403 to a wrong key, default <url without /chat/completions>/models; both read by tools/setup_keys.py only); add your own provider here or in VP_CONTRADICTOR_PROVIDERS (JSON). No model name is fixed in the code or here: the model id is given in the family (required for an API; for a CLI, empty = the CLI's own default model, so the choice follows the vendor); the models measured on 2026-10-27 are recorded in CHANGELOG.md and plugins/code.md. request = body fields of the measure (temperature 0, 8,000 output tokens). y_cap_chars = the cut of Y used in the measure. max_usd = ceiling on the match call and the rereads (host model) per run, checked before each call with reread_usd_per_call as the estimate; a CLI on a subscription (openai profile) reports 0, so the ceiling only bites on metered hosts; reread_model per host profile: empty = the host CLI's default model (--model / VP_MODEL override it)."
  },
  "cs_engines": {
   "pmlr_volumes": 6,

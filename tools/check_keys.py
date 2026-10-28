@@ -214,7 +214,7 @@ def text(rep):
         out.append('  not wired      : ' + (', '.join(r['not_wired']) or 'none'))
         out.append('  keys present   : ' + (', '.join(r['keys_present']) or 'none') + '; absent: ' + (', '.join(r['keys_absent']) or 'none'))
         if r.get('unknown_keys'): out.append('  keys outside the catalogue (KEYS.md to complete): ' + ', '.join(r['unknown_keys']))
-    out.append('Missing keys: ' + (', '.join(rep['missing_keys']) or 'none') + '. How to obtain and install them: KEYS.md.')
+    out.append('Missing keys: ' + (', '.join(rep['missing_keys']) or 'none') + '. How to obtain and install them: python3 -I tools/setup_keys.py <NAME> (lists, installs and checks live; KEYS.md).')
     out.append(contradictors_line())
     out.append(mode_line())
     return '\n'.join(out)
