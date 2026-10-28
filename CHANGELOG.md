@@ -253,3 +253,32 @@ Packaging feature, tested offline, not measured.
 - `read biorxiv:<DOI>` / `read medrxiv:<DOI>`; `read doi:<preprint DOI>` now routed there (the Europe PMC core record carried the latest version, possibly after T); `citing` / `references` of a preprint gated on v1 < T. `validate_card.py` and `verifier.py` accept `biorxiv` / `medrxiv` keys.
 - Rate 1 req/s on api.biorxiv.org, stop on 403/429; a failing host stops the call (typed `provider_error`, never an empty result).
 - Tests: `tests/test_engines_rxiv.py` (6, offline). Live "SARS-CoV-2 spike antibody": bioRxiv 20/20 at T 2026-10-26 (4,027 announced), 20/20 at T 2020-06-01 (296), medRxiv 20/20 at T 2020-06-01 (148); 0 date on/after T; reads at T 2020-03-25 (v2 of 3 served, Nature link hidden) and T 2020-03-20 (refused, v1 on 2020-03-22).
+
+## v0.4.3, 2026-10-28 - fixes from the end-to-end runs
+
+Code only (no change to SKILL.md nor to the role and prompt files); found by the two end-to-end runs of 2026-10-28 (law, cs-ai).
+
+- `tools/verifier.py check` no longer crashes (`KeyError: 'verdicts'`): it reads the `claims` written by `verify` (status, card key) and the
+  older `verdicts` files; `tools/verifier/citation_check.py` reads both too. Unreadable file: message, exit 2.
+- `tools/verifier.py verify --T`: every gateway reading is saved under `sources/<key>/` (`record.json` + `source.txt`, the text the verifier
+  received), for every id kind, not only law ids; default folder `--sources`, else `--work/sources`, else `sources/` next to `--out`.
+  A saved reading is read back as "record + abstract", never as a full text. The fragment check of section 7 is possible again.
+- `tools/validate_result.py`: accepts every id kind the gateway serves (celex, ecli, ja, hal, thesesfr, nct, dblp, econbiz, osv, openreview,
+  zenodo, biorxiv, medrxiv, pmcid) and code ids `<path>@<SHA>`; the law run had dropped its CELEX, ECLI and thesis sources.
+- `tools/law_checks.py`:
+  - `in_force_at_date` no longer holds a repealed text against a claim about its end (repeal, expiry, "ceased", "replaced by", end of
+    validity) or a claim dated within its validity; a claim relying on the text as current law stays DISTORTED (run case "validity ending
+    on 2018-05-24" + controls, 6 new mutants).
+  - Missing records are read through the gateway automatically when T is known (`--T` or `state/journal.jsonl`), under the date barrier;
+    `--fetch` forces, `--no-fetch` stays offline; the output reports `fetch` (mode, missing, fetched, refused) and `summary.fetched`.
+  - A `sources/<key>/source.txt` that is not a gateway record (invalid JSON, plain text) is skipped with its reason (`note`), never a crash.
+  - `scope.md` labels (`Question date:`, `Legal order:`) are also read after a sentence on the same line.
+  - Real law run, offline as delivered: 12/12 needs_confirmation, 0 checked; now: 9 records fetched, 12 checked, 0 changed (the false
+    DISTORTED of the 95/46 claim gone), 1 flagged (doctrine only).
+- `tools/gateway.py`:
+  - `read celex:` of a judgment longer than 20,000 characters: start + marked elision + operative part ("On those grounds, the Court ...
+    hereby rules" / "Par ces motifs"); `text_source` says `start + operative part`; a long act is cut with a mark. Live: C-131/12, C-136/17.
+  - `search-justice-administrative`: no relevance order exists (probe: no score); the receipt says "sorted by date, most recent first" and
+    to search a decision by number or exact phrase; new `--court <CE|TA75|CAA69>` and `--from/--to YYYY-MM-DD` (window kept before T),
+    journaled as `filters` (live: "déréférencement" 492 decisions, 21 with `--court CE`). `plugins/law.md`: factual lines for both.
+- Tests: test_verifier, test_validate_result, test_law_checks, test_gateway extended; 15 offline files green.

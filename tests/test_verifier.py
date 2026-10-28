@@ -115,6 +115,36 @@ class Test(unittest.TestCase):
         self.assertEqual({k: v['origin'] for k, v in s.items()}, {'S1': 'abstract', 'S2': 'fulltext', 'S3': 'missing'})
         self.assertEqual(s['S1']['text'], 'T\n\ndated abstract'); self.assertEqual(s['S3']['note'], 'after T or forbidden')
 
+    def test_gateway_readings_saved_for_every_identifier_and_checkable(self):
+        """--T: each reading through the gateway is saved under sources/<key>/ (record.json + source.txt), law or not; read back as
+        "record + abstract" (never as a full text); `check` accepts the verify output (`claims`) and the older `verdicts` files."""
+        import subprocess
+        class Fake:
+            def read(self, ident): return {'results': {'title': 'T ' + ident, 'abstract': 'The method reaches 71.2 % accuracy on the X set.'}}
+        d = pathlib.Path(self.tmp.name) / 'sources'
+        card = {'card_id': 'c', 'claims': [{'id': 'A1', 'text': 'x', 'source': {'key': 'S1'}}, {'id': 'A2', 'text': 'y', 'source': {'key': 'S2'}},
+                                           {'id': 'A3', 'text': 'z', 'source': {'key': 'S3'}}],
+                'sources': {'S1': {'doi': '10.1/a'}, 'S2': {'arxiv': '2401.00001'}, 'S3': {'celex': '62012CJ0131'}}}
+        s = V.load_sources(card, gateway=Fake(), out_dir=d)
+        for k, ident in (('S1', 'doi:10.1/a'), ('S2', 'arxiv:2401.00001'), ('S3', 'celex:62012CJ0131')):
+            self.assertEqual(json.loads((d / k / 'record.json').read_text())['results']['title'], 'T ' + ident)
+            self.assertEqual((d / k / 'source.txt').read_text(), s[k]['text'])
+        again = V.load_sources(card, sources_dir=d)                                        # rerun: same text, same origin, no gateway
+        self.assertEqual({k: (v['origin'], v['note']) for k, v in again.items()}, {k: ('abstract', '(record + abstract)') for k in ('S1', 'S2', 'S3')})
+        frag = ['reaches 71.2 % accuracy on the X set']
+        res = {'claims': [{'id': 'A1', 'source': 'S1', 'status': 'FOUND', 'fragments': frag}, {'id': 'A2', 'source': 'S2', 'status': 'DISTORTED', 'fragments': ['a fragment that is nowhere']},
+                          {'id': 'A3', 'source': 'S3', 'status': 'UNVERIFIED', 'fragments': []}]}
+        self.assertEqual(sorted(V.check(V.check_entries(res), V.load_texts(str(d)))), ['A2'])
+        old = {'verdicts': [{'id': 'A1', 'source': 'S1', 'verdict': 'FOUND', 'fragments': frag}]}
+        tool = [sys.executable, '-I', str(TOOLS / 'verifier.py'), 'check']
+        for doc, code in ((res, 1), (old, 0), ({'x': 1}, 2)):
+            f = pathlib.Path(self.tmp.name) / 'v.json'; f.write_text(json.dumps(doc))
+            r = subprocess.run(tool + [str(f), str(d)], capture_output=True, text=True)
+            self.assertEqual(r.returncode, code, (doc, r.stdout, r.stderr)); self.assertNotIn('Traceback', r.stderr)
+        f.write_text(json.dumps(res))                                                      # same reading of both formats by citation_check.py
+        r = subprocess.run([sys.executable, '-I', str(TOOLS / 'verifier' / 'citation_check.py'), str(f), str(d)], capture_output=True, text=True)
+        self.assertEqual((r.returncode, list(json.loads(r.stdout))), (1, ['A2']), r.stderr)
+
     def test_model_call_claude_profile(self):
         rec = pathlib.Path(self.tmp.name) / 'record.json'; os.environ['VP_FAKE_RECORD'] = str(rec)
         os.environ['VP_MODEL_COMMAND_CLAUDE'] = json.dumps(self.fake('fake-claude.py', FAKE_CLAUDE) + ['-p', '--model', '{model}', '--output-format', 'json', '--no-session-persistence'])

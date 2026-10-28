@@ -3,16 +3,21 @@
 """Mechanical legal checks after the level-1 verification (plugins/law.md, section "Verification rules"). No model, standard library,
 offline by default. They only tighten: the final status of a claim is the strictest of the verifier's status and of the rules.
 Usage: law_checks.py DIR [--as-of YYYY-MM-DD] [--order EU|COE|FR|FR-ADM|FR-JUD|...] [--comparative] [--today YYYY-MM-DD] [--out FILE]
-                         [--fetch [--plugin plugins/law.md] [--T YYYY-MM-DD] [--state DIR] [--run NAME]]
+                         [--fetch | --no-fetch] [--plugin plugins/law.md] [--T YYYY-MM-DD] [--state DIR] [--run NAME]
+Records missing: read through the gateway (date barrier T) automatically when T is known (--T or state/journal.jsonl); --fetch forces it,
+--no-fetch keeps the run offline. The output says how many records were fetched (`fetch`).
 Input: DIR/card.json (claims[].source.key, optional source.keys = further anchors; card.sources[key] = {celex|ecli|ja|hal|thesesfr|id, ...}),
 DIR/verdicts.json, the saved records: DIR/sources/<key>/record.json (gateway `read` answer, written by verifier.py or by --fetch), else
-DIR/sources/<key>/source.txt when it holds the gateway JSON (injected mode), else the fields copied into card.sources[key] (origin "card").
+DIR/sources/<key>/source.txt when it holds the gateway JSON (injected mode; any other source.txt is skipped, reason in `note`), else the
+fields copied into card.sources[key] (origin "card").
 Question date: claim `as_of` > card `as_of`/`question_date` > scope.md line `as of|question date|date of the question: YYYY-MM-DD` > --as-of
 > T of state/journal.jsonl (origin stated). Legal order: claim `order` > card `order`/`jurisdiction` > scope.md line `order|legal order:` > --order.
 Rules (result supported | needs_confirmation | unsupported, with the observable trigger; missing data -> needs_confirmation, never a pass):
   resolves (law.fabricated_citation; rule 7)   official_text (law.non_binding; rule 6)   in_force_at_date, version_pinned (law.not_in_force; 1-2)
   jurisdiction_match (law.wrong_jurisdiction; 3)   not_overturned (law.overruled; 4)   source_tier (law.doctrine_for_primary; 5)
   coverage (negative claims, law.misgrounded; 8)   bounded_total (false totals, null literals, law.misgrounded; 9)
+  A text no longer in force on the question date is not held against a claim about its end (repeal, expiry, "ceased", "replaced by",
+  end of validity) or a claim explicitly dated within its validity (`as_of` of the claim, or every date of its text not after the end).
 Mapping of an `unsupported` rule to a level-1 status (MAP): resolves, jurisdiction_match -> ABSENT; official_text -> SOURCE-UNAVAILABLE;
 the others -> DISTORTED (the trigger is the discrepancy that says what to write). needs_confirmation -> status kept, claim listed in to_flag.
 Output: DIR/law_checks.json; never edits REPORT.md, card.json nor verdicts.json (the orchestrator applies it, SKILL.md section 7).
@@ -43,6 +48,14 @@ UNRESOLVED = re.compile(r'^\s*(not found|malformed|expected form|not an administ
 NEGATIVE = re.compile(r"\b(no|none|never|aucune?|jamais)\b[^.]{0,40}\b(decisions?|rulings?|judgments?|judgements?|cases?|arr[eê]ts?|d[eé]cisions?)\b", re.I)
 COMPLETE = re.compile(r'\b(all|every|complete|exhaustive|in total|a total of|the total|toutes?|tous|exhaustif|au total)\b', re.I)
 AT_LEAST = re.compile(r'\b(at least|au moins|bounded|capped|or more)\b', re.I)
+END_CLAIM = re.compile(r"\b(repeal\w*|abrogat\w*|abrog[eé]\w*|ceased?|ceases|ceasing|expir\w*|lapsed?|superseded|replaced\s+by|remplac[eé]\w*\s+par|"
+                       r"no\s+longer\s+(in\s+force|valid|applies|applicable)|(end|ending|ended)\s+of\s+(its\s+)?validity|validity\s+(end\w*|ceas\w*|expir\w*)|"
+                       r"fin\s+de\s+(sa\s+)?validit[eé]|(in\s+force|valid|applicable|applied)\s+until|until\s+(its\s+)?(repeal|replacement)|"
+                       r"(en\s+vigueur|applicable)\s+jusqu|n'est\s+plus\s+en\s+vigueur)\b", re.I)
+SINCE = re.compile(r"\b(since|from|as\s+from|with\s+effect\s+from|depuis|[aà]\s+compter\s+du)\s*$", re.I)
+MONTHS = {m: i + 1 for i, ms in enumerate(zip('january february march april may june july august september october november december'.split(),
+          'janvier février mars avril mai juin juillet août septembre octobre novembre décembre'.split())) for m in ms}
+DATES = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b|\b(\d{1,2})(?:er)?\s+(%s)\s+(\d{4})\b|\b(?:(%s)\s+)?(?<![/:])((?:1[89]|20)\d{2})\b(?![/:])" % ('|'.join(MONTHS), '|'.join(MONTHS)), re.I)
 NOT_OFFICIAL = re.compile(r'(_RES|_INF)\b|(?:^|[:\s])6\d{4}CC|press[ _-]?release|communiqu[eé]|/cp\d{4,}|\bcp\d{6}', re.I)
 
 
@@ -87,13 +100,17 @@ def parse_record(text):
 def load_anchor(d, key, desc, ident):
     """-> anchor dict: key, ident, rec (fields), origin record|source|card|none, refusal, error."""
     from_fs = re.sub(r'[^\w.-]+', '_', str(key)).strip('.') or 'source'          # same as verifier.fs_key
+    notes = []
     for name, origin in (('record.json', 'record'), ('source.txt', 'source')):
         f = pathlib.Path(d) / 'sources' / from_fs / name
         if f.is_file():
-            rec, ref, err = parse_record(f.read_text(encoding='utf-8', errors='replace'))
-            if rec or ref or err: return {'key': key, 'ident': ident, 'rec': {**desc, **rec} if rec else dict(desc), 'origin': origin if rec else 'none', 'refusal': ref, 'error': err}
+            try: rec, ref, err = parse_record(f.read_text(encoding='utf-8', errors='replace'))
+            except OSError as e: rec = ref = err = None; notes.append(f'sources/{from_fs}/{name} skipped: unreadable ({type(e).__name__})')
+            else:
+                if rec or ref or err: return {'key': key, 'ident': ident, 'rec': {**desc, **rec} if rec else dict(desc), 'origin': origin if rec else 'none', 'refusal': ref, 'error': err}
+                notes.append(f'sources/{from_fs}/{name} skipped: not a gateway record (invalid JSON or plain text)')
     fields = {k for k in desc if k not in ('title', 'id', 'url')}
-    return {'key': key, 'ident': ident, 'rec': dict(desc), 'origin': 'card' if fields - set(LAW_PREFIX) else 'none', 'refusal': None, 'error': None}
+    return {'key': key, 'ident': ident, 'rec': dict(desc), 'origin': 'card' if fields - set(LAW_PREFIX) else 'none', 'refusal': None, 'error': None, **({'note': '; '.join(notes)} if notes else {})}
 
 
 def kind_of(a):
@@ -138,6 +155,31 @@ def r_official(a, ctx):
     return None
 
 
+def claim_dates(text):
+    """Dates the claim places itself at (latest day each mention can mean: a bare year = 31 December), except those after "since/from":
+    they open a period that may run to the question date."""
+    out = []
+    for m in DATES.finditer(text or ''):
+        if SINCE.search(text[:m.start()]): continue
+        try:
+            if m[1]: out.append(dt.date(int(m[1]), int(m[2]), int(m[3])))
+            elif m[5]: out.append(dt.date(int(m[6]), MONTHS[m[5].lower()], int(m[4])))
+            elif m[7]: mo = MONTHS[m[7].lower()]; out.append(dt.date(int(m[8]) + mo // 12, mo % 12 + 1, 1) - dt.timedelta(days=1))
+            else: out.append(dt.date(int(m[8]), 12, 31))
+        except ValueError: continue
+    return out
+
+
+def historical(text, last):
+    """Why a claim does not rely on the text as applicable at the question date (None: it does): it states the end of the text, or
+    every date it places itself at is within the validity (no later than its last day)."""
+    m = END_CLAIM.search(text or '')
+    if m: return f'the claim states the end of the text ("{m.group(0)}")'
+    ds = claim_dates(text)
+    if ds and max(ds) <= last: return f'the claim is dated {max(ds)}, within the validity'
+    return None
+
+
 def flag_contradicts(r, start, end, today):
     f = str(val(r, 'in_force') if val(r, 'in_force') is not None else '').strip().lower()
     if f not in ('0', '1', 'true', 'false'): return None
@@ -178,6 +220,8 @@ def r_in_force(a, ctx):
             if masked and ctx.get('T') and (as_of < ctx['T'] or inc and as_of == ctx['T']): continue   # gateway: an end on/after T is masked
             return out('in_force_at_date', 'needs_confirmation', f'{f} missing: end of validity unknown', a)
         if e.year < OPEN_END_YEAR and (as_of > e if inc else as_of >= e):
+            if (why := historical(ctx.get('claim_text'), e if inc else e - dt.timedelta(days=1))) is not None:
+                return out('in_force_at_date', 'supported', f"historical claim: {why}; text in force until {e if inc else e - dt.timedelta(days=1)}", a)
             return out('in_force_at_date', 'unsupported', f"no longer in force on {as_of} (end {e}, {'inclusive' if inc else 'exclusive'})", a)
     if 'applies_from' in r or masked:
         ap = day(val(r, 'applies_from'))
@@ -282,7 +326,7 @@ def r_bounded(claim, anchors):
 
 def check_claim(claim, anchors, ctx):
     """All applicable rules for one claim -> list of outcomes (each: rule, anchor, result, trigger, bias)."""
-    o = []
+    o = []; ctx = dict(ctx, claim_text=str(claim.get('text') or ''))
     for a in anchors:
         for f in PER_ANCHOR:
             x = f(a, ctx)
@@ -311,7 +355,7 @@ def read_json(p):
 def scope_value(d, names):
     f = pathlib.Path(d) / 'scope.md'
     if not f.is_file(): return None
-    m = re.search(r'^[\s*#>-]*(?:%s)\s*[:=]\s*`?([A-Za-z0-9-]+)' % '|'.join(names), f.read_text(encoding='utf-8', errors='replace'), re.I | re.M)
+    m = re.search(r'(?:^[\s*#>-]*|[.;]\s+)(?:%s)\s*[:=]\s*`?([A-Za-z0-9-]+)' % '|'.join(names), f.read_text(encoding='utf-8', errors='replace'), re.I | re.M)   # line start or after a sentence (run of 2026-10-28)
     return m.group(1) if m else None
 
 
@@ -331,18 +375,32 @@ def context(d, card, as_of=None, order=None, comparative=False, today=None, T=No
             'comparative': bool(comparative or card.get('comparative')), 'today': day(today) or dt.datetime.now(dt.timezone.utc).date(), 'T': day(jt)}
 
 
-def fetch_records(d, anchors, plugins, T, state, run):
-    """--fetch: read through the gateway (date barrier T) the anchors without a saved record; the answer is saved as record.json."""
-    sys.path.insert(0, str(HERE)); from gateway import Gateway
-    g = Gateway(plugins, T=T, run=run, state=state)
-    for a in anchors:
-        if a['ident'] and a['origin'] in ('card', 'none') and not a['refusal'] and well_formed(a['ident']):
-            rep = g.read(a['ident'])
-            f = pathlib.Path(d) / 'sources' / (re.sub(r'[^\w.-]+', '_', str(a['key'])).strip('.') or 'source') / 'record.json'
-            f.parent.mkdir(parents=True, exist_ok=True); f.write_text(json.dumps(rep, ensure_ascii=False, indent=1), encoding='utf-8')
+def to_fetch(anchors):
+    """Anchors without a saved record that the gateway can read (one per identifier)."""
+    return list({a['ident']: a for a in anchors if a['ident'] and a['origin'] in ('card', 'none') and not a['refusal'] and not a['error'] and well_formed(a['ident'])}.values())
 
 
-def check_run(d, as_of=None, order=None, comparative=False, today=None, fetch=False, plugins=(), T=None, state=None, run='law-checks'):
+def fetch_records(d, anchors, plugins, T, state, run, gateway=None):
+    """Read through the gateway (date barrier T) the anchors without a saved record; each answer is saved as record.json.
+    -> {'fetched': n records, 'refused': [ident: reason]}. gateway: an object with read(ident) (tests), else tools/gateway.py."""
+    if gateway is None:
+        sys.path.insert(0, str(HERE)); from gateway import Gateway
+        gateway = Gateway(plugins, T=T, run=run, state=state)
+    n, bad = 0, []
+    for a in to_fetch(anchors):
+        rep = gateway.read(a['ident']) or {}
+        r = rep.get('results') if isinstance(rep.get('results'), dict) else {}
+        why = rep.get('refusal') or rep.get('error') or r.get('refusal') or r.get('error')
+        if why: bad.append(f"{a['ident']}: {str(why)[:120]}")
+        else: n += 1
+        f = pathlib.Path(d) / 'sources' / (re.sub(r'[^\w.-]+', '_', str(a['key'])).strip('.') or 'source') / 'record.json'
+        f.parent.mkdir(parents=True, exist_ok=True); f.write_text(json.dumps(rep, ensure_ascii=False, indent=1), encoding='utf-8')
+        if str(why or '').startswith('CAP reached'): break
+    return {'fetched': n, 'refused': bad}
+
+
+def check_run(d, as_of=None, order=None, comparative=False, today=None, fetch=None, plugins=(), T=None, state=None, run='law-checks', gateway=None):
+    """fetch: None = automatic (records missing and T known), True = forced, False = offline."""
     d = pathlib.Path(d); card = read_json(d / 'card.json')
     if not isinstance(card, dict): raise ValueError('card.json missing or unreadable')
     ver = read_json(d / 'verdicts.json') or {}
@@ -353,9 +411,12 @@ def check_run(d, as_of=None, order=None, comparative=False, today=None, fetch=Fa
     def anchors_of(c):
         s = c.get('source') or {}; keys = [s.get('key')] + list(s.get('keys') or [])
         return [load_anchor(d, k, table.get(k) or {}, ident_of(k, table.get(k) or {})) for k in dict.fromkeys(k for k in keys if k)]
-    if fetch:
-        fetch_records(d, [a for c in card.get('claims') or [] for a in anchors_of(c)], plugins or [HERE.parent / 'plugins' / 'law.md'],
-                      T or (ctx0['T'] and ctx0['T'].isoformat()), state or d / 'state', run)
+    missing = to_fetch([a for c in card.get('claims') or [] for a in anchors_of(c)])
+    gT = T or (ctx0['T'] and ctx0['T'].isoformat())
+    mode = 'off' if fetch is False else 'forced' if fetch else 'auto' if missing and gT else 'not needed' if not missing else 'off (T unknown: --T or state/journal.jsonl)'
+    fx = {'mode': mode, 'missing': len(missing), 'fetched': 0, 'refused': []}
+    if missing and mode in ('forced', 'auto'):
+        fx.update(fetch_records(d, missing, plugins or [HERE.parent / 'plugins' / 'law.md'], gT, state or d / 'state', run, gateway))
     claims, skipped = [], []
     for c in card.get('claims') or []:
         an = anchors_of(c)
@@ -370,18 +431,18 @@ def check_run(d, as_of=None, order=None, comparative=False, today=None, fetch=Fa
         final = mapped if mapped and STATUS_RANK[mapped] > STATUS_RANK.get(st, -1) else st
         nc = [x for x in o if x['result'] == 'needs_confirmation']
         claims.append({'id': c.get('id'), 'as_of': ctx['as_of'] and ctx['as_of'].isoformat(), 'order': ctx['order'],
-                       'anchors': [{'key': a['key'], 'ident': a['ident'], 'record_origin': a['origin']} for a in an], 'rules': o,
+                       'anchors': [{'key': a['key'], 'ident': a['ident'], 'record_origin': a['origin'], **({'note': a['note']} if a.get('note') else {})} for a in an], 'rules': o,
                        'catalogue': sorted({x['bias'] for x in o if x['result'] != 'supported'}),
                        'law_result': min((x['result'] for x in o), key=RANK.get, default='supported'),
                        'verifier_status': st, 'final_status': final, 'changed': final != st,
                        'discrepancy': f"law_checks {worst['rule']}: {worst['trigger']}" if final != st and worst else '', 'flagged': bool(nc),
                        'to_confirm': [f"{x['rule']}: {x['trigger']}" for x in nc]})
     return {'tool': 'tools/law_checks.py', 'card_id': card.get('card_id'), 'as_of': ctx0['as_of'] and ctx0['as_of'].isoformat(), 'as_of_origin': ctx0['as_of_origin'],
-            'order': ctx0['order'], 'order_origin': ctx0['order_origin'], 'comparative': ctx0['comparative'], 'today': ctx0['today'].isoformat(),
+            'order': ctx0['order'], 'order_origin': ctx0['order_origin'], 'comparative': ctx0['comparative'], 'today': ctx0['today'].isoformat(), 'fetch': fx,
             'mapping': {'unsupported': {r: MAP.get(r, 'DISTORTED') for r in BIAS}, 'needs_confirmation': 'status kept, claim flagged (to_flag)',
                         'final': 'strictest of verifier status and mapped status (FOUND < UNVERIFIED = SOURCE-UNAVAILABLE < DISTORTED < ABSENT = INVALID)'},
             'claims': claims, 'not_law': skipped, 'to_apply': [c['id'] for c in claims if c['changed']], 'to_flag': [c['id'] for c in claims if c['flagged']],
-            'summary': {'claims': len(claims), 'changed': sum(c['changed'] for c in claims), 'flagged': sum(c['flagged'] for c in claims), 'final': {s: sum(c['final_status'] == s for c in claims) for s in STATUS_RANK},
+            'summary': {'claims': len(claims), 'fetched': fx['fetched'], 'changed': sum(c['changed'] for c in claims), 'flagged': sum(c['flagged'] for c in claims), 'final': {s: sum(c['final_status'] == s for c in claims) for s in STATUS_RANK},
                         'catalogue': sorted({b for c in claims for b in c['catalogue']})}}
 
 
@@ -389,7 +450,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('dir'); ap.add_argument('--as-of'); ap.add_argument('--order'); ap.add_argument('--comparative', action='store_true')
     ap.add_argument('--today', help='dates the sources\' own in-force flags (default: current UTC date)'); ap.add_argument('--out')
-    ap.add_argument('--fetch', action='store_true', help='re-read through the gateway the records missing from sources/ (date barrier T)')
+    fg = ap.add_mutually_exclusive_group()
+    fg.add_argument('--fetch', action='store_true', default=None, help='re-read through the gateway the records missing from sources/ (date barrier T); default: automatic when T is known')
+    fg.add_argument('--no-fetch', dest='fetch', action='store_false', help='offline: never call the gateway'); ap.set_defaults(fetch=None)
     ap.add_argument('--plugin', action='append', default=[]); ap.add_argument('--T'); ap.add_argument('--state'); ap.add_argument('--run', default='law-checks')
     a = ap.parse_args()
     for x in (a.as_of, a.today, a.T):

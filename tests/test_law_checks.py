@@ -54,6 +54,19 @@ def case_95_46_inclusive_end(M):
     eq(M.law_status(o)[0], 'DISTORTED', 'not in force maps to DISTORTED')
 
 
+def case_claim_about_the_end(M):   # run of 2026-10-28: A2 on 95/46 set DISTORTED while it states the end of validity
+    d = [leg('31995L0046', **DIR_95_46)]
+    for t in ('The record of Directive 95/46/EC shows its validity ending on 2018-05-24.', 'Directive 95/46 ceased to be valid on 2018-05-24.',
+              'Directive 95/46 was repealed by the GDPR with effect from 25 May 2018.', 'In 2014, under Directive 95/46, the Court ordered the delisting.',
+              'Le 13 mai 2014, la directive 95/46 était applicable.'):
+        r, o = res(M, d, '2026-10-28', {'id': 'A2', 'text': t})
+        eq(r, 'supported', t); eq('historical claim' in rule(o, 'in_force_at_date')[0]['trigger'], True, t)
+    for t in ('Directive 95/46 requires search engines to delist personal data.', 'Directive 95/46 has applied since 1995.',
+              'In 2026, Directive 95/46 governs delisting.', 'Directive 2006/24/EC and Directive 95/46/EC require it.', 'In May 2018 directive 95/46 applied.'):
+        r, o = res(M, d, '2026-10-28', {'id': 'A9', 'text': t})                        # controls: the text used as current law
+        eq((r, M.law_status(o)[0]), ('unsupported', 'DISTORTED'), t)
+
+
 def case_gdpr_applies_from(M):
     eq(res(M, [leg('32016R0679', **GDPR)], '2018-03-01')[0], 'needs_confirmation', 'in force, not yet applicable')
     eq(res(M, [leg('32016R0679', **GDPR)], '2018-06-01')[0], 'supported', 'applicable')
@@ -229,11 +242,46 @@ def case_context_origins(M):
     with tempfile.TemporaryDirectory() as t:
         d = make_run(t, [{'id': 'A1', 'text': 'x', 'source': {'key': 'S1'}, 'location': 'r'}], {'S1': {'celex': '32016R0679'}}, [('A1', 'FOUND', '')])
         eq(M.check_run(d)['as_of_origin'], 'unknown', 'nothing given')
+        eq(M.check_run(d)['fetch']['mode'], 'off (T unknown: --T or state/journal.jsonl)', 'no T: no gateway')
         eq(M.check_run(d, as_of='2018-06-01', order='eu')[('as_of_origin')], '--as-of', 'flag')
         (d / 'state').mkdir(); (d / 'state' / 'journal.jsonl').write_text(json.dumps({'T': '2019-06-01', 'call': 'read'}) + '\n')
-        eq((M.check_run(d)['as_of'], M.check_run(d)['as_of_origin']), ('2019-06-01', 'T (journal or --T)'), 'journal T')
+        eq((M.check_run(d, fetch=False)['as_of'], M.check_run(d, fetch=False)['as_of_origin']), ('2019-06-01', 'T (journal or --T)'), 'journal T')
+        (d / 'scope.md').write_text('# Scope\nT = 2026-10-28. Question date: 2026-10-28. Legal order: EU (with FR-ADM for Conseil d\'Etat). Plugin: law.\n')   # run of 2026-10-28
+        eq((M.check_run(d, fetch=False)['as_of_origin'], M.check_run(d, fetch=False)['order']), ('scope.md', 'EU'), 'scope.md labels inside a line')
         (d / 'card.json').write_text(json.dumps({'card_id': 'c', 'question': 'q', 'as_of': '2017-01-01', 'order': 'FR', 'sources': {}, 'claims': []}))
         eq((M.check_run(d, as_of='2018-06-01')['as_of'], M.check_run(d)['order']), ('2017-01-01', 'FR'), 'card first')
+
+
+class FakeGateway:
+    """read(ident) -> the saved Cellar records of this file; counts the calls."""
+    def __init__(self, recs): self.recs, self.calls = recs, []
+    def read(self, ident): self.calls.append(ident); return {'call': len(self.calls), 'results': self.recs[ident]} if ident in self.recs else {'call': 1, 'results': {'refusal': 'not found'}}
+
+
+def case_auto_fetch_and_bad_source_txt(M):   # run of 2026-10-28: no record.json, source.txt in invalid JSON -> 12/12 needs_confirmation
+    recs = {'celex:31995L0046': dict(id='celex:31995L0046', celex='31995L0046', type='text', tier='primary', order='EU', declared_void_by=[], **DIR_95_46),
+            'celex:32016R0679': dict(id='celex:32016R0679', celex='32016R0679', type='text', tier='primary', order='EU', declared_void_by=[], **GDPR)}
+    claims = [{'id': 'A1', 'text': 'The GDPR applies from 2018-05-25.', 'source': {'key': 'S1'}, 'location': 'record'},
+              {'id': 'A2', 'text': 'The record of Directive 95/46/EC shows its validity ending on 2018-05-24.', 'source': {'key': 'S2'}, 'location': 'record'},
+              {'id': 'A3', 'text': 'Directive 95/46 requires delisting.', 'source': {'key': 'S2'}, 'location': 'record'}]
+    for fetch, mode in ((False, 'off'), (None, 'auto')):
+        with tempfile.TemporaryDirectory() as t:
+            d = make_run(t, claims, {'S1': {'celex': '32016R0679'}, 'S2': {'celex': '31995L0046'}}, [('A1', 'FOUND', ''), ('A2', 'FOUND', ''), ('A3', 'FOUND', '')],
+                         scope='Question date: 2026-10-28\nLegal order: EU\n')
+            (d / 'sources' / 'S1').mkdir(); (d / 'sources' / 'S1' / 'source.txt').write_text('"id": "celex:32016R0679", "title": "GDPR"}')   # brace missing
+            (d / 'state').mkdir(); (d / 'state' / 'journal.jsonl').write_text(json.dumps({'T': '2026-10-28', 'call': 'read'}) + '\n')
+            g = FakeGateway(recs); r = M.check_run(d, today='2026-10-28', fetch=fetch, gateway=g); c = {x['id']: x for x in r['claims']}
+            eq((r['fetch']['mode'], r['fetch']['missing'], r['fetch']['fetched'], r['summary']['fetched']), (mode, 2, 0 if fetch is False else 2, 0 if fetch is False else 2), mode)
+            if fetch is False:
+                eq((g.calls, c['A1']['anchors'][0]['record_origin']), ([], 'none'), 'offline')
+                eq('skipped' in c['A1']['anchors'][0].get('note', ''), True, 'invalid source.txt skipped with a reason')
+                eq(c['A3']['final_status'], 'FOUND', 'nothing checked offline')
+            else:
+                eq(sorted(g.calls), ['celex:31995L0046', 'celex:32016R0679'], 'one read per identifier')
+                eq([c[i]['anchors'][0]['record_origin'] for i in ('A1', 'A2', 'A3')], ['record'] * 3, 'records saved and read back')
+                eq((c['A1']['final_status'], c['A2']['final_status'], c['A3']['final_status']), ('FOUND', 'FOUND', 'DISTORTED'), 'A2 about the end kept, A3 as current law')
+                eq(M.check_run(d, today='2026-10-28', gateway=g)['fetch']['mode'], 'not needed', 'second pass: records on disk')
+                eq(len(g.calls), 2, 'no second reading')
 
 
 CASES = [v for k, v in sorted(globals().items()) if k.startswith('case_')]
@@ -287,6 +335,16 @@ MUTANTS = [
     ('later_set_aside_counted', "(later if ctx['as_of'] and dated.get(x) and dated[x] > ctx['as_of'] else by)", '(by)'),
     ('masked_on_T_exclusive_open', "(as_of < ctx['T'] or inc and as_of == ctx['T'])", "(as_of <= ctx['T'])"),
     ('card_over_record', "'rec': {**desc, **rec} if rec", "'rec': {**rec, **desc} if rec"),
+    # claims about the end of a text (run of 2026-10-28), automatic fetch
+    ('end_words_ignored', "    m = END_CLAIM.search(text or '')", '    m = None'),
+    ('historical_everything', "    if ds and max(ds) <= last:", '    if True:'),
+    ('claim_date_after_end_passes', "    if ds and max(ds) <= last:", '    if ds:'),
+    ('since_dates_counted', "        if SINCE.search(text[:m.start()]): continue", '        pass'),
+    ('directive_number_as_year', "(?<![/:])((?:1[89]|20)\\d{2})\\b(?![/:])", '((?:1[89]|20)\\d{2})\\b'),
+    ('historical_rule_off', "            if (why := historical(ctx.get('claim_text'),", "            if (why := None) is not None and (historical(ctx.get('claim_text'),"),
+    ('auto_fetch_off', "else 'auto' if missing and gT else", "else 'off' if missing and gT else"),
+    ('scope_label_line_start_only', "(?:^[\\s*#>-]*|[.;]\\s+)(?:%s)", "(?:^[\\s*#>-]*)(?:%s)"),
+    ('offline_fetches', "mode = 'off' if fetch is False else", "mode = 'auto' if fetch is False else"),
 ]
 
 
