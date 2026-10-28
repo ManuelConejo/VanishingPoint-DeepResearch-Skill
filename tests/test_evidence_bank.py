@@ -5,7 +5,7 @@ A fixture run covers: a quote found in the verifier's source text with different
 answer that names its source (valid), an invented quote (EB4 not served), a quote of one source filed under another (EB5 misattributed),
 a too short quote (EB3), an unknown source (EB2), a duplicate or malformed id (EB1), a source never journalled (W1 warning); the tie of
 the report: supported, partial with the missing figure, outside its section, no evidence, unmapped [n]; the measure; --section; the
-approximate bank built from the verifier's fragments; exit codes; and injection: a served quote carrying HTML, a code fence and
+approximate bank built from the verifier's fragments, never written over an existing bank; a quote taken from another record of a cached result list that names the source (EB5 misattributed); exit codes; and injection: a served quote carrying HTML, a code fence and
 instructions stays data (inert in EVIDENCE.md, escaped in EVIDENCE.html), and nothing of the run is modified."""
 import contextlib, hashlib, io, json, pathlib, shutil, subprocess, sys, tempfile, unittest
 P = pathlib.Path(__file__).resolve().parent
@@ -145,6 +145,7 @@ class T(unittest.TestCase):
         after = {f.name: hashlib.sha256(f.read_bytes()).hexdigest() for f in self.d.iterdir() if f.is_file() and f.name in before}
         self.assertEqual(before, after)                                                     # the run's files are never modified
         h = (self.d / 'EVIDENCE.html').read_text(encoding='utf-8')
+        self.assertIn("default-src 'none'", h)                                             # same CSP as REPORT.html
         self.assertNotIn('<script>', h); self.assertIn('&lt;script&gt;', h); self.assertNotIn('<b>x</b>', h); self.assertNotIn('href=', h)
         md = (self.d / 'EVIDENCE.md').read_text(encoding='utf-8')
         self.assertNotIn('\n# Heading', md); self.assertNotIn('<b>x</b>', md)
@@ -160,6 +161,45 @@ class T(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()): rc = EB.main([str(self.d), '--from-verdicts'])
         self.assertEqual(rc, 0); self.assertTrue((self.d / 'EVIDENCE.md').is_file())
         self.assertEqual(json.loads((self.d / 'evidence_check.json').read_text())['summary']['valid'], 1)
+
+    def test_from_verdicts_never_overwrites(self):
+        before = (self.d / 'evidence.json').read_bytes()                  # the user's bank
+        err = io.StringIO()
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err): rc = EB.main([str(self.d), '--from-verdicts'])
+        self.assertEqual(rc, 2); self.assertIn('refused', err.getvalue()); self.assertIn('--out', err.getvalue())
+        self.assertEqual((self.d / 'evidence.json').read_bytes(), before)
+        out = pathlib.Path(self.tmp) / 'approx'
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            rc = EB.main([str(self.d), '--from-verdicts', '--out', str(out)])
+        self.assertEqual(rc, 0); self.assertEqual((self.d / 'evidence.json').read_bytes(), before)
+        self.assertIn('APPROXIMATION', json.loads((out / 'evidence.json').read_text())['origin'])
+        self.assertEqual(json.loads((out / 'evidence_check.json').read_text())['summary']['valid'], 1)
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(EB.main([str(self.d), '--from-verdicts', '--out', str(out)]), 2)     # nor over a previous approximation
+            self.assertEqual(EB.main([str(self.d), '--from-verdicts', '--bank', str(self.d / 'evidence.json')]), 2)
+        self.assertEqual((self.d / 'evidence.json').read_bytes(), before)
+
+    def test_attribution_only_from_the_source_own_record(self):
+        # a search answer listing S2 and another record: S2's identifier is named, but the other record's text is not S2's (C17)
+        lst = {'resultList': {'result': [
+            {'pmid': '22788547', 'title': 'CT angiography in brain death', 'abstractText': 'Venous phase only.'},
+            {'pmid': '33333333', 'title': 'Unrelated', 'abstractText': 'Cerebral perfusion scintigraphy confirmed the absence of uptake in all cases.'}]}}
+        (self.d / 'state' / 'cache' / ('ef' * 32)).write_text(json.dumps(lst), encoding='utf-8')
+        xml = ('<feed><entry><id>pmid 22788547</id><summary>Venous phase only.</summary></entry>'
+               '<entry><id>pmid 44444444</id><summary>Transcranial doppler showed reverberating flow in every patient.</summary></entry></feed>')
+        (self.d / 'state' / 'cache' / ('0a' * 32)).write_text(xml, encoding='utf-8')
+        page = 'not json nor xml <p>22788547 and 19406767: electroencephalography was isoelectric in the whole cohort.</p>'
+        (self.d / 'state' / 'cache' / ('0b' * 32)).write_text(page, encoding='utf-8')
+        (self.d / 'evidence.json').write_text(json.dumps({'evidence': [
+            {'id': 'E1', 'source': 'S2', 'quote': 'Cerebral perfusion scintigraphy confirmed the absence of uptake'},
+            {'id': 'E2', 'source': 'S2', 'quote': 'Transcranial doppler showed reverberating flow'},
+            {'id': 'E3', 'source': 'S2', 'quote': 'electroencephalography was isoelectric in the whole cohort'},
+            {'id': 'E4', 'source': 'S2', 'quote': 'intracranial circulatory arrest on venous phase imaging'}]}), encoding='utf-8')
+        it = {i['id']: i for i in EB.build(self.d)['items']}
+        for k in ('E1', 'E2', 'E3'):
+            self.assertEqual((it[k]['status'], it[k]['served']), ('invalid', 'other'), k)
+            self.assertTrue(any('misattributed' in p for p in it[k]['problems']), k)
+        self.assertEqual((it['E4']['status'], it['E4']['served']), ('valid', 'own'))      # the record of pmid 22788547 itself
 
     def test_exit_and_cli(self):
         (self.d / 'evidence.json').unlink()

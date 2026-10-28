@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-"""Dated gateway of VanishingPoint (non-leak measured on our benches: 19/19 cases).
+"""Dated gateway of VanishingPoint (non-leak: 20/20 forbidden reviews unfindable offline and online, CHANGELOG v0.2.1; tests/test_gateway.py).
 The only document access of the engine. Refuses every document dated >= T (publication AND indexing when available),
 the forbidden DOIs and titles, and the engines that no plugin declared.
 
@@ -12,7 +12,7 @@ Command line:
   Call pools: the searches count in `counter-<run>.txt` (cap: --cap, else the plugins' `cap:`, else config call_cap.default); tools/verifier.py
   opens the pool `verifier` (`counter-<run>.verifier.txt`, cap: config verifier.call_cap), so verification never competes with the searches.
   commands: sources | search-<engine> "<query>" | read <id> | citing <id> | references <id> | related <id> (OpenAlex related works, same barrier)
-  wired engines: pubmed, europepmc, crossref, openalex, arxiv   (id: pmid:NNN | doi:10.x | arxiv:2501.01234)
+  general engines: pubmed, europepmc, crossref, openalex, arxiv   (id: pmid:NNN | doi:10.x | arxiv:2501.01234)
   law engines (plugins/law.md): eurlex, justice-administrative [--court CE|TA75|CAA69] [--from YYYY-MM-DD] [--to YYYY-MM-DD], hal, theses-fr,
   hudoc, europarl, isidore (id: hudoc:<itemid> | europarl:<document id> | isidore:<Isidore URI> | ecli:ECLI:CE:ECHR:...)
     (id: celex:32016R0679 | ecli:ECLI:EU:... | ecli:ECLI:FR:... | ja:<court>/<file> | hal:hal-0123 | thesesfr:<nnt>)
@@ -21,12 +21,12 @@ Command line:
   extra keyless engines: clinicaltrials (biology), dblp (cs-ai), econbiz (finance)   (id: nct:NCT01234567 | dblp:conf/acl/Xiong0LZ24 | econbiz:10011386660);
     code engine osv: vulns <pypi|npm|cargo|go|maven|rubygems|nuget|packagist>:<package>@<version> ; read osv:<id>
   preprint engines (plugins/biology.md): biorxiv, medrxiv (Europe PMC words, versions dated on api.biorxiv.org; id doi:<preprint DOI>; read biorxiv:<DOI> | medrxiv:<DOI>)
-  CS engines (plugins/cs-ai.md, v0.4.6): hf-models, hf-datasets (read hfmodel:<owner/name> | hfdataset:<owner/name>: card at the last commit before T),
+  CS engines (plugins/cs-ai.md): hf-models, hf-datasets (read hfmodel:<owner/name> | hfdataset:<owner/name>: card at the last commit before T),
     standards (rfc:<n> | pep:<n> | w3c:<shortname>), proceedings (acl:<Anthology id> | pmlr:v<vol>/<key> | cvf:content/<CONF>/html/<name>_paper)
   PISTE engines (plugins/law.md, credentials PISTE_CLIENT_ID + PISTE_CLIENT_SECRET, else skipped with 0 request): judilibre [--court cc|ca|tj|tcom]
     [--chamber civ1|soc|cr...] [--from] [--to], legifrance [--fund code|loda|jorf] (read judilibre:<id> | legi:LEGIARTI.../LEGITEXT... | jorf:JORFTEXT...)
   AI engines (plugins/cs-ai.md): openreview, zenodo, hal-info (id: openreview:<forum id> | zenodo:<record id>); code engine usage <pypi|npm|cargo|...>:<package> (ecosyste.ms)
-  finance data engines (plugins/finance.md, v0.4.9): dbnomics (keyless; current values marked as_of "now"; read dbnomics:<provider>/<dataset>/<series>),
+  finance data engines (plugins/finance.md): dbnomics (keyless; current values marked as_of "now"; read dbnomics:<provider>/<dataset>/<series>),
     fred (FRED_API_KEY, else skipped with 0 request; ALFRED vintage of the eve of T; read fred:<series id>); observations kept only when their period ends before T
   A key the provider rejects (NCBI 400 "API key invalid" or "not wellformed", OpenAlex 401/403, Software Heritage 401/403; FRED 400 about api_key: no key-less FRED, skipped) is dropped for the rest of the run
   (<state>/keys-invalid.json, names only), the call is retried once without it, and every answer carries key_invalid: [NAME].

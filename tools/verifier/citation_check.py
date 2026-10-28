@@ -54,6 +54,7 @@ def load_texts(folder):
 
 
 if __name__ == "__main__":
+    if len(sys.argv) != 3 or sys.argv[1] in ("-h", "--help"): print(__doc__); sys.exit(0 if sys.argv[1:2] in (["-h"], ["--help"]) else 2)
     d = json.load(open(sys.argv[1]))
     v = d["verdicts"] if "verdicts" in d else [dict(x, verdict={"INVALID": "DISTORTED", "UNVERIFIED": "SOURCE-UNAVAILABLE"}.get(x.get("status"), x.get("status")),
                                                      source=re.sub(r"[^\w.-]+", "_", str(x.get("source") or "")).strip(".") or "source")

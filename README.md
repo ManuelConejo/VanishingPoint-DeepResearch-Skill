@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.5.4, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.5.5, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -26,10 +26,11 @@ Status: v0.5.4, research preview. Measured on small private benches (3 to 50 cas
   0 USD metered on a Codex subscription.
 - **See a real run**: [`examples/report-cs-ai/`](examples/report-cs-ai/) (question, report, verdicts, cited passages,
   with its limits).
+- **Use it**: [USAGE.md](USAGE.md) (how to ask, reading the result, plugins, optional modes, keys, costs, troubleshooting).
 
 ## Installation
 
-Requirements: Python >= 3.11 (standard library only at run time, no `pip install`; `pytest` only for one test file), `git` (code plugin), and one agent host:
+Requirements: Python >= 3.11 (standard library only, no `pip install`; `pytest` is optional), `git` (code plugin), and one agent host:
 Claude Code CLI or Codex CLI. Network access for the gateway (arXiv, OpenAlex, Crossref, Europe PMC, PubMed, Sourcegraph,
 deps.dev, Hugging Face Papers, Software Heritage); every API key is optional (KEYS.md).
 
@@ -103,11 +104,11 @@ every command below uses it.
    with receipts), `REPORT.md` (the report), `card.json` and `result.json` (machine annex), `verdicts.json` and
    `sources/<key>/source.txt` (verification), `run.json` (header derived from the gateway journal), `state/` (gateway journal,
    receipts without URL nor key). The code plugin adds `capsule.md` (input) and `mechanisms.json` (output).
-5. Check before using the report: `python3 -I "$SKILL/tools/validate_card.py" <dir> --header` (13 numbered mechanical checks, the 13th: end steps run by `finish_run.py` below; empty output
-   = valid). A report that keeps ABSENT or INVALID claims unhandled is not delivered as valid.
+5. Check before using the report: `python3 -I "$SKILL/tools/validate_card.py" <dir> --header` (13 numbered mechanical checks, the 13th: end steps run by `finish_run.py` below; `OK`
+   = valid; without `state/journal.jsonl` the header is left as it is). A report that keeps ABSENT or INVALID claims unhandled is not delivered as valid.
 6. Export: `python3 -I "$SKILL/tools/export_report.py" <dir> [--pdf] [--open]` writes `REPORT.html` (one self-contained page, prints to PDF from any browser) and, with `--pdf`, `REPORT.pdf` through WeasyPrint, Chromium, wkhtmltopdf or pandoc when one is installed (nothing is installed, no network). Then `python3 -I "$SKILL/tools/export_data.py" <dir>` writes `studies.csv` (one row per study, criteria and verification counts) and `references.bib` / `.ris` / `.json` (CSL-JSON) for reference managers.
 
-All end steps in one command (SKILL.md section 8; `validate_card.py` run alone refuses a run whose end steps did not run on the current files, check 13, receipt `state/finish_run.json`): `python3 -I "$SKILL/tools/finish_run.py" <dir> [--T YYYY-MM-DD] [--plugin plugins/law.md] [--offline] [--rw-csv FILE]` runs `validate_card.py --header`, `validate_result.py`, the mechanical retraction check of the plugins (Crossref `updated-by` / `update-to`, Retraction Watch entries; `retractions.json`, `unknown` never turned into clean), `law_checks.py` for a law run, `export_report.py --pdf --open` and `export_data.py`; each step reports ok / problems / skipped and never stops the others; exit 0 only when validation passed; the produced paths are printed.
+All end steps in one command (SKILL.md section 8; `validate_card.py` run alone refuses a run whose end steps did not run on the current files, check 13, receipt `state/finish_run.json`): `python3 -I "$SKILL/tools/finish_run.py" <dir> [--T YYYY-MM-DD] [--plugin plugins/law.md] [--offline] [--rw-csv FILE] [--json] [--prisma] [--followups] [--prior-art]` runs `validate_card.py --header`, `validate_result.py`, the mechanical retraction check of the plugins (Crossref `updated-by` / `update-to`, Retraction Watch entries; `retractions.json`, `unknown` never turned into clean), `law_checks.py` for a law run, `export_report.py --pdf --open` and `export_data.py`; each step reports ok / problems / skipped and never stops the others; exit 0 only when validation passed; the produced paths are printed.
 
 Update of a previous run (living review): ask "update my review of <dir>"; the skill reruns the question at today's T in a new directory, then `python3 -I "$SKILL/tools/living_diff.py" <old dir> <new dir>` writes `UPDATE.md` and `update.json` (what changed since the old T); neither report is edited by the tool.
 
@@ -135,6 +136,8 @@ python3 -I "$SKILL/tools/gateway.py" --T 2026-10-26 --run try --state /tmp/vp-st
 | standard (default) | nothing | the whole method; verification of what carries a decision, one pass | about 2-3 USD per academic question; about 7 USD per code study with the whole reading |
 | audit | `VP_MODE=audit`, or `~/.config/vp/mode` containing `audit`, or "audit mode" in the question | exhaustive card (every atomic claim), verification by batches at fresh context, corrections re-verified once | 6 to 7 times the standard mode (measured: -6.7 points of false claims) |
 | contradictor (code plugin) | `VP_CONTRADICTORS` or `~/.config/vp/contradictors` = one or more of `openai[:<model>]` (Codex CLI), `claude[:<model>]` (`claude -p`), `<provider>:<model>` (any OpenAI-compatible API of `tools/config.json`: `openrouter`, `gemini`, `openai-api`, `mistral`, `ollama`, or yours); no model name is fixed in the skill | after the report, a model of another family tries to prove it wrong; what survives a mechanical check and a fresh-context reread is annotated or added by the orchestrator; the tool never edits the report | 0 USD for the Codex CLI on a subscription, about 0.26 USD per call through an API, + about 0.6 USD of rereads per report (measured on 6 code cases with three models of 2026-10-27; other models, providers and `claude` as contradictor not measured) |
+| prior art | ask "prior art?", "has this already been done?" | the idea is cut into essential elements; `PRIOR-ART.md` answers Exists / Partially / Not found, decided by code from the verified claims (no `REPORT.md`) | same engine and verifier; answer rule not measured |
+| PRISMA / follow-ups | ask for a PRISMA flow diagram or follow-up questions | `PRISMA.md` / `.svg` and `FOLLOWUPS.md`, derived by code from the run (`finish_run.py --prisma --followups`), appended to `REPORT.html` | no model or gateway call |
 
 `tools/check_keys.py` prints the active mode at the start of a run; the report's Methodology Appendix states it. The law
 plugin recommends audit mode for binding conclusions; it never switches it on by itself.
@@ -188,7 +191,7 @@ Measured (private benches, small n, judged by models of other families and by th
 - recall equal to the reference deep-research method it rewrites (10 questions); about 2x its cost;
 - whole reading before verdicts on code: exclusive verified findings in 5 of 6 code cases;
 - contradictor option: 6 code cases, three models of 2026-10-27;
-- every tool: an offline test suite (`tests/`, about 250 tests, standard library, about one minute).
+- every tool: an offline test suite (`tests/`, about 320 tests, standard library only, about one minute).
 
 Not measured or not verified:
 - no public benchmark: the figures above cannot be reproduced from this repository yet;
@@ -205,7 +208,7 @@ The gateway reads, in the Sources section, a fenced block:
 
 ````
 ```sources
-engines: openalex, crossref, arxiv     # wired engines: pubmed, europepmc, crossref, openalex, arxiv, clinicaltrials, biorxiv, medrxiv, dblp, econbiz, dbnomics, fred (FRED_API_KEY) ; law: eurlex, justice-administrative, hal, theses-fr, judilibre, legifrance (PISTE pair) ; ai: openreview, zenodo, hal-info, hf-models, hf-datasets, standards, proceedings ; code, versions, paper-code, provenance, osv, ecosyste.ms
+engines: openalex, crossref, arxiv     # wired engines: pubmed, europepmc, crossref, openalex, arxiv, clinicaltrials, biorxiv, medrxiv, dblp, econbiz, dbnomics, fred (FRED_API_KEY) ; law: eurlex, justice-administrative, hal, theses-fr, hudoc, europarl, isidore, judilibre, legifrance (PISTE pair) ; ai: openreview, zenodo, hal-info, hf-models, hf-datasets, standards, proceedings ; code, versions, paper-code, provenance, osv, ecosyste.ms
 since: 2015                            # optional lower bound (year)
 cap: 60                                # optional safety cap on calls
 keys: OPENALEX_KEY                     # optional keys, resolved as in KEYS.md, never required
@@ -228,7 +231,7 @@ can live in `~/.config/vp/sources/` (loaded with `VP_USER_SOURCES=1`). Rules, ba
 ## Tests
 
 ```
-for t in tests/test_*.py; do python3 -I "$t"; done        # unittest, offline (test_code_capsule.py needs pytest: python3 -m pytest -q tests/test_code_capsule.py)
+for t in tests/test_*.py; do python3 -I "$t"; done        # unittest, offline (test_code_capsule.py also runs under pytest)
 python3 -I tests/test_gateway.py --online                 # optional, network: forbidden reviews must stay unfindable
 ```
 
@@ -240,10 +243,13 @@ no `pytest`; without it, skip `test_code_capsule.py` or install it (`python3 -m 
 
 ```
 SKILL.md            the engine (one file, read by the host)        plugins/     cs-ai, code, finance, biology, law, _TEMPLATE
-tools/gateway.py    date-bounded documentary access (sources: tools/sources/, one file each)   tools/verifier.py (+ verifier/ROLE.md, citation_check.py, fetch_fulltext.py)
+tools/gateway.py    date-bounded documentary access (sources: tools/sources/, one file each)   tools/verifier.py (+ verifier/ROLE.md, citation_check.py, fetch_fulltext.py, windows.py)
 tools/check_keys.py keys and mode (setup_keys.py: install + live check) tools/validate_card.py, validate_result.py   mechanical checks
 tools/finish_run.py all end steps in one command (checks, retractions, law checks, exports; SKILL.md section 8)
-tools/code_capsule.py, condense_repo.py, whole_reading.py, contradictor.py   code plugin tools (capsule, Y condensation, whole reading, contradictor)
+tools/export_report.py, export_data.py, passages.py, living_diff.py, law_checks.py   exports, cited passages, living review, legal rules
+tools/code_capsule.py, code_sources.py (library), condense_repo.py, whole_reading.py, contradictor.py   code plugin tools (capsule, Y condensation, whole reading, contradictor)
+tools/prior_art.py, prisma.py, followups.py   optional sections of SKILL.md (prior art, PRISMA flow diagram, follow-up questions)
+tools/evidence_bank.py, contradictions.py     optional command-line tools, not used by SKILL.md (quote-first writing, contradiction hunt)
 tools/config.json   caps, models, host command profiles             tests/  examples/  KEYS.md  ACCESS-POLICY.md  CONTRIBUTING.md  CHANGELOG.md  LICENSE  NOTICE
 ```
 

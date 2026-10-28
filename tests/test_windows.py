@@ -143,6 +143,7 @@ class Test(unittest.TestCase):
         self.assertTrue(W.select(LONG[:limit], CARD['claims'], PRM)['whole'])
         self.assertFalse(W.select(LONG[:limit + 1], CARD['claims'], PRM)['whole'])
         with self.assertRaises(ValueError): W.params({'mode': 'half'})
+        self.assertEqual(W.params(None)['mode'], 'whole')                    # same default as tools/config.json verifier.windows.mode
         self.assertEqual(W.select('', CARD['claims'], PRM)['chars_sent'], 0)
         self.assertEqual(W.candidates(10, 1000), [0])
 

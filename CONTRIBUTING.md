@@ -118,7 +118,7 @@ Add `tests/test_engines_<name>.py` with a stubbed `gateway.fetch` (see `test_eng
 Run the suite as a normal user (not root), offline, from the skill directory:
 
 ```
-for t in tests/test_*.py; do python3 -I "$t"; done        # test_code_capsule.py needs pytest: python3 -m pytest -q tests/test_code_capsule.py
+for t in tests/test_*.py; do python3 -I "$t"; done        # unittest, offline (test_code_capsule.py also runs under pytest)
 ```
 
 Tests must not create anything inside the skill directory. Use `tempfile` and set `gateway.STATE` (or pass `state=` to `Gateway`).

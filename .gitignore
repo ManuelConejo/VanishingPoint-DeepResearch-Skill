@@ -4,9 +4,11 @@ __pycache__/
 .pytest_cache/
 # Run artefacts (one working directory per question; never commit a run)
 state/
+!tests/fixtures/*/state/
 runs/
 *.jsonl
 !tests/fixtures/*.jsonl
+!tests/fixtures/*/state/*.jsonl
 # Secrets: keys live in ~/.config/vp/ or the environment, never in the repository
 *.key
 .config/

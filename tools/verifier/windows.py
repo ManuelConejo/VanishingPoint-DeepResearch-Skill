@@ -22,7 +22,7 @@ Import: select(text, claims, params) -> {'spans': [(start, end)], 'whole': bool,
         render(text, spans) -> the text written to the verifier's working copy of source.txt (windows separated by marker lines)."""
 import hashlib, math, re, unicodedata
 
-DEFAULTS = {'mode': 'windows', 'window_chars': 1000, 'windows_per_claim': 6, 'head_chars': 1500, 'number_weight': 2,
+DEFAULTS = {'mode': 'whole', 'window_chars': 1000, 'windows_per_claim': 6, 'head_chars': 1500, 'number_weight': 2,
             'escalate_statuses': ['ABSENT', 'SOURCE-UNAVAILABLE'], 'escalation_max_chars': None}   # None: the caller's max_chars_per_call
 WORD = re.compile(r'\d+(?:[.,]\d+)*|[^\W\d_]+', re.U)
 NUM = re.compile(r'^\d+(?:[.,]\d+)*$')

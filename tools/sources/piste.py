@@ -14,7 +14,7 @@ import urllib.error, urllib.parse, urllib.request
 from sources._common import Barrier, ProviderError, STATE, UA, _before, head_tail, interval, key, law_ok, plain, window
 
 
-# ---------------------------------------------------------------- PISTE engines (v0.4.7, plugins/law.md sections 5-6): judilibre, legifrance
+# ---------------------------------------------------------------- PISTE engines (plugins/law.md sections 5-6): judilibre, legifrance
 # Not yet verified on the live service (no credentials at release). OAuth 2.0 client credentials (PISTE_CLIENT_ID + PISTE_CLIENT_SECRET, key()):
 # the pair goes only to oauth.piste.gouv.fr (form body, never a URL), the bearer only to api.piste.gouv.fr; HTTPS only, no redirect followed,
 # receipts in <state>/requests.jsonl without URL, body nor token; the token is cached in <state>/piste-token.json (0600) with its expiry.

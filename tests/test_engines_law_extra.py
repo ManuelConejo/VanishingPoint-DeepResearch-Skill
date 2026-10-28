@@ -169,10 +169,24 @@ class Europarl(Base):
         q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.urls[0]).query)
         self.assertEqual((q['sitting-date'], q['sitting-date-end'], q['text'], q['format']), (['1952-09-10'], ['2018-12-31'], ['data protection Japan'], ['application/ld+json']))
         x = out[0]
-        self.assertEqual((x['date'], x['reference'], x['tier'], x['order'], x['procedure'], x['adopts']), ('2018-12-13', 'P8_TA(2018)0529', 'grey', 'EU', ['2018-2979'], ['B-8-2018-0561']))
+        self.assertEqual((x['date'], x['reference'], x['tier'], x['order'], x['adopts']), ('2018-12-13', 'P8_TA(2018)0529', 'grey', 'EU', ['B-8-2018-0561']))
         self.assertEqual(x['files_before_T'], [])                         # every file of TA-8-2018-0529 was issued in 2019
         self.assertFalse([k for k in x if k.startswith('inverse')]); self.assertNotIn('SP-2019-355', json.dumps(x))   # forward links never served
         self.assertIn('provider announces 212', note)
+
+    def test_no_inverse_link_ever_served(self):
+        # every value carried by an inverse_* relation (procedure, answers, later realisations) is absent from search and read items
+        w = ep_works()[0]
+        inv = [str(v).rsplit('/', 1)[-1] for k, vs in w.items() if k.startswith('inverse_') for v in (vs if isinstance(vs, list) else [vs])]
+        self.assertTrue(inv)                                                    # the fixture carries inverse_* links
+        self.stub(self.answer(ep_works())); B = gw.Barrier('2020-01-01')
+        out, _ = gw.search_europarl('data protection', 10, B)
+        served = [o for o in out if o['id'] == 'europarl:TA-8-2018-0529'] + [gw.read('europarl:TA-8-2018-0529', B)]
+        self.assertEqual(len(served), 2)
+        for x in served:
+            self.assertNotIn('procedure', x)
+            dump = json.dumps({k: v for k, v in x.items() if k not in ('abstract', 'text_source')})
+            for v in inv: self.assertNotIn(v, dump, v)
 
     def test_read_text_only_from_files_issued_before_T(self):
         self.stub(self.answer(ep_works())); B = gw.Barrier(T_E)

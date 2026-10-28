@@ -18,8 +18,12 @@ Checks on the bank (code only):
       from the gateway: DIR/sources/<KEY>/source.txt, DIR/state/fulltext/*/source.txt, or an answer of the gateway cache
       DIR/state/cache/* (JSON string values, or the text, each also with HTML/XML entities decoded and tags removed; binary answers and
       answers over evidence_bank.cache_max_bytes are not read). A quote found nowhere is `not_served`;
-  EB5 quote attributed: found in a text of its own source (its source.txt, a full-text copy named by its identifier, or a cache answer
-      that names one of its identifiers). A quote served only under another source is `misattributed`;
+  EB5 quote attributed: found in a text of the source itself: its sources/<KEY>/source.txt, its state/fulltext/<identifier>/source.txt,
+      or, in a gateway cache answer, the record of that identifier only: a JSON object (or XML element) one of whose own short fields
+      (at most evidence_bank.record_id_max_chars characters) names the identifier, with everything under it; an answer that is neither
+      JSON nor XML counts only when it names this identifier and no other identifier of the run (card and journal). A list of results
+      that merely cites the identifier never lends another record's text to it. A quote served only under another source is
+      `misattributed`;
   W1 (warning only): no identifier of the source appears in DIR/state/journal.jsonl.
 Tie to the report: each sentence of REPORT.md that carries a [n] (outside evidence_bank.skip_sections) goes [n] -> card key
 (tools/passages.refs_of) -> valid items of that source allowed in the sentence's section; every such item sharing a content term or a
@@ -37,8 +41,10 @@ Usage:
   evidence_bank.py DIR [--bank FILE] [--out DIR] [--json] [--html]   check the bank, tie the report, write EVIDENCE.md and
                                                                        evidence_check.json (and EVIDENCE.html with --html)
   evidence_bank.py DIR --section "Finding 2" [--bank FILE]            print the valid items that section may use (inert Markdown)
-  evidence_bank.py DIR --from-verdicts [--bank FILE]                  write an APPROXIMATE bank from the verifier's fragments (FOUND and
-                                                                       DISTORTED), origin "verifier-fragments", then check it
+  evidence_bank.py DIR --from-verdicts [--bank FILE] [--out DIR]      write an APPROXIMATE bank from the verifier's fragments (FOUND and
+                                                                       DISTORTED), origin "verifier-fragments", then check it; written to
+                                                                       --bank, else --out/evidence.json, else DIR/evidence.json, and never
+                                                                       over an existing file (refused, exit 2)
 Exit: 0 bank valid; 1 invalid items (listed); 2 not a directory, or no bank.
 Import: served_texts(dir), check_bank(dir, bank), report_units(md), tie_report(dir, checked), build(dir, bank=None) -> dict,
 markdown(doc), html_page(doc), terms(text), numbers(text)."""
@@ -58,7 +64,8 @@ def _config():
     return {'stopwords': {w.casefold() for w in (t.get('stopwords') or [])}, 'min_term_chars': int(t.get('min_term_chars', 3)),
             'max_quote_chars': int(e.get('max_quote_chars', 1200)), 'min_shared_terms': int(e.get('min_shared_terms', 2)),
             'ignore_years': bool(e.get('ignore_years', True)), 'skip_sections': list(e.get('skip_sections') or ['Bibliography', 'Methodology Appendix']),
-            'cache_max_bytes': int(e.get('cache_max_bytes', 20000000)), 'shown_chars': int(e.get('shown_chars', 400))}
+            'cache_max_bytes': int(e.get('cache_max_bytes', 20000000)), 'shown_chars': int(e.get('shown_chars', 400)),
+            'record_id_max_chars': int(e.get('record_id_max_chars', 300))}
 
 
 CFG = _config()
@@ -115,15 +122,52 @@ def _strings(o, out):
     return out
 
 
+def _text_views(base):
+    """Normalised views of a text: as is, and entity-decoded and tag-stripped."""
+    return [v for v in {norm(base), norm(TAG.sub(' ', html.unescape(base)))} if v]
+
+
 def _views(raw):
     """Normalised texts of one gateway answer (bytes): JSON string values, or the text; each also entity-decoded and tag-stripped."""
     if raw[:5] == b'%PDF-' or b'\x00' in raw[:2048]: return []
     t = raw.decode('utf-8', errors='replace')
     try: base = '\n'.join(_strings(json.loads(t), []))
     except ValueError: base = t
-    out = {norm(base)}
-    out.add(norm(TAG.sub(' ', html.unescape(base))))
-    return [v for v in out if v]
+    return _text_views(base)
+
+
+def _id_field(v):
+    return isinstance(v, (str, int, float)) and not isinstance(v, bool) and 0 < len(str(v)) <= CFG['record_id_max_chars']
+
+
+def _json_records(o, out):
+    """Records of a JSON answer: every object with its own short scalar fields (where an identifier is named) and its strings (lazy)."""
+    if isinstance(o, dict):
+        own = [str(v) for v in o.values() if _id_field(v)]
+        if own: out.append({'names': html.unescape(' '.join(own)).casefold(), 'text': (lambda o=o: '\n'.join(_strings(o, [])))})
+        for v in o.values(): _json_records(v, out)
+    elif isinstance(o, list):
+        for v in o: _json_records(v, out)
+    return out
+
+
+def _xml_records(t):
+    """Records of an XML answer: every element with its own short leaf texts and attributes, and all the text under it; None: not XML."""
+    import xml.etree.ElementTree as ET
+    try: root = ET.fromstring(t)
+    except (ET.ParseError, ValueError): return None
+    out = []
+    for el in root.iter():
+        own = [c.text.strip() for c in el if len(c) == 0 and c.text and _id_field(c.text.strip())] + [v for v in el.attrib.values() if _id_field(v)]
+        if own: out.append({'names': html.unescape(' '.join(own)).casefold(), 'text': (lambda el=el: ' '.join(el.itertext()))})
+    return out
+
+
+def _records(raw):
+    """Per-identifier records of one cache answer; None when the answer is neither JSON nor XML (opaque: judged as a whole)."""
+    t = raw.decode('utf-8', errors='replace')
+    try: return _json_records(json.loads(t), [])
+    except ValueError: return _xml_records(t.encode('utf-8'))
 
 
 def served_texts(folder):
@@ -144,8 +188,35 @@ def served_texts(folder):
             except OSError: continue
             v = _views(raw)
             if v: out.append({'where': f'state/cache/{f.name[:16]}', 'kind': 'cache', 'name': f.name, 'texts': v,
-                              'raw_lower': html.unescape(raw.decode('utf-8', errors='replace')).casefold()})
+                              'raw_lower': html.unescape(raw.decode('utf-8', errors='replace')).casefold(), 'path': f})
     return out
+
+
+def run_ids(card, journal_path):
+    """Every identifier the run knows (card sources, `ids` of the journal lines), lower-cased."""
+    ids = set()
+    for desc in (card.get('sources') or {}).values() if isinstance(card.get('sources'), dict) else []: ids |= set(card_ids(desc))
+    try: lines = pathlib.Path(journal_path).read_text(encoding='utf-8', errors='replace').splitlines()
+    except OSError: lines = []
+    for ln in lines:
+        try: j = json.loads(ln)
+        except ValueError: continue
+        if isinstance(j, dict): ids |= {str(i).casefold() for i in j.get('ids') or [] if isinstance(i, (str, int))}
+    return ids
+
+
+def own_cache_hit(t, ids, nq, known):
+    """Is the normalised quote nq in the record of one of these identifiers inside this cache answer (EB5)?"""
+    if not any(_names(t['raw_lower'], i) for i in ids): return False
+    if 'records' not in t:                                 # parsed only for the answers that name the identifier, once per check
+        try: t['records'] = _records(pathlib.Path(t['path']).read_bytes()) if t.get('path') else None
+        except OSError: t['records'] = None
+    recs = t['records']
+    if recs is None:                                       # neither JSON nor XML: the whole answer, only if it names no other identifier
+        mine = {_id_value(i).casefold() for i in ids}
+        if any(_names(t['raw_lower'], o) for o in known if _id_value(o).casefold() not in mine): return False
+        return any(nq in v for v in t['texts'])
+    return any(nq in v for r in recs if any(_names(r['names'], i) for i in ids) for v in _text_views(r['text']()))
 
 
 def journal_text(folder):
@@ -190,6 +261,7 @@ def check_bank(folder, bank, texts=None):
     d = pathlib.Path(folder)
     card = _json(d / 'card.json'); card = card if isinstance(card, dict) else {}
     journal = journal_text(d)
+    known = run_ids(card, d / 'state' / 'journal.jsonl')
     texts = served_texts(d) if texts is None else texts
     problems, warnings, items, seen = [], [], [], set()
     if not isinstance(bank, dict) or not isinstance(bank.get('evidence'), list):
@@ -219,9 +291,9 @@ def check_bank(folder, bank, texts=None):
             elif key is not None or ids:
                 fs = {PS.fs_key(key)} if key else set()
                 fs |= {PS.fs_key(i) for i in ids}
-                own = [t for t in texts if (t['kind'] in ('source', 'fulltext') and t['name'] in fs) or
-                       (t['kind'] == 'cache' and any(_names(t['raw_lower'], i) for i in ids))]
-                hit = next((t for t in own if any(nq in v for v in t['texts'])), None)
+                own = [t for t in texts if (t['kind'] in ('source', 'fulltext') and t['name'] in fs and any(nq in v for v in t['texts'])) or
+                       (t['kind'] == 'cache' and own_cache_hit(t, ids, nq, known))]
+                hit = next(iter(own), None)
                 if hit: rec['served'] = 'own'; rec['where'] = hit['where']
                 else:
                     other = next((t for t in texts if t not in own and any(nq in v for v in t['texts'])), None)
@@ -447,7 +519,8 @@ CSS = ('body{margin:0 auto;max-width:48rem;padding:2rem 1rem;background:#fff;col
 
 def html_page(doc):
     e = lambda t: html.escape(str(t), quote=True)
-    s = doc['summary']; out = ['<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">',
+    s = doc['summary']; out = ['<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+           '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'">',
                                '<title>Evidence Bank Check</title><style>' + CSS + '</style></head><body><h1>Evidence Bank Check</h1>',
                                f"<p>Bank origin: {e(doc['bank']['origin'])}. Items: {s['items']} ({s['valid']} valid, {s['invalid']} invalid).</p>"]
     if doc['report']:
@@ -474,13 +547,20 @@ def main(argv=None):
     a = ap.parse_args(argv)
     d = pathlib.Path(a.dir)
     if not d.is_dir(): print(f'not a directory: {d}', file=sys.stderr); return 2
+    bank = a.bank
     if a.from_verdicts:
         b = from_verdicts(d)
         if b is None: print('no verdicts.json with claims', file=sys.stderr); return 2
-        bank_path(d, a.bank).write_text(json.dumps(b, ensure_ascii=False, indent=1), encoding='utf-8')
-        print(f"{bank_path(d, a.bank)}: {len(b['evidence'])} items (approximation from the verifier's fragments)")
-    doc = build(d, a.bank)
-    if doc is None: print(f'no evidence bank: {bank_path(d, a.bank)}', file=sys.stderr); return 2
+        target = pathlib.Path(a.bank) if a.bank else (pathlib.Path(a.out) if a.out else d) / 'evidence.json'
+        if target.exists():
+            print(f'refused: {target} exists and is never overwritten by --from-verdicts (an existing bank is the user\'s); '
+                  f'pass --out DIR or --bank FILE to a new path', file=sys.stderr); return 2
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json.dumps(b, ensure_ascii=False, indent=1), encoding='utf-8')
+        print(f"{target}: {len(b['evidence'])} items (approximation from the verifier's fragments)")
+        bank = str(target)
+    doc = build(d, bank)
+    if doc is None: print(f'no evidence bank: {bank_path(d, bank)}', file=sys.stderr); return 2
     if a.section:
         sys.stdout.write(markdown_items(section_items(doc, a.section), f'Evidence for section: {" ".join(a.section.split())}')); return 0
     out = pathlib.Path(a.out) if a.out else d; out.mkdir(parents=True, exist_ok=True)

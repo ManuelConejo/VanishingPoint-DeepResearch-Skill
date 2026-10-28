@@ -24,9 +24,9 @@ about a point the abstract does not cover is then ABSENT); otherwise SOURCE-UNAV
 <--sources, else --work/sources, else the directory of --out/sources>/<KEY>/: record.json (the gateway answer, read by law_checks.py)
 and source.txt (the text the verifier received, for the fragment check); a source.txt next to a record.json is read back as
 "record + abstract", not as a full text.
-Full text by default: with --T, the pinned full text (fetch_fulltext.py, last version before T) is fetched for the sources that carry the
-most claims, at most config verifier.fulltext_cap documents (one attempt each, a failure counts); config verifier.fulltext = false or
---no-fulltext switches it off. The outcome per source is written in the output (`sources_read`) and in <--state>/verifier.json.
+Full text (off by default: config verifier.fulltext = false; --fulltext switches it on): with --T, the pinned full text (fetch_fulltext.py, last version before T) is fetched for the sources that carry the
+most claims, at most config verifier.fulltext_cap documents (one attempt each, a failure counts); --no-fulltext forces
+it off. The outcome per source is written in the output (`sources_read`) and in <--state>/verifier.json.
 Gateway budget: the verifier's readings go to their own pool (`counter-<run>.verifier.txt`, cap config verifier.call_cap or --cap), never
 to the searches' cap. Model: --model, else VP_MODEL, else config verifier.model[host] ('' = the host CLI's default; no model name in the code).
 Claim windows (config verifier.windows, --windows): in `windows` mode the model receives, for a source longer than what one claim may
@@ -57,7 +57,7 @@ except (OSError, ValueError):
     CONFIG = {}
 CFG = CONFIG.get('verifier', {})
 MAX_CHARS = int(CFG.get('max_chars_per_call', 200000))  # above: split per source (threshold to be measured, not a reference value)
-FULLTEXT = bool(CFG.get('fulltext', False))            # full text by default when T is known (config verifier.fulltext)
+FULLTEXT = bool(CFG.get('fulltext', False))            # full text when T is known and config verifier.fulltext is true (default: false)
 FULLTEXT_CAP = CFG.get('fulltext_cap')                  # documents fetched in full text per verification (config verifier.fulltext_cap; None = no cap)
 TIMEOUT = int(CFG.get('timeout_s', 1200))
 WIN_CFG = CFG.get('windows') or {}                      # claim windows (config verifier.windows; mode whole = no window)

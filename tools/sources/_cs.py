@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Shared helpers of the CS sources (hf, standards, proceedings; v0.4.6, plugins/cs-ai.md). Never a source itself."""
+"""Shared helpers of the CS sources (hf, standards, proceedings; plugins/cs-ai.md). Never a source itself."""
 import html
 import json
 import re
 from sources._common import CFG, STATE, tokens
 
 
-# ---------------------------------------------------------------- CS engines (v0.4.6, plugins/cs-ai.md): hf-models, hf-datasets, standards, proceedings; command related
+# ---------------------------------------------------------------- CS engines (plugins/cs-ai.md): hf-models, hf-datasets, standards, proceedings; command related
 # All keyless (probes 2026-10-28). Index files (RFC index, PEP index, W3C list, ACL bib, PMLR volume feeds, CVF listings) are fetched once,
 # kept in the fetch cache, parsed once into <state>/cs-index/<name>.json; the title search is local. Hosts stop at once on 403/404/429.
 

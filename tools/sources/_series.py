@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Shared helpers of the data-series sources (dbnomics, fred; v0.4.9, plugins/finance.md sections 7-8). Never a source itself.
+"""Shared helpers of the data-series sources (dbnomics, fred; plugins/finance.md sections 7-8). Never a source itself.
 A value for period P is published, then often revised: "known at T" = periods ending before T AND values as published before T."""
 import datetime as dt
 import re

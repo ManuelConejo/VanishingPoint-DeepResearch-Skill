@@ -55,7 +55,7 @@ Five-minute trial: `python3 -I tools/gateway.py --plugin plugins/cs-ai.md --T 20
 
 ## Local dependencies
 
-- **Python >= 3.11** (`tomllib` in `code_capsule.py`; tested on 3.12.3); Linux/macOS (`fcntl`). **No pip dependency** at runtime (standard library only, README rule); `pytest` serves only `tests/test_code_capsule.py`, the other tests are `unittest`.
+- **Python >= 3.11** (`tomllib` in `code_capsule.py`; tested on 3.12.3); Linux/macOS (`fcntl`). **No pip dependency** at runtime (standard library only, README rule); the tests are `unittest` (`tests/test_code_capsule.py` also runs under `pytest`, which is optional).
 - **git** (>= 2.x, tested 2.43) for `tools/code_capsule.py` (`git -C ... ls-tree / show / grep` at a SHA, read-only).
 - **Claude Code CLI** (`claude -p`) or **Codex CLI** (`codex exec`) for `tools/verifier.py` and for the whole reading (`tools/whole_reading.py`): paid model calls, billed according to the host's current rules; not needed to search.
 - **Playwright** (stealth browser): planned for the `browser` mode (level 2 bis of ACCESS-POLICY.md), **not wired, not required** today.
