@@ -7,17 +7,26 @@ Role instructions and citation check live next to this file and are used in plac
   verifier/citation_check.py   mechanical check of the fragments (import)
   verifier/fetch_fulltext.py   open-access full text retrieval (--fulltext)
   verifier/windows.py          claim windows: the spans of a long source sent to the model (config verifier.windows)
+  verifier/code_files.py       code sources <path>@<SHA>: the whole file at the SHA, by git show (local git directories) or gateway code-file
 Measured in the lab (n = 50 questions, downstream): -4.2 points of false claims (CI 97.5 [-7.1; -1.5]); hardened set: 81/81.
 
 Command line:
   verifier.py verify --card card.json --out verdicts.json [--sources DIR] [--T YYYY-MM-DD --plugin P.md ...] [--fulltext | --no-fulltext]
                      [--cap N] [--model M] [--host claude|openai] [--mode auto|card|source] [--windows windows|whole] [--work DIR] [--filter]
+                     [--repo DIR ...] [--run-dir DIR]
   verifier.py check verdicts.json SOURCES_DIR          (citation_check.py; reads `claims` as written by verify, or `verdicts`)
 Import:
   from verifier import verify, load_sources, filter_claims, model_call
   res = verify(card, texts, engine=model_call)         # engine: callable(prompt, workdir) -> (json_text, measure)
 
-Card: card.json (claims[].source.key -> card.sources[key] = {doi|arxiv|pmid|pmcid, title}).
+Card: card.json (claims[].source.key -> card.sources[key] = {doi|arxiv|pmid|pmcid, title}; for code {code: "<path>@<SHA>"} or a key
+`local:<path>@<SHA>` for the host code X).
+Code sources (plugins/code.md, verification rule 1): the whole file AT THE SHA, read by `git show <sha>:<path>` in a local git directory
+(--repo, else X of capsule.json, the absolute paths of capsule.json / capsule.md / scope.md such as the host's bare mirror of Y, else the
+nearest parent of --run-dir holding .git; --run-dir defaults to the directory of --card), else through the gateway's code engine
+(`code-file <origin>#<path>@<SHA>`, verifier pool) when the origin is known; git show only (no checkout, no hook, no textconv, no code
+of the repository executed). Kept as <sources>/<KEY>/source.txt + code.json (receipt: repository, commit, date, sha256); an engine-written
+excerpt is never read in its place. A branch or a non-hex revision is refused (`unpinned`).
 Sources: DIR/<KEY>/source.txt (full text; --fulltext needs --T and reads only the last version dated before T, see
 verifier/fetch_fulltext.py); otherwise, with --T, record + dated abstract through the gateway (a claim
 about a point the abstract does not cover is then ABSENT); otherwise SOURCE-UNAVAILABLE. Every gateway reading is saved under
@@ -41,7 +50,7 @@ Statuses: FOUND | DISTORTED | ABSENT | SOURCE-UNAVAILABLE | INVALID (fragments n
 Model call: tools/config.json "model_command"[host] (host = env VP_HOST, else config "host", default claude); the command list
 can be overridden by env VP_MODEL_COMMAND_CLAUDE / VP_MODEL_COMMAND_OPENAI (a JSON list), e.g. to point at a fake executable.
 """
-import argparse, json, os, pathlib, re, shutil, subprocess, sys, tempfile, time
+import argparse, hashlib, json, os, pathlib, re, shutil, subprocess, sys, tempfile, time
 
 HERE = pathlib.Path(__file__).resolve().parent
 ROLE_DIR = HERE / 'verifier'
@@ -49,6 +58,7 @@ ROLE_FILE = ROLE_DIR / 'ROLE.md'
 sys.path.insert(0, str(ROLE_DIR))
 from citation_check import check, norm, load_texts     # noqa: E402
 import windows as _win                                  # noqa: E402  (claim windows, verifier/windows.py)
+import code_files as _code                              # noqa: E402  (code sources <path>@<SHA> read by git show, verifier/code_files.py)
 sys.path.insert(0, str(HERE)); import sources as _reg   # noqa: E402,E702  (source registry: identifier kinds)
 
 try:
@@ -253,15 +263,44 @@ def claim_order(card):
     return sorted(n, key=lambda c: (-n[c], c))
 
 
-def load_sources(card, sources_dir=None, gateway=None, fulltext=False, out_dir=None, T=None, fulltext_cap=None):
-    """-> {key: {'text': str, 'origin': 'fulltext|abstract|missing', 'note': str, 'desc': dict, 'fulltext': attempt?}} for each key cited by
-    the card. Full text (--fulltext) only with T: fetch_fulltext.py reads the last version dated before T; a fetched copy whose meta.json
-    carries another T (or none) is never read back. fulltext_cap: at most that many fetch attempts, sources carrying the most claims first."""
+def load_code(c, desc, ref, repos, gateway, out_dir, run_dir):
+    """A code source (<path>@<SHA>, verifier/code_files.py): the whole file at the SHA by git show (local git directories), else through
+    the gateway's code-file; kept as <out_dir>/<KEY>/source.txt (the text read, for the fragment check and tools/passages.py) with the
+    receipt code.json. Never an excerpt written by the engine: without a reading, a kept source.txt is used only when its code.json names
+    the same path and commit."""
+    txt, rec = _code.read(ref, repos, gateway, _code.origin_of(ref, desc, run_dir))
+    d = pathlib.Path(out_dir) / fs_key(c) if out_dir else None
+    if txt is not None and d:
+        d.mkdir(parents=True, exist_ok=True)
+        (d / 'source.txt').write_text(txt); (d / 'code.json').write_text(json.dumps({'ident': ref['ident'], **rec}, ensure_ascii=False, indent=1))
+    if txt is None and d and (d / 'source.txt').is_file() and not ref.get('error'):
+        kept = _code._json(d / 'code.json')
+        if kept.get('path') == ref['path'] and str(kept.get('commit') or '').startswith(ref['sha']) and kept.get('sha256'):
+            t = (d / 'source.txt').read_text(errors='replace')
+            if hashlib.sha256(t.encode()).hexdigest() == kept['sha256']:
+                txt, rec = t, dict(kept, kept=True)
+    if txt is None: return None, 'missing', 'code source not read: ' + rec.get('reason', 'unknown'), rec
+    where = rec.get('repo') or rec.get('origin') or ''
+    return txt, 'fulltext', f"(whole file {rec['path']} at {str(rec.get('commit'))[:12]}, {rec['method']}{' in ' + where if where else ''})", rec
+
+
+def load_sources(card, sources_dir=None, gateway=None, fulltext=False, out_dir=None, T=None, fulltext_cap=None, repos=None, run_dir=None):
+    """-> {key: {'text': str, 'origin': 'fulltext|abstract|missing', 'note': str, 'desc': dict, 'fulltext': attempt?, 'code': receipt?}} for each
+    key cited by the card. Full text (--fulltext) only with T: fetch_fulltext.py reads the last version dated before T; a fetched copy whose
+    meta.json carries another T (or none) is never read back. fulltext_cap: at most that many fetch attempts, sources carrying the most claims
+    first. Code sources (<path>@<SHA>, `local:<path>@<SHA>`): the whole file at the SHA (load_code), read from `repos` (default: found from
+    run_dir, verifier/code_files.py run_repos) or through the gateway; written to out_dir (else sources_dir)."""
     keys = claim_order(card)
     table = card.get('sources') or {}
     out = {}; tried = 0
+    refs = {c: _code.code_ref(c, table.get(c) or {}) for c in keys}
+    if repos is None and any(refs.values()): repos = _code.run_repos(run_dir)
     for c in keys:
         desc = table.get(c) or {}
+        if refs.get(c) is not None:
+            txt, origin, note, rec = load_code(c, desc, refs[c], repos or [], gateway, out_dir or sources_dir, run_dir)
+            out[c] = {'text': txt or '', 'origin': origin, 'note': note, 'desc': desc, 'code': rec}
+            continue
         txt = None; origin = 'missing'; note = ''
         if sources_dir:                                      # sources/<key>/source.txt (layout written by --fulltext) or sources/<key>.txt
             for f in (pathlib.Path(sources_dir) / fs_key(c) / 'source.txt', pathlib.Path(sources_dir) / (fs_key(c) + '.txt')):
@@ -303,8 +342,8 @@ def load_sources(card, sources_dir=None, gateway=None, fulltext=False, out_dir=N
 
 def sources_read(sources):
     """Per source key: what the verifier read (origin, note, the full-text attempt when one was made); counts of the full-text step."""
-    per = {c: {'origin': s.get('origin'), **({'note': s['note']} if s.get('note') else {}), **({'fulltext': s['fulltext']} if s.get('fulltext') else {})}
-           for c, s in sources.items()}
+    per = {c: {'origin': s.get('origin'), **({'note': s['note']} if s.get('note') else {}), **({'fulltext': s['fulltext']} if s.get('fulltext') else {}),
+               **({'code': s['code']} if s.get('code') else {})} for c, s in sources.items()}
     tried = [c for c, s in per.items() if s.get('fulltext') and s['fulltext'].get('status') != 'NOT-TRIED']
     return {'per_source': per, 'fulltext_attempted': len(tried), 'fulltext_obtained': sum(per[c]['origin'] == 'fulltext' for c in tried),
             'fulltext_not_tried_cap': sum(1 for s in per.values() if (s.get('fulltext') or {}).get('status') == 'NOT-TRIED'),
@@ -499,6 +538,9 @@ def main():
     v.add_argument('--mode', choices=['auto', 'card', 'source'], default='auto'); v.add_argument('--work', default=None)
     v.add_argument('--windows', choices=['windows', 'whole'], default=None, help='claim windows or whole texts; default: config verifier.windows.mode')
     v.add_argument('--filter', action='store_true', help='adds kept/removed according to the downstream rule')
+    v.add_argument('--repo', action='append', default=None, help='code sources: local git directory (repeatable) tried first; '
+                   'default: found from the run directory (capsule.json, capsule.md, scope.md, parent holding .git)')
+    v.add_argument('--run-dir', default=None, help='run directory holding capsule.json / scope.md (default: the directory of --card)')
     c = sub.add_parser('check'); c.add_argument('verdicts'); c.add_argument('sources_dir')
     a = ap.parse_args()
     if a.action == 'check':
@@ -515,7 +557,9 @@ def main():
         try: gateway = gw.Gateway(a.plugin, T=a.T, run=a.run, state=a.state, cap=a.cap, pool='verifier')
         except ValueError as e: print(f'verifier.py: {e}', file=sys.stderr); sys.exit(2)
     fulltext = (FULLTEXT and bool(a.T)) if a.fulltext is None else a.fulltext
-    sources = load_sources(card, a.sources, gateway, fulltext, T=a.T, fulltext_cap=FULLTEXT_CAP,
+    run_dir = pathlib.Path(a.run_dir or pathlib.Path(a.card).resolve().parent)
+    repos = _code.run_repos(run_dir, a.repo or ())
+    sources = load_sources(card, a.sources, gateway, fulltext, T=a.T, fulltext_cap=FULLTEXT_CAP, repos=repos, run_dir=run_dir,
                            out_dir=a.sources or (pathlib.Path(a.work) / 'sources' if a.work else pathlib.Path(a.out).resolve().parent / 'sources'))
     engine = lambda prompt, workdir: model_call(prompt, workdir, a.model, a.host)
     res = verify(card, sources, engine, a.work, a.mode, windows=dict(WIN_CFG, mode=a.windows) if a.windows else None)
