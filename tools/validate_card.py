@@ -13,7 +13,7 @@ import json, pathlib, re, sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from validate_result import problems as pb_result
 
-IDS = ('doi', 'arxiv', 'pmid', 'pmcid', 'code')  # code: `<path>@<SHA>` or `local:<path>@<SHA>` (SKILL.md section 0 "Identity of sources", code plugin)
+IDS = ('doi', 'arxiv', 'pmid', 'pmcid', 'code', 'celex', 'ecli', 'ja', 'hal', 'thesesfr', 'nct', 'dblp', 'econbiz', 'osv', 'openreview', 'zenodo')  # code: `<path>@<SHA>` or `local:<path>@<SHA>`; the others: ids served by the gateway engines (SKILL.md section 0 "Identity of sources")
 STATUSES = {'FOUND', 'DISTORTED', 'ABSENT', 'SOURCE-UNAVAILABLE', 'INVALID', 'UNVERIFIED'}
 UNHANDLED = {'ABSENT', 'INVALID'}
 PLACEHOLDER = re.compile(r'TODO|TBD|FIXME|to be completed|lorem ipsum|XXX|<[a-z ]{3,30}>|\[\.\.\.\]|\?\?\?', re.I)

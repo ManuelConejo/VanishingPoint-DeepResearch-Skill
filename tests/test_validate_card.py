@@ -66,6 +66,15 @@ class Test(unittest.TestCase):
         self.assertEqual((e['calls'], e['run'], e['T'], e['ids_seen'], e['calls_per_command']), (2, ['q1'], ['2026-10-26'], 1, {'search-openalex': 1, 'read': 1}))
         self.assertEqual(e['source'], 'state/journal.jsonl')
 
+    def test_engine_ids_without_doi(self):
+        """A source known only by an engine id (law, trials, dblp, osv...) is a valid identifier for check 2."""
+        for k, v in (('celex', '31995L0046'), ('ecli', 'ECLI:EU:C:2017:632'), ('nct', 'NCT01169259'), ('dblp', 'conf/nips/X17'),
+                     ('osv', 'GHSA-xxxx'), ('openreview', 'H1ewdiR5tQ'), ('zenodo', '3689089'), ('ja', 'CE/x.xml'), ('hal', 'hal-01'),
+                     ('thesesfr', '2019X'), ('econbiz', '10012'), ):
+            c = json.loads(json.dumps(CARD)); c['sources'] = {'S1': {k: v, 'title': 'A'}}
+            with tempfile.TemporaryDirectory() as t:
+                self.assertFalse([x for x in V.problems(folder(t, **{'card.json': c})) if x.startswith('2 ')], k)
+
     def test_each_check(self):
         c2 = json.loads(json.dumps(CARD)); c2['claims'][1]['source'] = {'key': 'S9'}; c2['claims'][0]['text'] = 'TODO'
         d = folder(self.tmp.name, **{'card.json': c2, 'verdicts.json': {'claims': [{'id': 'A1', 'status': 'ABSENT'}, {'id': 'A2', 'status': 'WEIRD'}]},

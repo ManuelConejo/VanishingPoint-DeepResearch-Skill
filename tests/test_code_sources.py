@@ -301,7 +301,7 @@ class CodeSources(unittest.TestCase):
         full = gw.Gateway([code_plugin], T='2026-10-26', run='r', state=self.d / 'state').sources()
         self.assertEqual(full['code_engines'], ['code', 'paper-code', 'provenance', 'versions'])
         self.assertEqual(full['engines'], [])
-        self.assertIn('github', full['not_wired'])
+        self.assertNotIn('github', full['not_wired']); self.assertEqual(full['served_by'].get('github'), 'code')   # served by the code engine
         self.assertNotIn('GITHUB', full['keys_present'], 'no token in the environment nor in the temporary home')
         self.assertIn('VP_GITHUB_TOKEN', gw.read_plugin(code_plugin)['keys'])
 

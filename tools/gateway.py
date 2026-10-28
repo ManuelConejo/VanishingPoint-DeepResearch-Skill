@@ -1230,8 +1230,9 @@ class Gateway:
             self.B = Barrier(T or dt.date.today(), since=low)
         declared = [m for p in self.plugins for m in p['engines']]
         self.engines = sorted(set(declared) & set(ENGINES)) if self.plugins else sorted(ENGINES)
-        self.not_wired = sorted(set(declared) - set(ENGINES))
         self.code_engines = sorted({m for p in self.plugins for m in p['code_engines']})   # absent without plugin (intended difference)
+        self.served_by = {m: SERVED_BY[m] for m in sorted(set(declared) - set(ENGINES)) if SERVED_BY.get(m) in self.code_engines}
+        self.not_wired = sorted(set(declared) - set(ENGINES) - set(self.served_by))   # a name served by a declared code engine is not "not wired"
         self.cap = cap or min((p['cap'] for p in self.plugins if p['cap']), default=None) or CFG['call_cap']['default']
         self.run = re.sub(r'[^A-Za-z0-9_.-]', '_', str(run))
         STATE = pathlib.Path(state or os.environ.get('VP_STATE') or 'vp-state')
@@ -1240,7 +1241,7 @@ class Gateway:
 
     def sources(self):
         return {'T': self.B.T.isoformat(), 'bound': f'documents before {self.B.T}', 'since': self.B.since, 'cap': self.cap,
-                'engines': self.engines, 'not_wired': self.not_wired, 'code_engines': self.code_engines,
+                'engines': self.engines, 'not_wired': self.not_wired, 'served_by': self.served_by, 'code_engines': self.code_engines,
                 'keys_present': sorted({k for p in self.plugins for k in p['keys'] if live_key(k)} | self._github_state()),
                 'key_invalid': sorted(sc.invalid_keys(self.state)),
                 'commands': ['search-' + m for m in self.engines] + ['read', 'citing', 'references'] + [c for c, m in CODE_ENGINES.items() if m in self.code_engines],

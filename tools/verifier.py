@@ -173,8 +173,8 @@ def fs_key(c):
 
 
 def ident_of(desc):
-    """{doi|arxiv|pmid|pmcid} -> gateway identifier (pmcid is not read by the gateway: None)."""
-    for x in ('doi', 'arxiv', 'pmid'):
+    """{doi|arxiv|pmid|pmcid|celex|ecli|ja|hal|thesesfr|nct|dblp|econbiz|osv|openreview|zenodo} -> gateway identifier (pmcid is not read by the gateway: None)."""
+    for x in ('doi', 'arxiv', 'pmid', 'celex', 'ecli', 'ja', 'hal', 'thesesfr', 'nct', 'dblp', 'econbiz', 'osv', 'openreview', 'zenodo'):
         if desc.get(x): return f'{x}:{desc[x]}'
     return None
 
@@ -200,6 +200,8 @@ def load_sources(card, sources_dir=None, gateway=None, fulltext=False, out_dir=N
             ident = ident_of(desc) or (c if re.match(r'^(doi|arxiv|pmid|celex|ecli|ja|hal|thesesfr):', c) else None)   # law ids: gateway.read_law
             if ident:
                 rep = gateway.read(ident) or {}
+                if out_dir and re.match(r'^(celex|ecli|ja|hal|thesesfr):', ident):   # law record kept for tools/law_checks.py
+                    f = pathlib.Path(out_dir) / fs_key(c) / 'record.json'; f.parent.mkdir(parents=True, exist_ok=True); f.write_text(json.dumps(rep, ensure_ascii=False))
                 r = rep.get('results') or {}
                 if isinstance(r, dict) and r.get('abstract') and not NO_ABSTRACT.match(str(r['abstract'])):
                     txt = f"{r.get('title') or ''}\n\n{r['abstract']}"; origin = 'abstract'; note = '(record + abstract)'

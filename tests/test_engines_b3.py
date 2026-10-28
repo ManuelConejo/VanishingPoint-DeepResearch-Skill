@@ -287,6 +287,13 @@ class NotWiredAndDisplay(unittest.TestCase):
         for m in ('github', 'sourcegraph', 'deps.dev', 'hf-papers', 'pypi', 'npm', 'crates', 'software-heritage'): self.assertNotIn(m, real['not_wired'], m)
         self.assertIn('ecosyste.ms', real['active'])
 
+    def test_gateway_sources_served_by(self):
+        """`sources` of the code plugin: names served by a declared code engine are listed under served_by, not not_wired."""
+        with tempfile.TemporaryDirectory() as d:
+            src = gw.Gateway([str(P.parent / 'plugins' / 'code.md')], T='2026-10-26', run='t', state=d).sources()
+        self.assertEqual(src['served_by'].get('github'), 'code'); self.assertEqual(src['served_by'].get('pypi'), 'versions')
+        self.assertNotIn('github', src['not_wired']); self.assertNotIn('hf-papers', src['not_wired'])
+
 
 if __name__ == '__main__':
     unittest.main()
