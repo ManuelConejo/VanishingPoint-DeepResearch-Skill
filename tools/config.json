@@ -144,6 +144,42 @@
   "hf_commit_pages": 10,
   "note": "Gentleness bounds of the CS engines (gateway.py, v0.4.6), not reference values: pmlr_volumes = number of PMLR venues (gateway.PMLR_VENUES, in priority order) whose newest volume published before T is searched (one RSS feed of 1-3 MB each, cached); cvf_conferences = newest CVF main conferences published before T searched (one listing of 3-12 MB each, cached); w3c_lookups = W3C title hits dated per search (one call each); hf_commit_pages = pages of 100 commits walked to find the last commit before T (else the card is refused)."
  },
+ "text_terms": {
+  "min_term_chars": 3,
+  "stopwords": ["a", "about", "above", "after", "again", "against", "all", "also", "among", "an", "and", "any", "are", "as", "at", "be", "because", "been", "before", "being", "between", "both", "but", "by", "can", "could", "did", "do", "does", "done", "during", "each", "either", "for", "from", "further", "had", "has", "have", "having", "here", "how", "however", "if", "in", "into", "is", "it", "its", "itself", "may", "might", "more", "most", "much", "must", "no", "nor", "not", "of", "on", "once", "one", "only", "or", "other", "our", "out", "over", "own", "per", "same", "shall", "should", "so", "some", "such", "than", "that", "the", "their", "them", "then", "there", "these", "they", "this", "those", "through", "thus", "to", "too", "under", "until", "upon", "very", "was", "we", "were", "what", "when", "where", "whether", "which", "while", "who", "whom", "why", "will", "with", "within", "without", "would", "yet", "report", "reported", "reports", "study", "studies", "source", "sources", "paper", "papers", "author", "authors", "result", "results", "show", "shows", "showed", "shown", "found", "find", "finds", "use", "used", "using", "et", "al", "colleague", "colleagues", "finding", "here", "there"],
+  "note": "Content terms of tools/evidence_bank.py and tools/contradictions.py: a word of at least min_term_chars letters, lower-cased, light plural stemming, not in stopwords (English function words plus the reporting words every report sentence uses, which would tie any sentence to any quote). A reading convention, not a measured value."
+ },
+ "evidence_bank": {
+  "min_shared_terms": 2,
+  "ignore_years": true,
+  "max_quote_chars": 1200,
+  "shown_chars": 400,
+  "cache_max_bytes": 20000000,
+  "skip_sections": ["Bibliography", "Methodology Appendix"],
+  "note": "Optional quote-first writing mode (tools/evidence_bank.py, SKILL.md 'Quote-first writing'). min_shared_terms = content terms a report sentence must share with the quotes of its cited sources to count as supported (with every figure): 1 is the topic word alone, which any sentence on the subject shares, so 2 is the smallest value that ties a statement to a quote; not measured. ignore_years = years (1800-2100, no decimals) are not required in the quote, since the year comes from the record, not the passage. max_quote_chars = longest quote accepted: four times the 300-character verifier fragment bound of ROLE.md, so a whole paragraph-length sentence group fits. shown_chars = display cut in EVIDENCE.md / EVIDENCE.html. cache_max_bytes = gateway answers larger than this are not searched (binary files and full PDFs). skip_sections = report sections not tied (the bibliography and the appendix carry no claim of fact)."
+ },
+ "contradictions": {
+  "statuses": ["FOUND", "DISTORTED", "SOURCE-UNAVAILABLE", "UNVERIFIED"],
+  "min_shared_terms": 2,
+  "window_words": 6,
+  "number_rel_tol": 0.0,
+  "number_window_words": 3,
+  "label_words": ["article", "articles", "art", "paragraph", "paragraphs", "para", "section", "sections", "table", "tables", "figure", "figures", "fig", "chapter", "case", "cases", "no", "n°", "number", "directive", "regulation", "decision", "version", "step", "appendix", "annex", "equation", "eq", "line", "lines", "page", "pages", "vol", "volume", "issue", "item", "c"],
+  "max_candidates": 40,
+  "max_per_source_pair": 2,
+  "contrast_markers": ["whereas", "however", "but", "in contrast", "by contrast", "contrary", "unlike", "while", "conversely", "disagree", "contradict", "inconsistent", "opposite"],
+  "directions": {
+   "up": ["increase", "increased", "increases", "increasing", "higher", "rise", "rises", "rose", "raise", "raised", "improve", "improved", "improves", "improvement", "gain", "gains", "more", "greater", "better", "outperform", "outperforms", "outperformed", "exceed", "exceeds", "positive", "benefit", "beneficial", "faster", "larger"],
+   "down": ["decrease", "decreased", "decreases", "decreasing", "lower", "fall", "falls", "fell", "drop", "drops", "dropped", "reduce", "reduced", "reduces", "reduction", "decline", "declined", "declines", "loss", "less", "fewer", "worse", "underperform", "underperforms", "underperformed", "negative", "harm", "harmful", "slower", "smaller"]
+  },
+  "polarity_negative": ["no significant", "not significant", "non-significant", "nonsignificant", "no difference", "no effect", "no association", "not associated", "did not", "does not", "do not", "failed to", "fails to", "no evidence", "not supported", "no improvement", "no benefit", "none", "neither", "cannot", "never"],
+  "decisions": {
+   "for": ["granted", "upheld", "allowed", "admissible", "lawful", "valid", "accepted", "approved", "confirmed", "affirmed", "compatible", "authorised", "authorized"],
+   "against": ["dismissed", "rejected", "inadmissible", "unlawful", "invalid", "annulled", "quashed", "overturned", "reversed", "refused", "denied", "incompatible", "struck"]
+  },
+  "verdicts": ["disagreement", "different-conditions", "no-disagreement", "unclear"],
+  "note": "Optional contradiction hunt (tools/contradictions.py, SKILL.md 'Contradiction hunt'): mechanical detection only, shown to the reader, never used to filter or correct a claim; the judgment is the model's (verdicts = the labels it may give, written in contradictions-judged.json). statuses = verdict statuses whose claims are compared (ABSENT and INVALID claims leave the run in section 7). min_shared_terms = content terms two passages must share to be on the same topic, unless they share a named entity or are co-cited in one report sentence (then 1): same reading as evidence_bank.min_shared_terms. window_words = words on each side of a marker read as its context (about half a clause); number_window_words = words before a figure read as the name of its measure (plus its unit and the word after: 'sensitivity of 62.8 %'); label_words = words after which a figure is a label, not a measure ('Article 16', 'Table 2', 'C-131/12'). number_rel_tol = relative gap under which two figures on the same measure are taken as equal, on top of their rounding (half a unit of the least precise figure); 0 = rounding only. max_candidates / max_per_source_pair = display bounds so one pair of long sources cannot fill the list. Lexicons: English words of direction, of negative polarity and of decisions (law); a plugin may need more, add them here. None of these values is measured."
+ },
  "passages": {
   "max_chars": 300,
   "max_per_claim": 4,
