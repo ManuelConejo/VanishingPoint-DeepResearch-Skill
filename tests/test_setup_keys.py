@@ -91,6 +91,18 @@ class Test(unittest.TestCase):
         code, out, _ = self.run_main(['piste_client_secret'], ['client-id-0001', SECRET])
         self.assertEqual(code, 1); self.assertEqual(out.count('identifiers refused'), 2)
 
+    def test_fred_ok_and_refused(self):
+        def stub(refuse):
+            def f(req, timeout=None):
+                url = req.full_url; self.assertTrue(url.startswith('https://api.stlouisfed.org/fred/series/search?')); self.assertIn('realtime_start=', url)
+                if refuse: raise urllib.error.HTTPError(url, 400, 'Bad Request', {}, io.BytesIO(b'{"error_code":400,"error_message":"Bad Request.  The value for variable api_key is not registered."}'))
+                return Resp(b'{"count": 1, "seriess": [{"id": "UNRATE", "title": "Unemployment Rate", "observation_start": "1948-01-01"}]}')
+            return f
+        for refuse, verdict, code in ((False, 'FRED / ALFRED: OK', 0), (True, 'FRED / ALFRED: key refused', 1)):
+            gw.urllib.request.urlopen = stub(refuse)
+            c, out, err = self.run_main(['fred'], [SECRET])
+            self.assertEqual(c, code); self.assertIn(verdict, out); self.assertNotIn(SECRET, out + err)
+
     def test_remove(self):
         self.piste(200, lambda api: 200); self.run_main(['piste'], ['client-id-0001', SECRET])
         d = self.home / '.config' / 'vp'
@@ -106,9 +118,9 @@ class Test(unittest.TestCase):
         self.assertEqual(self.run_main(['swh'], ['two words'])[0], 2)
         code, out, _ = self.run_main([], [''])
         self.assertEqual(code, 0); self.assertIn('piste', out); self.assertIn('[absent]', out)
-        code, out, _ = self.run_main([], ['fred', SECRET])     # menu by name, a declared key with no engine: written, no live check
-        self.assertEqual(code, 0); self.assertIn('no live check', out); self.assertIn('fred.stlouisfed.org', out)
-        self.assertEqual(self.run_main(['fred', '--check'])[0], 0)
+        code, out, _ = self.run_main([], ['s2', SECRET])       # menu by name, a declared key with no engine: written, no live check
+        self.assertEqual(code, 0); self.assertIn('no live check', out); self.assertIn('semanticscholar.org', out)
+        self.assertEqual(self.run_main(['s2', '--check'])[0], 0)
         n = [e['name'] for e in SK.entries()].index('openalex') + 1
         self.assertIn('OPENALEX_KEY', self.run_main([], [str(n), ''])[1])
 

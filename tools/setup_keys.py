@@ -4,7 +4,7 @@
 from stdin one per line when stdin is not a terminal (scripts); it is stripped and written to ~/.config/vp/<name in lower case>.key
 (directory 0700, file 0600, atomic write), the file that `code_sources.key()` reads (KEYS.md). No value is ever printed or logged.
 After installing, a LIVE check sends one minimal request per source through the gateway's own code paths (gateway.fetch for OpenAlex
-and PubMed, CodeSearch/Provenance for GitHub and Software Heritage, the PISTE token and engines for Judilibre and Legifrance; a free
+and PubMed, the FRED engine for FRED, CodeSearch/Provenance for GitHub and Software Heritage, the PISTE token and engines for Judilibre and Legifrance; a free
 GET on the provider for a contradictor key) and prints one plain verdict line per source.
 Usage: setup_keys.py                list the known keys (present or absent, what each unlocks), then ask which one to install
        setup_keys.py NAME           install NAME (variable name in any case, or short name: piste, openalex, ncbi, github, swh, openrouter...)
@@ -16,7 +16,7 @@ P = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(P)); import check_keys as ck, code_sources as sc, gateway as gw   # noqa: E702  (python3 -I does not add the script directory)
 
 LABEL = {'OPENALEX_KEY': ['OpenAlex'], 'NCBI_API_KEY': ['PubMed (NCBI)'], 'VP_GITHUB_TOKEN': ['GitHub code search'], 'SWH_TOKEN': ['Software Heritage'],
-         'PISTE_CLIENT_ID': ['Judilibre', 'Légifrance']}                     # sources checked live per key (others: not wired, no live check)
+         'PISTE_CLIENT_ID': ['Judilibre', 'Légifrance'], 'FRED_API_KEY': ['FRED / ALFRED']}                     # sources checked live per key (others: not wired, no live check)
 PROMPT = {'PISTE_CLIENT_ID': 'PISTE Client ID', 'PISTE_CLIENT_SECRET': 'PISTE Client Secret'}
 HINT = {'PISTE_CLIENT_ID': 'create an application on piste.gouv.fr, subscribe it to the Judilibre and Légifrance APIs (production, accept their terms), '
                            'then copy its Client ID and Client Secret (piste.gouv.fr > Applications)'}
@@ -132,6 +132,8 @@ def check(e):
                     r = 'refused'
             elif var == 'SWH_TOKEN':
                 sc.Provenance(sc.CodeClient(cache_dir=tmp)).origins('test', limit=1); r = 'refused' if var in sc.invalid_keys(tmp) else 'ok'
+            elif var == 'FRED_API_KEY':
+                x = gw.search_fred('unemployment', 1, gw.Barrier(dt.date.today()))[0]; r = 'refused' if isinstance(x, dict) and x.get('reason') == 'key_invalid' else 'ok'
             else: return [(label, True, 'installed; no live check for this key')]
         except Exception as x: return [(label, False, 'could not be checked: ' + why(x))]
         return [(label, True, 'OK')] if r == 'ok' else [(label, False, 'key refused — check you copied it whole')]
