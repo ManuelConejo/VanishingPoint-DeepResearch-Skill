@@ -500,3 +500,35 @@ no gateway call is added; the engine, the verifier and the standard deliverables
 - `validate_card.py`: the end-step fingerprints also cover `prior_art.json` and `PRIOR-ART.md` (absent in a standard run).
 - Tests: `tests/test_prior_art.py`, `tests/test_prisma.py`, `tests/test_followups.py`.
 
+
+## v0.5.3, 2026-10-28 - optional evidence bank and contradiction candidates (command-line tools)
+
+
+Two optional modes, both off by default: each runs only on an explicit request of the user. No model call and no gateway call is added
+by the tools; the engine, the verifier, `finish_run.py`, `export_report.py` and the standard deliverables do not change. Tested offline,
+not measured as methods.
+
+### Packaging changes (tested, not measured)
+- Quote-first writing (`tools/evidence_bank.py`): checks an evidence bank `evidence.json` (verbatim quotes with their source and the
+  report sections allowed to use them). Every quote must be an exact substring (NFKC, whitespace ignored, the rule of
+  `citation_check.py`) of a text the gateway served in the run (`sources/<KEY>/source.txt`, `state/fulltext/`, or the gateway cache
+  `state/cache/`), under its own source: checks EB1-EB5 (format, known source, length, `not_served`, `misattributed`), warning W1 when
+  the source never appears in the journal. It then ties every sentence of `REPORT.md` carrying a `[n]` to the quotes of its sources and
+  exposes the **supported share** (linked quotes sharing at least `min_shared_terms` content terms and every figure of the sentence);
+  statuses partial, outside_section, no_evidence, unmapped. `--section "<title>"` prints the items one section may use;
+  `--from-verdicts` builds an approximate bank from the verifier's fragments (demonstrations only). Outputs `EVIDENCE.md`,
+  `evidence_check.json`, `EVIDENCE.html` (`--html`).
+- Contradiction hunt (`tools/contradictions.py`): compares the exact source passages of the verified claims (and the bank's quotes),
+  groups them by topic (shared terms, shared entities, or `[n]` co-cited in one report sentence) and lists mechanical candidates between
+  two sources: incompatible figures on the same measure (beyond rounding; labels such as "Article 16" or "Qwen3-8B" are not measures),
+  opposite directions, negative polarity, contrary decisions; a contrast marker in the report sentence citing both is a supporting
+  signal. `CONTRADICTIONS.md` / `contradictions.json` / `CONTRADICTIONS.html` show each candidate with its two passages. The model's
+  judgments (`contradictions-judged.json`: disagreement, different-conditions, no-disagreement, unclear) are checked (unknown id, stale
+  key, unknown verdict refused) and shown. Nothing is filtered, corrected or removed.
+- `tools/config.json`: named parameters `text_terms`, `evidence_bank`, `contradictions` (reading conventions, lexicons and display
+  bounds, not measured values).
+- Every quote and passage is data: inert fenced blocks in Markdown, HTML-escaped in the HTML pages, no script, no external resource.
+- Tests: `tests/test_evidence_bank.py`, `tests/test_contradictions.py`.
+
+### Not yet in SKILL.md
+- Both tools run from the command line; the optional SKILL.md sections that let the assistant use them wait for a duel.
