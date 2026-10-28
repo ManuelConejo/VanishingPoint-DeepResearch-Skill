@@ -17,7 +17,7 @@ open-access text may be a later corrected version. No version before T -> REFUSE
 Outputs in DIR: source.txt (readable text), possibly source.pdf
 (to be read by the agent when no text can be extracted), meta.json (status, reason, version pinned, T).
 
-Politeness: User-Agent with a contact (env VP_CONTACT, no default), 1 request / 3 s to arXiv,
+Politeness: User-Agent with a contact (VP_CONTACT: env, then ~/.config/vp/vp_contact.key; no default), 1 request / 3 s to arXiv,
 1 request / s elsewhere, local cache (nothing is downloaded again for the same T; a copy fetched for another T is deleted).
 PDF text extraction uses pypdf when it is installed (optional); otherwise source.pdf is kept for the agent.
 """
@@ -25,7 +25,16 @@ import argparse, datetime as dt, email.utils, gzip, html, io, json, os, re, sys,
 import xml.etree.ElementTree as ET
 import urllib.parse, urllib.request, urllib.error
 
-CONTACT = os.environ.get("VP_CONTACT", "").strip()
+def _contact():
+    """VP_CONTACT, same rule as the keys (KEYS.md): environment variable, then ~/.config/vp/vp_contact.key; '' when absent."""
+    v = os.environ.get("VP_CONTACT", "").strip()
+    if v: return v
+    try:
+        with open(os.path.join(os.path.expanduser("~"), ".config", "vp", "vp_contact.key"), encoding="utf-8") as f: return f.read().strip()
+    except OSError: return ""
+
+
+CONTACT = _contact()
 UA = "VanishingPoint-verifier/0.1 (academic research" + (f"; contact:{CONTACT}" if CONTACT else "") + ")"
 DELAYS = {"arxiv.org": 3.0, "export.arxiv.org": 3.0}
 DEFAULT_DELAY = 1.0

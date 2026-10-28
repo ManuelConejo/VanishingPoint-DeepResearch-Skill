@@ -663,3 +663,26 @@ Five sources that the plugins already declared as `not_wired` are now served by 
 
 ### Contact
 - `VP_CONTACT` now follows the key rule: environment variable, then `~/.config/vp/vp_contact.key` (one helper, `code_sources.contact()`, used by the User-Agent, the Crossref polite pool, Unpaywall and EDGAR). Live check 2026-10-28 with a contact set: Unpaywall served the open copies of a 2013 Nature DOI dated before T; EDGAR full-text search served 10-K filings with their filing dates.
+
+## v0.5.8 (2026-10-28) - simpler installation
+
+- **Contact in `setup_keys`.** `VP_CONTACT` (an e-mail address) is now declared like a key (`tools/sources/contact.py`, an unwired
+  declaration read by the registry): it appears in the interactive list of `tools/setup_keys.py` with what it unlocks (Unpaywall,
+  SEC EDGAR, a polite identification to Crossref and public pages) and the note that the address is sent to the providers in the
+  identification header. `python3 -I tools/setup_keys.py contact` writes `~/.config/vp/vp_contact.key` (0600, directory 0700)
+  after checking its form (one `@` and a domain; otherwise exit 2, nothing written), then checks it live with one Unpaywall
+  request (HTTP 422 = address refused). The value is never printed.
+- **`check_keys.py`** lists `VP_CONTACT` among the keys of the biology, cs-ai, finance and law plugins; `--announce` reports its
+  absence once, like a missing key; a value without `@` is shown as `invalid`.
+- `tools/verifier/fetch_fulltext.py` reads the contact with the same rule as the rest of the skill (environment, then
+  `~/.config/vp/vp_contact.key`); before, only the environment variable enabled its Unpaywall step.
+- **Installation by direct clone.** README: `git clone https://github.com/ManuelConejo/VanishingPoint-DeepResearch-Skill.git
+  ~/.claude/skills/vanishingpoint` (Codex: `~/.codex/skills/vanishingpoint`; project variants kept), update with
+  `git -C ~/.claude/skills/vanishingpoint pull`, then a three-line "First run" (`check_keys.py --plugin cs-ai`,
+  `setup_keys.py contact`, an example question).
+- **Claude Code plugin.** `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` at the root make the repository
+  installable with `/plugin marketplace add ManuelConejo/VanishingPoint-DeepResearch-Skill` then
+  `/plugin install vanishingpoint@vanishingpoint-deepresearch` (the repository root is the plugin, loaded as a single skill:
+  `/vanishingpoint:vanishingpoint`). The repository stays usable as a plain skill directory.
+- Tests: `test_setup_keys.py` (contact listed, form refused, 0600 file, live check OK / refused, invalid state, removal),
+  `test_check_keys.py` (contact announced once, invalid, present without display).

@@ -6,8 +6,10 @@ from stdin one per line when stdin is not a terminal (scripts); it is stripped a
 After installing, a LIVE check sends one minimal request per source through the gateway's own code paths (gateway.fetch for OpenAlex
 and PubMed, the FRED engine for FRED, CodeSearch/Provenance for GitHub and Software Heritage, the PISTE token and engines for Judilibre and Legifrance; a free
 GET on the provider for a contradictor key) and prints one plain verdict line per source.
+The identification contact VP_CONTACT (an e-mail address, KEYS.md) is installed the same way (`setup_keys.py contact`); its form is checked
+(name@domain) and its live check is one Unpaywall request.
 Usage: setup_keys.py                list the known keys (present or absent, what each unlocks), then ask which one to install
-       setup_keys.py NAME           install NAME (variable name in any case, or short name: piste, openalex, ncbi, github, swh, openrouter...)
+       setup_keys.py NAME           install NAME (variable name in any case, or short name: contact, piste, openalex, ncbi, github, swh, openrouter...)
        setup_keys.py NAME --check   live check of the installed key only
        setup_keys.py NAME --remove  delete the key file(s) after confirmation (y)
 Exit code: 0 ok, 1 check failed (or key not installed), 2 usage (unknown name, empty or malformed value)."""
@@ -21,6 +23,7 @@ PROMPT = {v: t for k in KEYS.values() for v, t in (k.get('prompt') or {}).items(
 HINT = {k['vars'][0]: k['hint'] for k in KEYS.values() if k.get('hint')}
 REFUSED = {k['vars'][0]: k['refused'] for k in KEYS.values() if k.get('refused')}
 REFUSED_DEFAULT = 'key refused — check you copied it whole'
+FORM = {k['vars'][0]: tuple(k['form']) for k in KEYS.values() if k.get('form')}   # (pattern, message): the value's expected form (VP_CONTACT: an e-mail)
 
 
 def short(var):
@@ -154,12 +157,13 @@ def report(e):
 
 def install(e):
     print(f"Key: {' + '.join(e['vars'])} - {e['unlocks']}.")
-    print(f"Get it here: {e['url']}" + (f" ({HINT[e['vars'][0]]})" if e['vars'][0] in HINT else ''))
+    print(('What to enter: ' if e['vars'][0] in FORM else 'Get it here: ') + e['url'] + (f" ({HINT[e['vars'][0]]})" if e['vars'][0] in HINT else ''))
     vals = []
     for v in e['vars']:
         x = ask(PROMPT.get(v, f'Paste {v}'))
         if not x: print(f'Nothing entered for {v}: nothing written.', file=sys.stderr); return 2
         if not re.fullmatch(r'[\x21-\x7e]+', x): print(f'{v}: the value contains spaces or unusual characters; copy it again (nothing written).', file=sys.stderr); return 2
+        if v in FORM and not re.fullmatch(FORM[v][0], x): print(f'{v}: {FORM[v][1]} (nothing written).', file=sys.stderr); return 2
         vals.append(x)
     for v, x in zip(e['vars'], vals): write_key(v, x); print(f'Saved {v} in ~/.config/vp/{v.lower()}.key (readable by you only).')
     for v in e['vars']:
