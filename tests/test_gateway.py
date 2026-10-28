@@ -216,7 +216,7 @@ class Offline(unittest.TestCase):
                 p = gw.read_plugin(f)
                 self.assertTrue(p['declared'], 'fenced ```sources block absent'); self.assertTrue(p['engines'] or p['code_engines'])
                 s = gw.Gateway([f], T=T, run='t-' + f.stem, state=d / 'state').sources()
-                self.assertEqual(sorted(s['engines'] + s['not_wired']), sorted(set(p['engines'])))
+                self.assertEqual(sorted(s['engines'] + s['not_wired'] + list(s['served_by'])), sorted(set(p['engines'])))
                 for m in s['not_wired']: self.assertIn('refusal', gw.Gateway([f], T=T, run='t-' + f.stem, state=d / 'state').search(m, 'x'))
         every = gw.Gateway(shipped, T=T, run='t-all', state=d / 'state').sources()
         self.assertEqual(every['engines'], sorted(gw.ENGINES)); self.assertEqual(every['cap'], 60)
