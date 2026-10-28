@@ -1,0 +1,17 @@
+{
+  "name": "vanishingpoint-deepresearch",
+  "description": "VanishingPoint, a deep-research skill: sourced, date-bounded and verified research reports",
+  "owner": {
+    "name": "Manuel Conejo",
+    "url": "https://github.com/ManuelConejo"
+  },
+  "plugins": [
+    {
+      "name": "vanishingpoint",
+      "source": "./",
+      "description": "Deep research on demand, sourced and verified, with discipline plugins (cs-ai, code, finance, biology, law)",
+      "category": "research",
+      "tags": ["deep-research", "literature-review", "verification"]
+    }
+  ]
+}

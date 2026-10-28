@@ -119,6 +119,26 @@ class Test(unittest.TestCase):
             p = subprocess.run(cmd, capture_output=True, text=True, env={**os.environ, 'HOME': self.tmp.name}, timeout=60)
         self.assertEqual((p.returncode, p.stdout), (0, ''), p.stderr)
 
+    def test_contact_announced_once_like_a_key(self):
+        """VP_CONTACT (declared by tools/sources/contact.py, listed by the real plugins): absent -> announced once (degraded, with what it
+        unlocks), then nothing; a value without '@' -> invalid; an address in ~/.config/vp/vp_contact.key -> present, never displayed."""
+        real = [P.parent / 'plugins' / f'{n}.md' for n in ('biology', 'cs-ai', 'finance', 'law')]
+        for f in real: self.assertIn('VP_CONTACT', ck.gw.read_plugin(f)['keys'], f)
+        plugins = [real[1]]
+        a1 = ck.announce(ck.report(plugins))
+        self.assertTrue(a1.startswith('Keys: first run')); self.assertEqual(a1.count('VP_CONTACT absent'), 1, a1)
+        for word in ('Unpaywall', 'SEC EDGAR', 'Crossref', 'User-Agent'): self.assertIn(word, a1)
+        self.assertEqual(ck.announce(ck.report(plugins)), '')                 # once only
+        d = self.home / '.config' / 'vp'; f = d / 'vp_contact.key'
+        f.write_text('not-an-address\n')
+        r = ck.report(plugins)['plugins'][0]
+        self.assertEqual([i['state'] for i in r['degraded'] if i['variable'] == 'VP_CONTACT'], ['invalid']); self.assertIn('VP_CONTACT', r['keys_absent'])
+        f.write_text('team-SECRETBOX@example.org\n')
+        rep = ck.report(plugins); r = rep['plugins'][0]
+        self.assertIn('VP_CONTACT', r['keys_present']); self.assertNotIn('VP_CONTACT', rep['missing_keys'])
+        a2 = ck.announce(rep)
+        self.assertTrue(a2.startswith('Keys: the set')); self.assertNotIn('SECRETBOX', a2 + json.dumps(rep) + (d / 'keys-state.json').read_text())
+
     def test_suggest_free_source_when_the_question_gains(self):
         bio, law, csai, code = self.plugins['biology'], self.plugins['law'], self.plugins['cs-ai'], self.plugins['code']
         s = ck.suggest(ck.report([bio]), 'vitamin D meta-analysis of clinical trials, systematic review')   # NCBI key is sent -> suggested

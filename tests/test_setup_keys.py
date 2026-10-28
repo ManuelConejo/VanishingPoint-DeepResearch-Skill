@@ -103,6 +103,38 @@ class Test(unittest.TestCase):
             c, out, err = self.run_main(['fred'], [SECRET])
             self.assertEqual(c, code); self.assertIn(verdict, out); self.assertNotIn(SECRET, out + err)
 
+    def test_contact_listed_installed_and_checked(self):
+        """VP_CONTACT: in the menu with what it unlocks, installed by `contact` in ~/.config/vp/vp_contact.key (0600), its form checked
+        (one '@'), never echoed; live check = one Unpaywall request with email= (422 -> refused)."""
+        addr = 'team-SECRETBOX@example.org'
+        code, out, _ = self.run_main([], [''])
+        line = next(l for l in out.splitlines() if 'VP_CONTACT' in l)
+        for word in ('contact', 'Unpaywall', 'SEC EDGAR', 'Crossref', 'public pages', 'sent to the providers', 'identification header', '[absent]'): self.assertIn(word, line)
+        f = self.home / '.config' / 'vp' / 'vp_contact.key'
+        for bad in ('no-at-sign.example.org', 'two@@example.org', 'name@nodot'):
+            code, out, err = self.run_main(['contact'], [bad])
+            self.assertEqual(code, 2, out + err); self.assertIn('e-mail address is expected', err); self.assertFalse(f.exists()); self.assertNotIn(bad, out + err)
+        urls = []
+        def stub(status):
+            def g(req, timeout=None):
+                url = req.full_url; urls.append(url)
+                if status != 200: raise urllib.error.HTTPError(url, status, 'Unprocessable', {}, io.BytesIO(b'{"error": true}'))
+                return Resp(b'{"doi": "10.1038/nature12373", "is_oa": true}')
+            return g
+        gw.urllib.request.urlopen = stub(200)
+        code, out, err = self.run_main(['contact'], ['  ' + addr + '  '], tty=True)
+        self.assertEqual(code, 0, out + err); self.assertIn('Unpaywall (contact): OK', out); self.assertIn('What to enter:', out)
+        self.assertEqual(f.read_text(), addr + '\n'); self.assertEqual(stat.S_IMODE(f.stat().st_mode), 0o600)
+        self.assertEqual(stat.S_IMODE(f.parent.stat().st_mode), 0o700); self.assertNotIn('SECRETBOX', out + err)
+        self.assertEqual(len(urls), 1); self.assertTrue(urls[0].startswith('https://api.unpaywall.org/v2/'))
+        self.assertIn('[present]', self.run_main([], [''])[1])
+        gw.urllib.request.urlopen = stub(422)
+        code, out, err = self.run_main(['VP_CONTACT', '--check'])
+        self.assertEqual(code, 1); self.assertIn('address refused by Unpaywall', out); self.assertNotIn('SECRETBOX', out + err)
+        f.write_text('not-an-address\n')
+        self.assertIn('[invalid]', next(l for l in self.run_main([], [''])[1].splitlines() if 'VP_CONTACT' in l))
+        self.assertEqual(self.run_main(['contact', '--remove'], ['y'])[0], 0); self.assertFalse(f.exists())
+
     def test_remove(self):
         self.piste(200, lambda api: 200); self.run_main(['piste'], ['client-id-0001', SECRET])
         d = self.home / '.config' / 'vp'

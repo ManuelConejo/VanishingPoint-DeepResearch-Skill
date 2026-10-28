@@ -8,7 +8,7 @@ Block read by `tools/gateway.py` (format README.md); engines that are not wired 
 ```sources
 engines: pubmed, europepmc, crossref, openalex, opencitations, gbif, ebi-search, unpaywall, datacite, clinicaltrials, doaj, biorxiv, medrxiv   # wired: pubmed, europepmc, crossref, openalex, opencitations, unpaywall (VP_CONTACT e-mail, else not_configured), datacite (v0.5.7), clinicaltrials, biorxiv, medrxiv ; the others: not wired (ebi-search: no date of the entry content, see 7 ; clinicaltrials: wired, option for a question on a specific trial or on publication bias ; biorxiv, medrxiv: wired, preprints dated per version, not peer reviewed ; doaj: option)
 cap: 60                                  # safety cap on calls
-keys: OPENALEX_KEY, NCBI_API_KEY         # optional, never required ; resolution KEYS.md (env NAME, ~/.config/vp/<name>.key) ; NCBI_API_KEY: 10 req/s instead of 3
+keys: OPENALEX_KEY, NCBI_API_KEY, VP_CONTACT         # optional, never required ; resolution KEYS.md (env NAME, ~/.config/vp/<name>.key) ; NCBI_API_KEY: 10 req/s instead of 3
 useful_when: pubmed=large PubMed searches, systematic review, meta-analysis, many clinical trials ; openalex=broad searches outside MEDLINE, citation chaining, grey literature   # free-key sources ; read by tools/check_keys.py --suggest
 access: pubmed=api, europepmc=api, crossref=api, openalex=api, opencitations=api, gbif=api, ebi-search=api, unpaywall=api, datacite=api, clinicaltrials=api, doaj=api, biorxiv=api, medrxiv=api   # ACCESS-POLICY.md
 disabled: cochrane=browser, lilacs-scielo=browser, semantic-scholar=api, who-ictrp=technical_block, bhl=technical_block   # listed, not called ; reason under "Set aside"

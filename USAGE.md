@@ -10,6 +10,9 @@ In the commands, `$SKILL` is the skill directory, set once in your shell:
 export SKILL=~/.claude/skills/vanishingpoint      # or ~/.codex/skills/vanishingpoint
 ```
 
+Installed with `git clone` (README.md, "Installation"), the skill updates with `git -C "$SKILL" pull`. Installed as a Claude
+Code plugin, `$SKILL` is the directory that `claude plugin list` prints for `vanishingpoint`.
+
 ## 1. First research in 5 minutes
 
 1. Create an empty directory for the question (one directory per question) and open your agent there
@@ -155,6 +158,7 @@ and the report's "Source coverage" block says so.
 python3 -I "$SKILL/tools/check_keys.py"                 # offline: per plugin, active / degraded / skipped sources, links
 python3 -I "$SKILL/tools/check_keys.py" --plugin law    # one plugin
 python3 -I "$SKILL/tools/setup_keys.py"                 # list every key, then ask which one to install
+python3 -I "$SKILL/tools/setup_keys.py" contact         # recommended: your contact e-mail (form checked, then one Unpaywall request)
 python3 -I "$SKILL/tools/setup_keys.py" openalex        # install one (hidden input), then a live check
 python3 -I "$SKILL/tools/setup_keys.py" openalex --check
 python3 -I "$SKILL/tools/setup_keys.py" openalex --remove
@@ -165,6 +169,7 @@ name takes precedence. No value is ever printed or logged.
 
 | Short name | Variable | What it brings |
 |---|---|---|
+| `contact` | `VP_CONTACT` | an e-mail address, not a key: unlocks Unpaywall and SEC EDGAR (else 0 request) and identifies the skill politely to Crossref and public pages; sent to the providers in the User-Agent identification header |
 | `openalex` | `OPENALEX_KEY` | OpenAlex daily budget x10; without it, a 429 is possible from the first call (Crossref fallback, reported) |
 | `ncbi` | `NCBI_API_KEY` | PubMed at 10 requests/s instead of 3 |
 | `github` | `VP_GITHUB_TOKEN` | GitHub code search (read-only token); without it only Sourcegraph searches code |

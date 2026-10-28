@@ -8,7 +8,7 @@ Block read by `tools/gateway.py` (format README.md); engines that are not wired 
 ```sources
 engines: econbiz, openalex, crossref, europepmc, arxiv, edgar, fred, dbnomics, ecb, eurostat, worldbank, worldbank-wds, imf, oecd, bis, insee-bdm, opencitations, unpaywall   # wired: econbiz, openalex, crossref, europepmc, arxiv (econ.*, q-fin.*), dbnomics, fred (FRED_API_KEY), edgar (VP_CONTACT e-mail, else not_configured), opencitations, unpaywall (v0.5.7) ; via dbnomics (not wired apart, by decision): ecb, eurostat, worldbank (indicators), imf, oecd, bis, insee-bdm ; not wired: worldbank-wds (documents, not in DBnomics)
 cap: 60                                  # safety cap on calls
-keys: OPENALEX_KEY, FRED_API_KEY         # optional ; FRED without key = skipped, credential_missing, 0 request
+keys: OPENALEX_KEY, FRED_API_KEY, VP_CONTACT         # optional ; FRED without key = skipped, credential_missing, 0 request
 useful_when: fred=US macroeconomic series, rates, inflation, GDP, unemployment, point-in-time values, data revisions, ALFRED ; openalex=broad searches, working papers, citation chaining   # free-key sources ; read by tools/check_keys.py --suggest
 access: econbiz=api, openalex=api, crossref=api, europepmc=api, arxiv=api, edgar=api, fred=api, dbnomics=page, ecb=api, eurostat=api, worldbank=api, worldbank-wds=api, imf=api, oecd=api, bis=api, insee-bdm=api, opencitations=api, unpaywall=api   # ACCESS-POLICY.md (DBnomics: named example of level 2, rate not published -> level-2 pacing)
 disabled: ssrn=tos_forbidden, yahoo=tos_forbidden, repec-ideas=technical_block, cepr=technical_block, econlit=technical_block, scopus=technical_block, xbrl-us=technical_block   # listed, not called ; reason under "Set aside"

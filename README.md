@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.5.7, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.5.8, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -36,15 +36,26 @@ deps.dev, Hugging Face Papers, Software Heritage); every API key is optional (KE
 
 ### Claude Code
 
-Clone the repository, then copy it to the user skills directory, or to a project's skills directory (create the
-parent directory first: `cp` does not):
+Clone the repository straight into the skills directory (git creates the missing parent directories), user-wide or
+for one project:
 
 ```
-git clone https://github.com/ManuelConejo/VanishingPoint-DeepResearch-Skill.git
-mkdir -p ~/.claude/skills
-cp -r VanishingPoint-DeepResearch-Skill ~/.claude/skills/vanishingpoint        # user-wide
-cp -r VanishingPoint-DeepResearch-Skill <project>/.claude/skills/vanishingpoint # one project
+git clone https://github.com/ManuelConejo/VanishingPoint-DeepResearch-Skill.git ~/.claude/skills/vanishingpoint            # user-wide
+git clone https://github.com/ManuelConejo/VanishingPoint-DeepResearch-Skill.git <project>/.claude/skills/vanishingpoint    # one project
 ```
+
+Update: `git -C ~/.claude/skills/vanishingpoint pull` (or `git -C <project>/.claude/skills/vanishingpoint pull`).
+
+### First run
+
+```
+python3 -I ~/.claude/skills/vanishingpoint/tools/check_keys.py --plugin cs-ai     # offline: which sources are active, which keys are missing
+python3 -I ~/.claude/skills/vanishingpoint/tools/setup_keys.py contact            # recommended: your contact e-mail (Unpaywall, SEC EDGAR, polite Crossref)
+```
+
+Then open `claude` in an empty directory and ask, for instance: "Use the vanishingpoint skill. T = 2026-10-27. What is the
+state of the art on speculative decoding for LLM inference? Work in the current directory." (Codex: same lines with
+`~/.codex/skills/vanishingpoint`; every key, and the contact, stays optional.)
 
 Claude Code loads `SKILL.md` through its YAML header (`name: vanishingpoint`) and triggers it on the phrases of the
 `description` line, or when you type `/vanishingpoint`. Sub-agents (searchers, annex, verifier) use the Agent tool with
@@ -58,16 +69,34 @@ CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 claude -p --model opus --max-budget-usd 8
   "Use the vanishingpoint skill. T = 2026-10-27. <your question>. Work in the current directory."
 ```
 
+### Install as a Claude Code plugin
+
+The repository is also a Claude Code plugin marketplace (`.claude-plugin/marketplace.json` and `.claude-plugin/plugin.json`
+at the root; the plugin is the repository itself, loaded as a single skill). In a Claude Code session:
+
+```
+/plugin marketplace add ManuelConejo/VanishingPoint-DeepResearch-Skill
+/plugin install vanishingpoint@vanishingpoint-deepresearch
+```
+
+The skill is then `/vanishingpoint:vanishingpoint` and triggers on its description as before. Update:
+`claude plugin marketplace update vanishingpoint-deepresearch`, then `claude plugin update vanishingpoint@vanishingpoint-deepresearch`
+(the plugin follows the `version` of `plugin.json`). The plugin copy lives in Claude Code's plugin directory, not in
+`~/.claude/skills/`: for the First run commands, use the path that `claude plugin list` prints, or ask Claude to run
+`tools/check_keys.py` and `tools/setup_keys.py contact` from the skill directory. Install it either as a plugin or as a
+cloned skill, not both (two copies of the same skill would compete). The clone above stays the simplest way.
+
 ### Codex CLI
 
 Codex CLI (checked with codex-cli 0.160.1) discovers skills in `~/.codex/skills/<name>/SKILL.md` (user-wide) and in
 `<project>/.agents/skills/<name>/SKILL.md` (one project); the YAML header (`name`, `description`) is read as for Claude Code:
 
 ```
-mkdir -p ~/.codex/skills
-cp -r VanishingPoint-DeepResearch-Skill ~/.codex/skills/vanishingpoint          # user-wide
-cp -r VanishingPoint-DeepResearch-Skill <project>/.agents/skills/vanishingpoint  # one project
+git clone https://github.com/ManuelConejo/VanishingPoint-DeepResearch-Skill.git ~/.codex/skills/vanishingpoint             # user-wide
+git clone https://github.com/ManuelConejo/VanishingPoint-DeepResearch-Skill.git <project>/.agents/skills/vanishingpoint    # one project
 ```
+
+Update: `git -C ~/.codex/skills/vanishingpoint pull`.
 
 Codex has no sub-agents: the agent runs the 3 to 5 searches itself, in sequence, writing the same `searches/<n>.md` files,
 and does the annex and the verification as separate steps (or as `codex exec` sub-processes when the host allows it).
@@ -87,7 +116,7 @@ could take"), read and apply `<path to the skill>/SKILL.md` in full (for instanc
 or `.agents/skills/vanishingpoint/SKILL.md`), then the plugin it selects.
 ```
 
-## First run
+## Step by step
 
 Set once, in the shell you use: `export SKILL=~/.claude/skills/vanishingpoint` (or `~/.codex/skills/vanishingpoint`);
 every command below uses it.
@@ -95,7 +124,7 @@ every command below uses it.
 1. Create a working directory for the question (one directory per question) and open the agent there.
 2. Optional, once: `python3 -I "$SKILL/tools/check_keys.py"` (with `SKILL=~/.claude/skills/vanishingpoint` or `~/.codex/skills/vanishingpoint`: the tools live in the skill directory, not in the working directory) prints, per plugin, the sources that are active, degraded or skipped
    for lack of a key, with the link to obtain each key (never a value). To install one: `python3 -I "$SKILL/tools/setup_keys.py" <NAME>`
-   (for instance `piste` or `openalex`; without a name it lists the keys and asks): hidden input, saved, then checked live,
+   (for instance `contact`, `piste` or `openalex`; without a name it lists the keys and asks): hidden input, saved, then checked live,
    one plain verdict line per source. Manual method (secondary): KEYS.md, files in `~/.config/vp/`.
 3. Ask the question, with the date T if it is not today, for instance:
    "Use the vanishingpoint skill. T = 2026-10-27. What does arXiv:2610.17471 say and what would it be useful for to a
@@ -127,7 +156,9 @@ python3 -I "$SKILL/tools/gateway.py" --T 2026-10-26 --run try --state /tmp/vp-st
   `NAME`, else the file `~/.config/vp/<name in lowercase>.key` (the resolution order). No value is ever printed or logged.
 - ACCESS-POLICY.md: three levels (documented API; public pages even under robots.txt with a declared user agent, cadence
   and cache; never a reserved access, a captcha bypass or a service whose terms forbid automation). Set `VP_CONTACT` to a
-  team or project address for the user agent, never a personal one.
+  team or project address for the user agent, never a personal one: `python3 -I tools/setup_keys.py contact` writes it to
+  `~/.config/vp/vp_contact.key` (0600) after checking its form; it unlocks Unpaywall and SEC EDGAR and identifies the skill
+  politely to Crossref and public pages. The address is sent to the providers in the identification header.
 
 ## Modes
 
@@ -250,7 +281,8 @@ tools/export_report.py, export_data.py, passages.py, living_diff.py, law_checks.
 tools/code_capsule.py, code_sources.py (library), condense_repo.py, whole_reading.py, contradictor.py   code plugin tools (capsule, Y condensation, whole reading, contradictor)
 tools/prior_art.py, prisma.py, followups.py   optional sections of SKILL.md (prior art, PRISMA flow diagram, follow-up questions)
 tools/evidence_bank.py, contradictions.py     optional command-line tools, not used by SKILL.md (quote-first writing, contradiction hunt)
-tools/config.json   caps, models, host command profiles             tests/  examples/  KEYS.md  ACCESS-POLICY.md  CONTRIBUTING.md  CHANGELOG.md  LICENSE  NOTICE
+tools/config.json   caps, models, host command profiles             tests/  examples/  KEYS.md  ACCESS-POLICY.md  CONTRIBUTING.md  CHANGELOG.md  USAGE.md  LICENSE  NOTICE
+.claude-plugin/     plugin.json + marketplace.json: the repository as a Claude Code plugin (the skill directory needs neither)
 ```
 
 ## Attribution
