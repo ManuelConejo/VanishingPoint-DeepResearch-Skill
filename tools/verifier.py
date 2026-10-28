@@ -6,11 +6,12 @@ Role instructions and citation check live next to this file and are used in plac
   verifier/ROLE.md             role instructions, copied as is into the working directory of the call
   verifier/citation_check.py   mechanical check of the fragments (import)
   verifier/fetch_fulltext.py   open-access full text retrieval (--fulltext)
+  verifier/windows.py          claim windows: the spans of a long source sent to the model (config verifier.windows)
 Measured in the lab (n = 50 questions, downstream): -4.2 points of false claims (CI 97.5 [-7.1; -1.5]); hardened set: 81/81.
 
 Command line:
-  verifier.py verify --card card.json --out verdicts.json [--sources DIR] [--T YYYY-MM-DD --plugin P.md ...] [--fulltext]
-                     [--model M] [--host claude|openai] [--mode auto|card|source] [--work DIR] [--filter]
+  verifier.py verify --card card.json --out verdicts.json [--sources DIR] [--T YYYY-MM-DD --plugin P.md ...] [--fulltext | --no-fulltext]
+                     [--cap N] [--model M] [--host claude|openai] [--mode auto|card|source] [--windows windows|whole] [--work DIR] [--filter]
   verifier.py check verdicts.json SOURCES_DIR          (citation_check.py; reads `claims` as written by verify, or `verdicts`)
 Import:
   from verifier import verify, load_sources, filter_claims, model_call
@@ -23,6 +24,18 @@ about a point the abstract does not cover is then ABSENT); otherwise SOURCE-UNAV
 <--sources, else --work/sources, else the directory of --out/sources>/<KEY>/: record.json (the gateway answer, read by law_checks.py)
 and source.txt (the text the verifier received, for the fragment check); a source.txt next to a record.json is read back as
 "record + abstract", not as a full text.
+Full text by default: with --T, the pinned full text (fetch_fulltext.py, last version before T) is fetched for the sources that carry the
+most claims, at most config verifier.fulltext_cap documents (one attempt each, a failure counts); config verifier.fulltext = false or
+--no-fulltext switches it off. The outcome per source is written in the output (`sources_read`) and in <--state>/verifier.json.
+Gateway budget: the verifier's readings go to their own pool (`counter-<run>.verifier.txt`, cap config verifier.call_cap or --cap), never
+to the searches' cap. Model: --model, else VP_MODEL, else config verifier.model[host] ('' = the host CLI's default; no model name in the code).
+Claim windows (config verifier.windows, --windows): in `windows` mode the model receives, for a source longer than what one claim may
+receive (head_chars + windows_per_claim x window_chars), only the windows of that source chosen by code for its claims (verifier/windows.py:
+exact substrings of the retrieved text, numbers of the claim first, BM25, head of the text), never the whole document; the fragment check
+and tools/passages.py still read the whole text kept under sources/. A claim judged ABSENT or SOURCE-UNAVAILABLE (escalate_statuses) on
+windows is judged again on the whole text of its source in a second call when that text is at most escalation_max_chars; above, it is
+UNVERIFIED with the reason (never ABSENT on a partial reading). `whole` mode = the behaviour before windows, unchanged. What was sent is
+written in the output (`windows`) and in <--state>/verifier.json: windows and characters sent against characters available, per source.
 Statuses: FOUND | DISTORTED | ABSENT | SOURCE-UNAVAILABLE | INVALID (fragments not found after one retry) | UNVERIFIED (call failed).
 
 Model call: tools/config.json "model_command"[host] (host = env VP_HOST, else config "host", default claude); the command list
@@ -35,6 +48,7 @@ ROLE_DIR = HERE / 'verifier'
 ROLE_FILE = ROLE_DIR / 'ROLE.md'
 sys.path.insert(0, str(ROLE_DIR))
 from citation_check import check, norm, load_texts     # noqa: E402
+import windows as _win                                  # noqa: E402  (claim windows, verifier/windows.py)
 sys.path.insert(0, str(HERE)); import sources as _reg   # noqa: E402,E702  (source registry: identifier kinds)
 
 try:
@@ -43,7 +57,10 @@ except (OSError, ValueError):
     CONFIG = {}
 CFG = CONFIG.get('verifier', {})
 MAX_CHARS = int(CFG.get('max_chars_per_call', 200000))  # above: split per source (threshold to be measured, not a reference value)
+FULLTEXT = bool(CFG.get('fulltext', False))            # full text by default when T is known (config verifier.fulltext)
+FULLTEXT_CAP = CFG.get('fulltext_cap')                  # documents fetched in full text per verification (config verifier.fulltext_cap; None = no cap)
 TIMEOUT = int(CFG.get('timeout_s', 1200))
+WIN_CFG = CFG.get('windows') or {}                      # claim windows (config verifier.windows; mode whole = no window)
 
 
 def default_model(host):
@@ -75,6 +92,10 @@ ABSTRACT_NOTE = ('\n\n---\nNote: for the sources marked "(record + abstract)", t
                  'A claim about an element the abstract does not cover is ABSENT.')
 STATUSES = ['FOUND', 'DISTORTED', 'ABSENT', 'SOURCE-UNAVAILABLE', 'INVALID', 'UNVERIFIED']
 UNSUPPORTED = {'DISTORTED', 'ABSENT', 'INVALID'}
+WINDOWS_NOTE = ('\n\n---\nNote: some sources/<KEY>/source.txt files hold EXCERPTS of a longer source (first line "[VP window <code>] EXCERPTS ..."), '
+                'chosen by code for the claims; each window is preceded by a line starting with "[VP window <code>": those lines are not source text, '
+                'and a fragment is copied from inside one window, never across two. For these sources, judge from the windows; when they do not '
+                'support a claim, answer ABSENT (the claim is then judged again on the whole text), never SOURCE-UNAVAILABLE because the text is partial.')
 NO_ABSTRACT = re.compile(r'^\s*\(no abstract', re.I)
 
 
@@ -222,13 +243,23 @@ def ident_of(desc):
     return None
 
 
-def load_sources(card, sources_dir=None, gateway=None, fulltext=False, out_dir=None, T=None):
-    """-> {key: {'text': str, 'origin': 'fulltext|abstract|missing', 'note': str, 'desc': dict}} for each key cited by the card.
-    Full text (--fulltext) only with T: fetch_fulltext.py reads the last version dated before T; a fetched copy whose meta.json carries
-    another T (or none) is never read back."""
-    keys = sorted({c for c in (key_of(a, card) for a in card['claims']) if c})
+def claim_order(card):
+    """Source keys cited by the card, those carrying the most claims first (ties: key order): the order of the full-text attempts and of
+    the gateway readings, so that a cap cuts the sources that weigh least."""
+    n = {}
+    for a in card['claims']:
+        c = key_of(a, card)
+        if c: n[c] = n.get(c, 0) + 1
+    return sorted(n, key=lambda c: (-n[c], c))
+
+
+def load_sources(card, sources_dir=None, gateway=None, fulltext=False, out_dir=None, T=None, fulltext_cap=None):
+    """-> {key: {'text': str, 'origin': 'fulltext|abstract|missing', 'note': str, 'desc': dict, 'fulltext': attempt?}} for each key cited by
+    the card. Full text (--fulltext) only with T: fetch_fulltext.py reads the last version dated before T; a fetched copy whose meta.json
+    carries another T (or none) is never read back. fulltext_cap: at most that many fetch attempts, sources carrying the most claims first."""
+    keys = claim_order(card)
     table = card.get('sources') or {}
-    out = {}
+    out = {}; tried = 0
     for c in keys:
         desc = table.get(c) or {}
         txt = None; origin = 'missing'; note = ''
@@ -239,15 +270,20 @@ def load_sources(card, sources_dir=None, gateway=None, fulltext=False, out_dir=N
                     if f.name == 'source.txt' and (f.parent / 'record.json').is_file(): origin = 'abstract'; note = '(record + abstract)'   # saved gateway reading
                     break
         if txt is None and fulltext and not T: note = 'full text refused: no T (abstract only)'
-        if txt is None and fulltext and T and out_dir and any(desc.get(x) for x in ('arxiv', 'doi', 'pmcid')):
+        attempt = None
+        if txt is None and fulltext and T and out_dir and any(desc.get(x) for x in ('arxiv', 'doi', 'pmcid')) and fulltext_cap is not None and tried >= fulltext_cap:
+            attempt = {'status': 'NOT-TRIED', 'reason': f'full-text cap reached ({fulltext_cap} documents, verifier.fulltext_cap)'}
+        elif txt is None and fulltext and T and out_dir and any(desc.get(x) for x in ('arxiv', 'doi', 'pmcid')):
+            tried += 1
             d = pathlib.Path(out_dir) / fs_key(c); d.mkdir(parents=True, exist_ok=True)
             arg = next(f'--{x}' for x in ('arxiv', 'doi', 'pmcid') if desc.get(x))
             subprocess.run([sys.executable, '-I', str(ROLE_DIR / 'fetch_fulltext.py'), arg, desc[arg[2:]], '--T', str(T), '--out', str(d)], capture_output=True, timeout=600)
+            try: meta = json.loads((d / 'meta.json').read_text())
+            except (OSError, ValueError): meta = {}
+            attempt = {k: meta[k] for k in ('status', 'method', 'version', 'version_date', 'reason') if meta.get(k)} or {'status': 'NO-META'}
             if (d / 'source.txt').exists() and (d / 'source.txt').stat().st_size > 0 and not _stale(d / 'meta.json', T):
                 txt = (d / 'source.txt').read_text(errors='replace'); origin = 'fulltext'
-            else:
-                try: note = json.loads((d / 'meta.json').read_text()).get('reason') or ''
-                except (OSError, ValueError): pass
+            else: note = meta.get('reason') or ''
         if txt is None and gateway is not None:
             ident = ident_of(desc) or (c if re.match(r'^(doi|arxiv|pmid|celex|ecli|ja|hal|thesesfr|judilibre|legi|jorf):', c) else None)   # law ids: gateway.read_law
             if ident:
@@ -261,8 +297,18 @@ def load_sources(card, sources_dir=None, gateway=None, fulltext=False, out_dir=N
                     if d: (d / 'source.txt').write_text(txt)
                 else: note = rep.get('refusal') or rep.get('error') or (r.get('refusal') or r.get('error') if isinstance(r, dict) else None) or 'no abstract'
         if txt is not None and not txt.strip(): txt = None; origin = 'missing'
-        out[c] = {'text': txt or '', 'origin': origin, 'note': note, 'desc': desc}
+        out[c] = {'text': txt or '', 'origin': origin, 'note': note, 'desc': desc, **({'fulltext': attempt} if attempt else {})}
     return out
+
+
+def sources_read(sources):
+    """Per source key: what the verifier read (origin, note, the full-text attempt when one was made); counts of the full-text step."""
+    per = {c: {'origin': s.get('origin'), **({'note': s['note']} if s.get('note') else {}), **({'fulltext': s['fulltext']} if s.get('fulltext') else {})}
+           for c, s in sources.items()}
+    tried = [c for c, s in per.items() if s.get('fulltext') and s['fulltext'].get('status') != 'NOT-TRIED']
+    return {'per_source': per, 'fulltext_attempted': len(tried), 'fulltext_obtained': sum(per[c]['origin'] == 'fulltext' for c in tried),
+            'fulltext_not_tried_cap': sum(1 for s in per.values() if (s.get('fulltext') or {}).get('status') == 'NOT-TRIED'),
+            'origins': {o: sum(s['origin'] == o for s in per.values()) for o in ('fulltext', 'abstract', 'missing')}}
 
 
 def prepare(workdir, card, sources):
@@ -279,7 +325,7 @@ def prepare(workdir, card, sources):
         if s['origin'] == 'missing': continue
         (workdir / 'sources' / fs_key(c)).mkdir(exist_ok=True)
         (workdir / 'sources' / fs_key(c) / 'source.txt').write_text(s['text'])
-        texts[fs_key(c)] = norm(s['text'])   # keyed as the reader sees the sources (pin_source)
+        texts[fs_key(c)] = norm(s.get('full_text', s['text']))   # keyed as the reader sees the sources (pin_source); windows: checked on the whole text
     return texts, any(s['origin'] == 'abstract' for s in sources.values())
 
 
@@ -287,7 +333,7 @@ def _unit(card, sources, engine, workdir):
     """One call + a single retry; verdicts by id, after the mechanical check of the fragments (INVALID if the failure persists)."""
     texts, abstract = prepare(workdir, card, sources)
     expected = [a['id'] for a in card['claims'] if sources.get(key_of(a, card), {}).get('origin') != 'missing']
-    prompt = PROMPT + (ABSTRACT_NOTE if abstract else '')
+    prompt = PROMPT + (ABSTRACT_NOTE if abstract else '') + (WINDOWS_NOTE if any('full_text' in s for s in sources.values()) else '')
     src_of = {a['id']: fs_key(key_of(a, card)) for a in card['claims']}
     measures, verdicts, bad = [], {}, {}
     if expected:
@@ -329,10 +375,35 @@ def _unit(card, sources, engine, workdir):
     return out, measures, retry
 
 
-def verify(card, sources, engine, work=None, mode='auto', max_chars=MAX_CHARS):
+def window_view(card, sources, p):
+    """Sources as the model will see them (windows mode: the text of a long source replaced by its windows, the whole text kept in
+    'full_text' for the fragment check) and the trace of what is sent, per source."""
+    view, per = {}, {}
+    for c, s in sources.items():
+        if s.get('origin', 'missing') == 'missing': view[c] = s; continue
+        cl = [{'id': a['id'], 'text': a.get('text', '')} for a in card['claims'] if key_of(a, card) == c]
+        sel = _win.select(s['text'], cl, p)
+        per[c] = {'chars_available': sel['chars_available'], 'chars_sent': sel['chars_sent'], 'windows': 0 if sel['whole'] else len(sel['spans']),
+                  'whole': sel['whole'], 'reason': sel['reason'], **({'claims': sel['per_claim']} if sel['per_claim'] else {})}
+        view[c] = s if sel['whole'] else dict(s, text=_win.render(s['text'], sel['spans']), full_text=s['text'])
+    return view, per
+
+
+def window_trace(p, per):
+    return {'mode': p['mode'], 'params': {k: p[k] for k in ('window_chars', 'windows_per_claim', 'head_chars', 'number_weight', 'escalate_statuses', 'escalation_max_chars')},
+            'chars_available': sum(x['chars_available'] for x in per.values()), 'chars_sent': sum(x['chars_sent'] for x in per.values()),
+            'sources_windowed': sum(not x['whole'] for x in per.values()), 'per_source': per}
+
+
+def verify(card, sources, engine, work=None, mode='auto', max_chars=MAX_CHARS, windows=None):
     """card (dict) + sources ({key: {'text','origin','note'}}, see load_sources) + engine -> report of the statuses.
-    mode auto: one call per card (measured 81/81, -32 % cost), split per source when the sources exceed max_chars."""
+    mode auto: one call per card (measured 81/81, -32 % cost), split per source when the sources exceed max_chars.
+    windows: window parameters (verifier/windows.py params; default config verifier.windows); mode 'whole' = the whole text of every source."""
     work = pathlib.Path(work or tempfile.mkdtemp(prefix='vp-verify-'))
+    wp = _win.params(WIN_CFG if windows is None else windows)
+    escal_st = wp['escalate_statuses']; escal_max = max_chars if wp['escalation_max_chars'] is None else wp['escalation_max_chars']
+    whole_sources = sources
+    sources, wper = window_view(card, sources, wp)
     size = sum(len(s['text']) for s in sources.values())
     per_source = mode == 'source' or (mode == 'auto' and size > max_chars)
     verdicts, measures, retries = {}, [], 0
@@ -344,6 +415,25 @@ def verify(card, sources, engine, work=None, mode='auto', max_chars=MAX_CHARS):
             verdicts.update(v); measures += m; retries += r
     else:
         verdicts, measures, r = _unit(card, sources, engine, work / fs_key(card['card_id'])); retries = int(r)
+    escal = {'claims': [], 'sources': [], 'chars_sent': 0, 'unverified': []}
+    todo = [a for a in card['claims'] if 'full_text' in sources.get(key_of(a, card), {}) and verdicts.get(a['id'], {}).get('status') in escal_st]
+    if todo:                                                         # never ABSENT on a partial reading: judged again on the whole text
+        big = {c for c in {key_of(a, card) for a in todo} if len(whole_sources[c]['text']) > escal_max}
+        for a in todo:
+            if key_of(a, card) in big:
+                verdicts[a['id']] = {'status': 'UNVERIFIED', 'discrepancy': f"not supported by the windows read ({wper[key_of(a, card)]['chars_sent']} of "
+                                     f"{wper[key_of(a, card)]['chars_available']} characters) and the source is longer than verifier.windows.escalation_max_chars "
+                                     f"({escal_max}): not judged on the whole text, so not ABSENT"}
+                escal['unverified'].append(a['id'])
+        sub = dict(card, card_id=card['card_id'], claims=[a for a in todo if key_of(a, card) not in big])
+        if sub['claims']:
+            ks = sorted({key_of(a, card) for a in sub['claims']})
+            r2 = verify(sub, {c: whole_sources[c] for c in ks}, engine, work / 'escalation', mode, max_chars, windows=dict(wp, mode='whole'))
+            for v in r2['claims']:
+                verdicts[v['id']] = {k: x for k, x in v.items() if k not in ('id', 'text', 'source', 'source_origin', 'read')}
+            measures += r2['measures']; retries += r2['retries']
+            escal.update(claims=[a['id'] for a in sub['claims']], sources=ks, chars_sent=sum(len(whole_sources[c]['text']) for c in ks))
+    escalated = set(escal['claims'])
     claims = []
     for a in card['claims']:
         c = key_of(a, card); s = sources.get(c, {})
@@ -351,13 +441,15 @@ def verify(card, sources, engine, work=None, mode='auto', max_chars=MAX_CHARS):
         if s.get('origin', 'missing') == 'missing':
             claims.append({**base, 'status': 'SOURCE-UNAVAILABLE', 'discrepancy': s.get('note') or 'source not provided'})
         else:
-            claims.append({**base, **verdicts.get(a['id'], {'status': 'UNVERIFIED', 'discrepancy': 'no verdict'})})
+            claims.append({**base, **verdicts.get(a['id'], {'status': 'UNVERIFIED', 'discrepancy': 'no verdict'}),
+                           **({'read': 'whole after windows' if a['id'] in escalated else 'windows'} if 'full_text' in s else {})})
     summary = {s: sum(a['status'] == s for a in claims) for s in STATUSES}
     verifiable = sum(summary[s] for s in ('FOUND', 'DISTORTED', 'ABSENT', 'INVALID'))
     summary['unsupported_rate'] = round(sum(summary[s] for s in UNSUPPORTED) / verifiable, 3) if verifiable else None
     return {'card_id': card['card_id'], 'question': card.get('question', ''), 'mode': 'source' if per_source else 'card',
             'role_file': 'tools/verifier/ROLE.md', 'claims': claims, 'summary': summary, 'retries': retries, 'measures': measures,
-            'cost_usd': round(sum(m.get('cost_usd', 0) or 0 for m in measures), 4), 'seconds': round(sum(m.get('seconds', 0) or 0 for m in measures), 1)}
+            'cost_usd': round(sum(m.get('cost_usd', 0) or 0 for m in measures), 4), 'seconds': round(sum(m.get('seconds', 0) or 0 for m in measures), 1),
+            'windows': dict(window_trace(wp, wper), escalation=escal)}
 
 
 def filter_claims(report):
@@ -378,6 +470,11 @@ def check_entries(doc):
     raise ValueError('verdicts file: neither "claims" (verify) nor "verdicts" list')
 
 
+def receipt_windows(w):
+    """What was sent, for state/verifier.json: per source, windows and characters sent against characters available (claim detail left out)."""
+    return dict(w, per_source={c: {k: v for k, v in x.items() if k != 'claims'} for c, x in w['per_source'].items()})
+
+
 def _stale(meta, T):
     """A source.txt written by fetch_fulltext.py (meta.json next to it) for another T, or before the T rule: not to be read."""
     if not meta.is_file(): return False
@@ -392,10 +489,15 @@ def main():
     v = sub.add_parser('verify')
     v.add_argument('--card', required=True); v.add_argument('--sources', default=None); v.add_argument('--out', required=True)
     v.add_argument('--T', default=None); v.add_argument('--plugin', action='append', default=[]); v.add_argument('--run', default='verify')
-    v.add_argument('--state', default=None); v.add_argument('--fulltext', action='store_true')
+    v.add_argument('--state', default=None)
+    ft = v.add_mutually_exclusive_group()
+    ft.add_argument('--fulltext', dest='fulltext', action='store_true', default=None, help='fetch the pinned full text (default with --T when config verifier.fulltext is true)')
+    ft.add_argument('--no-fulltext', dest='fulltext', action='store_false', help='abstracts through the gateway only')
+    v.add_argument('--cap', type=int, default=None, help='gateway calls of the verifier (own pool); default: config verifier.call_cap')
     v.add_argument('--model', default=None, help='default: VP_MODEL, else tools/config.json verifier.model[host], else the host CLI default')
     v.add_argument('--host', choices=['claude', 'openai'], default=None)
     v.add_argument('--mode', choices=['auto', 'card', 'source'], default='auto'); v.add_argument('--work', default=None)
+    v.add_argument('--windows', choices=['windows', 'whole'], default=None, help='claim windows or whole texts; default: config verifier.windows.mode')
     v.add_argument('--filter', action='store_true', help='adds kept/removed according to the downstream rule')
     c = sub.add_parser('check'); c.add_argument('verdicts'); c.add_argument('sources_dir')
     a = ap.parse_args()
@@ -404,16 +506,28 @@ def main():
         except (OSError, ValueError) as e: print(str(e)); sys.exit(2)
         p = check(entries, load_texts(a.sources_dir) if pathlib.Path(a.sources_dir).is_dir() else {})
         print(json.dumps(p, ensure_ascii=False, indent=1)); sys.exit(1 if p else 0)
-    card = json.loads(pathlib.Path(a.card).read_text(encoding='utf-8'))
+    try: card = json.loads(pathlib.Path(a.card).read_text(encoding='utf-8'))
+    except OSError: print(f'verifier.py: card not found: {a.card!r} (a relative path is read from the current directory {os.getcwd()})', file=sys.stderr); sys.exit(2)
+    except ValueError as e: print(f'verifier.py: card {a.card!r} is not valid JSON: {e}', file=sys.stderr); sys.exit(2)
     gateway = None
     if a.T or a.plugin:
-        sys.path.insert(0, str(HERE)); from gateway import Gateway
-        gateway = Gateway(a.plugin, T=a.T, run=a.run, state=a.state)
-    sources = load_sources(card, a.sources, gateway, a.fulltext, T=a.T, out_dir=a.sources or (pathlib.Path(a.work) / 'sources' if a.work else pathlib.Path(a.out).resolve().parent / 'sources'))
+        sys.path.insert(0, str(HERE)); import gateway as gw
+        try: gateway = gw.Gateway(a.plugin, T=a.T, run=a.run, state=a.state, cap=a.cap, pool='verifier')
+        except ValueError as e: print(f'verifier.py: {e}', file=sys.stderr); sys.exit(2)
+    fulltext = (FULLTEXT and bool(a.T)) if a.fulltext is None else a.fulltext
+    sources = load_sources(card, a.sources, gateway, fulltext, T=a.T, fulltext_cap=FULLTEXT_CAP,
+                           out_dir=a.sources or (pathlib.Path(a.work) / 'sources' if a.work else pathlib.Path(a.out).resolve().parent / 'sources'))
     engine = lambda prompt, workdir: model_call(prompt, workdir, a.model, a.host)
-    res = verify(card, sources, engine, a.work, a.mode)
+    res = verify(card, sources, engine, a.work, a.mode, windows=dict(WIN_CFG, mode=a.windows) if a.windows else None)
+    res['sources_read'] = dict(sources_read(sources), fulltext_mode=bool(fulltext), fulltext_cap=FULLTEXT_CAP)
+    if gateway is not None: res['sources_read']['gateway'] = {'pool': gateway.pool, 'cap': gateway.cap, 'run': gateway.run}
     if a.filter: res['filter'] = filter_claims(res)
     pathlib.Path(a.out).write_text(json.dumps(res, ensure_ascii=False, indent=1))
+    if a.state:                                                      # receipt kept apart: verdicts.json is edited by the orchestrator (section 7)
+        st = pathlib.Path(a.state); st.mkdir(parents=True, exist_ok=True)
+        (st / 'verifier.json').write_text(json.dumps({'out': str(pathlib.Path(a.out).resolve()), 'summary': res['summary'], 'cost_usd': res['cost_usd'],
+                                                      'model': a.model if a.model is not None else default_model(host_name(a.host)), 'host': host_name(a.host),
+                                                      **res['sources_read'], 'windows': receipt_windows(res['windows'])}, ensure_ascii=False, indent=1))
     print(json.dumps(res['summary'], ensure_ascii=False))
 
 

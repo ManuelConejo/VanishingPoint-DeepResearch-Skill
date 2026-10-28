@@ -1,0 +1,2799 @@
+{
+ "card_id": "an13",
+ "question": "Critical analysis of on-policy self-distillation with a privileged-information teacher: signal versus bias, progressive loss of reasoning-path diversity, three levers (token weighting, nature of the PI, teacher dynamics with guidance decay), and what is established versus disputed in mathematical reasoning",
+ "mode": "source",
+ "role_file": "tools/verifier/ROLE.md",
+ "claims": [
+  {
+   "id": "A1",
+   "text": "OPSD trains a model on its own rollouts with a teacher that is the same model given privileged information such as a verified solution, while the student sees only the question",
+   "source": "S1",
+   "source_origin": "fulltext",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "a single LLM acts as both teacher and student with different contexts",
+    "The teacher policy conditions on privileged information (e.g., verified reasoning traces) while the student policy sees only the question",
+    "training minimizes the per-token divergence between these distributions over the student's own rollouts"
+   ],
+   "location": "Abstract (and reiterated in Fig. 1 caption / Methods §3)",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "subject/method",
+     "card": "OPSD trains a model on its own rollouts",
+     "source": "learning algorithm where a single LLM acts as both teacher and student... training minimizes the per-token divergence... over the student's own rollouts",
+     "ok": true
+    },
+    {
+     "element": "teacher",
+     "card": "teacher is the same model given privileged information such as a verified solution",
+     "source": "The teacher policy conditions on privileged information (e.g., verified reasoning traces)",
+     "ok": true
+    },
+    {
+     "element": "student",
+     "card": "student sees only the question",
+     "source": "the student policy sees only the question",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A2",
+   "text": "OPSD is reported as 4-8x more token-efficient than GRPO on mathematical reasoning benchmarks",
+   "source": "S1",
+   "source_origin": "fulltext",
+   "status": "DISTORTED",
+   "discrepancy": "figure: card says '4-8x more token-efficient'; the source states token efficiency only qualitatively ('superior', 'significantly improved') and gives no multiplier; the per-prompt token ratio implied by the configs (1 × 1024 vs 8 × 16k) is ~125×, not 4-8×",
+   "fragments": [
+    "achieving superior token efficiency compared to reinforcement learning methods",
+    "matches the performance of GRPO with significantly improved token efficiency and outperform supervised fine-tuning",
+    "each problem requiring only 1024 sampled tokens, whereas GRPO requires 8 rollouts of 16k tokens each"
+   ],
+   "location": "Abstract; §4.2 Main Results; Table 2 (Training Configuration)",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "comparator",
+     "card": "more token-efficient than GRPO",
+     "source": "superior token efficiency compared to reinforcement learning methods; matches/exceeds GRPO with significantly improved token efficiency",
+     "ok": true
+    },
+    {
+     "element": "domain",
+     "card": "on mathematical reasoning benchmarks",
+     "source": "competition-level mathematical reasoning benchmarks (AIME24/25, HMMT25)",
+     "ok": true
+    },
+    {
+     "element": "figure (multiplier)",
+     "card": "4-8x",
+     "source": "no numerical multiplier is reported; qualitative only ('superior', 'significantly improved', 'higher token learning efficiency'); the per-prompt token budgets are 1024 (OPSD, 1 rollout) vs 16k × 8 rollouts (GRPO), i.e. ~125× per prompt — not 4-8×",
+     "ok": false
+    }
+   ]
+  },
+  {
+   "id": "A3",
+   "text": "A rich-context teacher suppresses expression of uncertainty and shortens responses, degrading math performance by up to 40 % in Qwen3-8B, DeepSeek-Distill-Qwen-7B and Olmo3-7B-Instruct",
+   "source": "S2",
+   "source_origin": "fulltext",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "Across Qwen3-1.7B/8B, DeepSeek-Distill-Qwen-7B, and Olmo3-7B-Instruct, we observe performance drops of up to 40\\%.",
+    "conditioning the teacher on rich information suppresses uncertainty expression, enabling rapid in-domain optimization with limited task coverage but harming OOD performance",
+    "However, in mathematical reasoning, we find that it can reduce response length while degrading performance."
+   ],
+   "location": "Abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "mechanism (rich context suppresses uncertainty)",
+     "card": "rich-context teacher suppresses expression of uncertainty",
+     "source": "conditioning the teacher on rich information suppresses uncertainty expression",
+     "ok": true
+    },
+    {
+     "element": "shortens responses",
+     "card": "shortens responses",
+     "source": "reduce response length",
+     "ok": true
+    },
+    {
+     "element": "degrades math",
+     "card": "degrading math performance",
+     "source": "in mathematical reasoning ... reduce response length while degrading performance",
+     "ok": true
+    },
+    {
+     "element": "figure/scope",
+     "card": "up to 40 %",
+     "source": "performance drops of up to 40%",
+     "ok": true
+    },
+    {
+     "element": "models",
+     "card": "Qwen3-8B, DeepSeek-Distill-Qwen-7B and Olmo3-7B-Instruct",
+     "source": "Qwen3-1.7B/8B, DeepSeek-Distill-Qwen-7B, and Olmo3-7B-Instruct (the three listed are a subset of the four reported)",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A4",
+   "text": "PI inflates teacher confidence on solution-implied tokens and deflates it on deliberation tokens such as Wait, Let, Maybe",
+   "source": "S4",
+   "source_origin": "fulltext",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "it inflates the teacher's confidence on tokens already implied by the solution (structural connectives, verifiable claims) and deflates it on deliberation tokens"
+   ],
+   "location": "Abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "subject (privileged info/context)",
+     "card": "PI",
+     "source": "privileged context (c)",
+     "ok": true
+    },
+    {
+     "element": "effect on solution-implied tokens",
+     "card": "inflates teacher confidence on solution-implied tokens",
+     "source": "inflates the teacher's confidence on tokens already implied by the solution (structural connectives, verifiable claims)",
+     "ok": true
+    },
+    {
+     "element": "effect on deliberation tokens",
+     "card": "deflates on deliberation tokens such as Wait, Let, Maybe",
+     "source": "deflates it on deliberation tokens (Wait, Let, Maybe) that drive multi-step search",
+     "ok": true
+    },
+    {
+     "element": "direction",
+     "card": "inflate / deflate",
+     "source": "inflates / deflates",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A5",
+   "text": "Raw oracle solutions are linked to over-conditioned teacher distributions, implicit answer leakage and late-stage training collapse",
+   "source": "S5",
+   "source_origin": "fulltext",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "direct exposure to raw oracle solutions often induces over-conditioned teacher distributions, implicit answer leakage, and late-stage training collapse"
+   ],
+   "location": "Abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "subject",
+     "card": "raw oracle solutions",
+     "source": "raw oracle solutions",
+     "ok": true
+    },
+    {
+     "element": "effect 1",
+     "card": "over-conditioned teacher distributions",
+     "source": "over-conditioned teacher distributions",
+     "ok": true
+    },
+    {
+     "element": "effect 2",
+     "card": "implicit answer leakage",
+     "source": "implicit answer leakage",
+     "ok": true
+    },
+    {
+     "element": "effect 3",
+     "card": "late-stage training collapse",
+     "source": "late-stage training collapse",
+     "ok": true
+    },
+    {
+     "element": "causal link",
+     "card": "are linked to",
+     "source": "direct exposure ... often induces",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A6",
+   "text": "On-policy self-distillation with sampled demonstrations shows decreasing rollout diversity and flattening pass@k, on graph path-finding and science QA, not mathematics",
+   "source": "S3",
+   "source_origin": "fulltext",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "rollout diversity decreases and pass@k curves flatten (i.e., generating more rollouts fails to improve accuracy).",
+    "On a controlled graph path-finding task and science question-answering benchmarks, self-distilled models match or exceed RL on average performance"
+   ],
+   "location": "Abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "rollout diversity decreases",
+     "card": "decreasing rollout diversity",
+     "source": "rollout diversity decreases",
+     "ok": true
+    },
+    {
+     "element": "pass@k flattens",
+     "card": "flattening pass@k",
+     "source": "pass@k curves flatten",
+     "ok": true
+    },
+    {
+     "element": "domains tested",
+     "card": "graph path-finding and science QA",
+     "source": "controlled graph path-finding task and science question-answering benchmarks",
+     "ok": true
+    },
+    {
+     "element": "math not tested",
+     "card": "not mathematics",
+     "source": "math is absent from the listed benchmarks (only graph path-finding and science QA)",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A7",
+   "text": "Position-weighted OPSD gains +1.0 and +1.1 Avg@12 on AIME 2024 and 2025",
+   "source": "S6",
+   "source_origin": "fulltext",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "and AIME 2025 Avg@12 by $+1.0$ and $+1.1$ points,",
+    "\\pwopsd{} Moderate improves Avg@12 over \\opsd{} by $+1.0$ pp and $+1.1$ pp,"
+   ],
+   "location": "Abstract; Sec. 1 (Introduction); Sec. 4.2 (Main results on Qwen3-4B), Table 1",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "method",
+     "card": "Position-weighted OPSD (PW-OPSD)",
+     "source": "PW-OPSD",
+     "ok": true
+    },
+    {
+     "element": "figure",
+     "card": "+1.0 Avg@12 on AIME 2024",
+     "source": "+1.0 pp Avg@12 on AIME 2024",
+     "ok": true
+    },
+    {
+     "element": "figure",
+     "card": "+1.1 Avg@12 on AIME 2025",
+     "source": "+1.1 pp Avg@12 on AIME 2025",
+     "ok": true
+    },
+    {
+     "element": "comparator",
+     "card": "gains (vs. OPSD baseline implied)",
+     "source": "improvement over OPSD baseline",
+     "ok": true
+    },
+    {
+     "element": "metric",
+     "card": "Avg@12",
+     "source": "Avg@12",
+     "ok": true
+    },
+    {
+     "element": "direction",
+     "card": "gains (increase)",
+     "source": "improves",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A8",
+   "text": "An entropy gate switches off the PMI term once teacher entropy collapses, across five models from 4B to 30B, with up to 11.5 points over GRPO and 2 to 10x fewer training steps",
+   "source": "S4",
+   "source_origin": "fulltext",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "An entropy-triggered gate disables the term once the teacher entropy collapses",
+    "Across five models from 4B to 30B parameters on math reasoning benchmarks, AntiSD reaches the GRPO baseline's accuracy in $2$ to $10\\times$ fewer training steps and improves final accuracy by up to $11.5$ points."
+   ],
+   "location": "Abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "entropy gate switches off PMI term on collapse",
+     "card": "entropy gate switches off the PMI term once teacher entropy collapses",
+     "source": "An entropy-triggered gate disables the term once the teacher entropy collapses",
+     "ok": true
+    },
+    {
+     "element": "scope of models",
+     "card": "five models from 4B to 30B",
+     "source": "five models from 4B to 30B parameters",
+     "ok": true
+    },
+    {
+     "element": "accuracy gain magnitude",
+     "card": "up to 11.5 points over GRPO",
+     "source": "reaches the GRPO baseline's accuracy ... improves final accuracy by up to 11.5 points",
+     "ok": true
+    },
+    {
+     "element": "step speedup",
+     "card": "2 to 10x fewer training steps",
+     "source": "2 to 10x fewer training steps",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A9",
+   "text": "Entropy-aware forward/reverse KL mixing in an external-teacher setting is proposed because reverse KL reduces generation diversity",
+   "source": "S7",
+   "source_origin": "fulltext",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "the mode-seeking property of reverse KL reduces generation diversity and yields unstable learning signals when the teacher distribution has high entropy.",
+    "we introduce \\methodfullname~(\\method), which augments the reverse KL objective with forward KL on tokens where the teacher distribution has high entropy."
+   ],
+   "location": "Abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "method proposed (entropy-aware forward/reverse KL mixing)",
+     "card": "entropy-aware forward/reverse KL mixing",
+     "source": "EOPD augments reverse KL with forward KL on high-entropy tokens",
+     "ok": true
+    },
+    {
+     "element": "setting (external teacher)",
+     "card": "external-teacher setting",
+     "source": "student Qwen3-*-Base distilled from Qwen3-Instruct/Qwen3-8B teacher",
+     "ok": true
+    },
+    {
+     "element": "motivation",
+     "card": "because reverse KL reduces generation diversity",
+     "source": "mode-seeking property of reverse KL reduces generation diversity",
+     "ok": true
+    },
+    {
+     "element": "direction",
+     "card": "reduces diversity",
+     "source": "reduces generation diversity",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A10",
+   "text": "The correct reference gave no consistent benefit in OPSD and a solution from another problem can outperform the correct solution on several math benchmarks (Qwen3 1.7B-8B)",
+   "source": "S12",
+   "source_origin": "fulltext",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "The correct reference does not provide a consistent performance",
+    "outperform the correct solution on several mathematical reasoning benchmarks.",
+    "Qwen3 models ranging from 1.7B to 8B."
+   ],
+   "location": "Abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "correct reference → no consistent benefit",
+     "card": "no consistent benefit in OPSD",
+     "source": "The correct reference does not provide a consistent performance benefit across teacher generation modes, model sizes, and training datasets.",
+     "ok": true
+    },
+    {
+     "element": "solution from another problem can outperform",
+     "card": "a solution from another problem can outperform the correct solution on several math benchmarks",
+     "source": "a solution from another problem can outperform the correct solution on several mathematical reasoning benchmarks",
+     "ok": true
+    },
+    {
+     "element": "model-scale scope",
+     "card": "Qwen3 1.7B-8B",
+     "source": "Qwen3 models ranging from 1.7B to 8B",
+     "ok": true
+    },
+    {
+     "element": "domain scope",
+     "card": "math benchmarks",
+     "source": "several mathematical reasoning benchmarks",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A11",
+   "text": "OP2SD, using a problem and solution from a different example, improves over the base model across three models and three math benchmarks and stays competitive with OPSD",
+   "source": "S13",
+   "source_origin": "fulltext",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "paired reference with a problem and solution from a different example, while preserving the student rollout, teacher, and",
+    "Across three models and three mathematics benchmarks, \\method{} improves over the base model,",
+    "remains competitive with OPSD."
+   ],
+   "location": "Abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "method",
+     "card": "OP2SD uses problem and solution from a different example",
+     "source": "replaces the paired reference with a problem and solution from a different example",
+     "ok": true
+    },
+    {
+     "element": "scope",
+     "card": "across three models and three math benchmarks",
+     "source": "Across three models and three mathematics benchmarks",
+     "ok": true
+    },
+    {
+     "element": "direction vs base",
+     "card": "improves over the base model",
+     "source": "improves over the base model",
+     "ok": true
+    },
+    {
+     "element": "comparator vs OPSD",
+     "card": "stays competitive with OPSD",
+     "source": "remains competitive with OPSD",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A12",
+   "text": "OPSD gains do not necessarily come from access to the reference solution; the teacher's context-induced behaviour is an important factor",
+   "source": "S13",
+   "source_origin": "fulltext",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "The success of \\method{} implies that OPSD gains do not necessarily come from access to the reference solution, and that the teacher's context-induced behavior is an important factor."
+   ],
+   "location": "Abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "claim 1",
+     "card": "OPSD gains do not necessarily come from access to the reference solution",
+     "source": "OPSD gains do not necessarily come from access to the reference solution",
+     "ok": true
+    },
+    {
+     "element": "claim 2",
+     "card": "the teacher's context-induced behaviour is an important factor",
+     "source": "the teacher's context-induced behavior is an important factor",
+     "ok": true
+    },
+    {
+     "element": "spelling",
+     "card": "behaviour (UK)",
+     "source": "behavior (US)",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A13",
+   "text": "Trajectory-grounded guidance gives the highest aggregate question-only accuracy among compared methods, beating the full solution",
+   "source": "S14",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "PS-OPSD achieves the highest aggregate question-only accuracy among the compared methods",
+    "which replaces the complete solution with trajectory-grounded guidance describing the initial state, goal conditions, constraints, and a selected state-transition path"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "subject/method",
+     "card": "trajectory-grounded guidance (PS-OPSD)",
+     "source": "PS-OPSD replaces the complete solution with trajectory-grounded guidance",
+     "ok": true
+    },
+    {
+     "element": "figure/metric",
+     "card": "aggregate question-only accuracy",
+     "source": "aggregate question-only accuracy",
+     "ok": true
+    },
+    {
+     "element": "direction",
+     "card": "highest",
+     "source": "achieves the highest",
+     "ok": true
+    },
+    {
+     "element": "scope",
+     "card": "among compared methods",
+     "source": "among the compared methods",
+     "ok": true
+    },
+    {
+     "element": "comparator",
+     "card": "beating the full solution",
+     "source": "PS-OPSD replaces the complete solution (= vanilla OPSD baseline), which is in the compared methods it tops",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A14",
+   "text": "Full teacher exposure is not reliably the best choice and teacher-student mismatch grows monotonically with exposure",
+   "source": "S15",
+   "source_origin": "fulltext",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "1) full exposure is not reliably the best choice, and 2) student--teacher mismatch grows monotonically as the teacher sees more privileged reasoning"
+   ],
+   "location": "Abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "full exposure not reliably best",
+     "card": "Full teacher exposure is not reliably the best choice",
+     "source": "full exposure is not reliably the best choice",
+     "ok": true
+    },
+    {
+     "element": "mismatch grows monotonically",
+     "card": "teacher-student mismatch grows monotonically with exposure",
+     "source": "student--teacher mismatch grows monotonically as the teacher sees more privileged reasoning",
+     "ok": true
+    },
+    {
+     "element": "location",
+     "card": "abstract",
+     "source": "abstract",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A15",
+   "text": "A learnable reveal ratio adds +0.95, +2.05 and +2.33 Avg@12 over OPSD on AIME 24, AIME 25 and HMMT 25 for Qwen3-1.7B, 4B and 8B",
+   "source": "S15",
+   "source_origin": "fulltext",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "Experiments on AIME\\,24, AIME\\,25, and HMMT\\,25 across Qwen3-\\{1.7B, 4B, 8B\\} show that \\methodname{} consistently outperforms competitive self-distillation and RL baselines",
+    "improving over OPSD by $+0.95$, $+2.05$, and $+2.33$ Average@12 points respectively"
+   ],
+   "location": "Abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "learnable reveal ratio / learned exposure",
+     "card": "A learnable reveal ratio",
+     "source": "models the reveal ratio with a lightweight Beta-policy controller ... learnable training-time control variable",
+     "ok": true
+    },
+    {
+     "element": "gains +0.95, +2.05, +2.33 Avg@12 over OPSD",
+     "card": "+0.95, +2.05 and +2.33 Avg@12 over OPSD",
+     "source": "improving over OPSD by $+0.95$, $+2.05$, and $+2.33$ Average@12 points respectively",
+     "ok": true
+    },
+    {
+     "element": "benchmarks",
+     "card": "AIME 24, AIME 25 and HMMT 25",
+     "source": "AIME\\,24, AIME\\,25, and HMMT\\,25",
+     "ok": true
+    },
+    {
+     "element": "model scales",
+     "card": "Qwen3-1.7B, 4B and 8B",
+     "source": "Qwen3-\\{1.7B, 4B, 8B\\}",
+     "ok": true
+    },
+    {
+     "element": "location",
+     "card": "abstract",
+     "source": "abstract",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A16",
+   "text": "Temporal annealing is part of AMR-SD, which names late-stage training collapse as the failure it addresses",
+   "source": "S5",
+   "source_origin": "fulltext",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "Combined with temporal annealing, this mechanism preserves the base environmental reward while filtering out distributional noise.",
+    "achieving robust long-horizon stability and successfully preventing late-stage collapse."
+   ],
+   "location": "Abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "temporal annealing part of AMR-SD",
+     "card": "temporal annealing is part of AMR-SD",
+     "source": "Combined with temporal annealing, this mechanism preserves the base environmental reward",
+     "ok": true
+    },
+    {
+     "element": "AMR-SD names late-stage (training) collapse as failure addressed",
+     "card": "names late-stage training collapse as the failure it addresses",
+     "source": "successfully preventing late-stage collapse",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A17",
+   "text": "Vanilla OPSD is the beta=1 member of a family interpolating between reference policy and privileged teacher, with return-to-go credit, outperforming vanilla OPSD on mathematical benchmarks",
+   "source": "S8",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "vanilla OPSD is precisely the $β=1$ member of a broader policy-optimization family",
+    "its optimal policy as a geometric interpolation between the reference policy and the privileged teacher",
+    "Return-to-go credit assignment further aligns token updates with the sequence-level objective",
+    "Experiments on mathematical reasoning benchmarks show that $β$-OPSD consistently outperforms vanilla OPSD"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "vanilla OPSD = beta=1 member of a family",
+     "card": "beta=1 member of a family",
+     "source": "vanilla OPSD is precisely the β=1 member of a broader policy-optimization family",
+     "ok": true
+    },
+    {
+     "element": "interpolation between reference policy and privileged teacher",
+     "card": "interpolating between reference policy and privileged teacher",
+     "source": "geometric interpolation between the reference policy and the privileged teacher",
+     "ok": true
+    },
+    {
+     "element": "return-to-go credit",
+     "card": "with return-to-go credit",
+     "source": "Return-to-go credit assignment further aligns token updates",
+     "ok": true
+    },
+    {
+     "element": "outperforms vanilla OPSD on mathematical benchmarks",
+     "card": "outperforming vanilla OPSD on mathematical benchmarks",
+     "source": "Experiments on mathematical reasoning benchmarks show that β-OPSD consistently outperforms vanilla OPSD",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A18",
+   "text": "Privileged self-distillation applied only to all-fail prompts yields pass@4 +0.8 to +1.1 % and pass@8 +0.4 to +1.7 % while keeping greedy accuracy (Qwen2.5-Math-1.5B-Instruct)",
+   "source": "S10",
+   "source_origin": "fulltext",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "HDPO identifies prompts where all rollouts fail, generates privileged rollouts by providing the model with ground-truth information",
+    "Experiments on OpenMathInstruct-2 with Qwen2.5-Math-1.5B-Instruct show that HDPO consistently improves coverage metrics",
+    "(\\textit{pass@4} by $+0.8$--$1.1\\%$, \\textit{pass@8} by $+0.4$--$1.7\\%$) while maintaining greedy accuracy"
+   ],
+   "location": "Abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "method/subject",
+     "card": "privileged self-distillation applied only to all-fail prompts",
+     "source": "HDPO identifies prompts where all rollouts fail, generates privileged rollouts... distills the teacher's token-level distribution into the student",
+     "ok": true
+    },
+    {
+     "element": "figure pass@4",
+     "card": "+0.8 to +1.1 %",
+     "source": "pass@4 by $+0.8$--$1.1\\%$",
+     "ok": true
+    },
+    {
+     "element": "figure pass@8",
+     "card": "+0.4 to +1.7 %",
+     "source": "pass@8 by $+0.4$--$1.7\\%$",
+     "ok": true
+    },
+    {
+     "element": "greedy accuracy",
+     "card": "keeping greedy accuracy",
+     "source": "while maintaining greedy accuracy",
+     "ok": true
+    },
+    {
+     "element": "model",
+     "card": "Qwen2.5-Math-1.5B-Instruct",
+     "source": "Qwen2.5-Math-1.5B-Instruct",
+     "ok": true
+    },
+    {
+     "element": "direction",
+     "card": "+ (improvements)",
+     "source": "consistently improves coverage metrics",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A19",
+   "text": "In RLVR, Pass@1 improves while high-k Pass@k degrades under overtraining; restricting updates to zero-success problems lifts Pass@256 above the base model",
+   "source": "S16",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "RLVR often suffers from \\emph{diversity collapse}: Pass@$1$ improves while high-$k$ Pass@$k$ degrades",
+    "most updates in standard RLVR are overtraining from the boundary perspective",
+    "restricting updates to problems with zero observed success lifts Pass@$256$ above the base model on difficult benchmarks"
+   ],
+   "location": "Abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "Pass@1 improves while high-k Pass@k degrades",
+     "card": "Pass@1 up, high-k Pass@k down",
+     "source": "Pass@1 improves while high-k Pass@k degrades",
+     "ok": true
+    },
+    {
+     "element": "framework / condition",
+     "card": "under overtraining",
+     "source": "formalize this diversity collapse through the lens of overtraining; most updates in standard RLVR are overtraining",
+     "ok": true
+    },
+    {
+     "element": "intervention",
+     "card": "restricting updates to zero-success problems",
+     "source": "restricting updates to problems with zero observed success",
+     "ok": true
+    },
+    {
+     "element": "outcome",
+     "card": "lifts Pass@256 above the base model",
+     "source": "lifts Pass@256 above the base model on difficult benchmarks",
+     "ok": true
+    },
+    {
+     "element": "scope detail",
+     "card": "(unqualified)",
+     "source": "on difficult benchmarks",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A20",
+   "text": "A policy-gradient hybrid combining verifier advantages, reverse KL to the teacher and reference KL reports better stability and performance than RLVR and self-distillation baselines",
+   "source": "S9",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "SDPG, a self-distilled policy-gradient framework that combines group-relative verifier advantages with normalized standard deviation, exact full-vocabulary on-policy self-distillation, as well as reference-policy KL regularization",
+    "Empirically, SDPG improves stability and performance over RLVR and self-distillation baselines",
+    "an auxiliary full-vocabulary student-to-teacher reverse Kullback-Leibler divergence loss"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "subject (policy-gradient hybrid)",
+     "card": "policy-gradient hybrid",
+     "source": "self-distilled policy-gradient framework (SDPG)",
+     "ok": true
+    },
+    {
+     "element": "component: verifier advantages",
+     "card": "verifier advantages",
+     "source": "group-relative verifier advantages with normalized standard deviation",
+     "ok": true
+    },
+    {
+     "element": "component: reverse KL to the teacher",
+     "card": "reverse KL to the teacher",
+     "source": "auxiliary full-vocabulary student-to-teacher reverse Kullback-Leibler divergence loss / exact full-vocabulary on-policy self-distillation",
+     "ok": true
+    },
+    {
+     "element": "component: reference KL",
+     "card": "reference KL",
+     "source": "reference-policy KL regularization",
+     "ok": true
+    },
+    {
+     "element": "outcome",
+     "card": "better stability and performance",
+     "source": "improves stability and performance",
+     "ok": true
+    },
+    {
+     "element": "comparator",
+     "card": "RLVR and self-distillation baselines",
+     "source": "over RLVR and self-distillation baselines",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A21",
+   "text": "On successful rollouts the teacher mechanism overwrites the student's own choices; reversing the signal on correct rollouts is proposed",
+   "source": "S11",
+   "source_origin": "fulltext",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "on successful rollouts, the same mechanism instead overwrites the student's choices and suppresses it's own reasoning",
+    "Therefore, we propose reading the original self-distillation signal in reverse",
+    "we propose RLRT (RLVR with Reversed Teacher), which augments GRPO by reinforcing these tokens on correct rollouts"
+   ],
+   "location": "Abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "subject/mechanism",
+     "card": "teacher mechanism overwrites student's own choices",
+     "source": "the same mechanism instead overwrites the student's choices",
+     "ok": true
+    },
+    {
+     "element": "condition",
+     "card": "on successful rollouts",
+     "source": "on successful rollouts",
+     "ok": true
+    },
+    {
+     "element": "proposal / direction",
+     "card": "reversing the signal on correct rollouts is proposed",
+     "source": "we propose reading the original self-distillation signal in reverse ... augments GRPO by reinforcing these tokens on correct rollouts",
+     "ok": true
+    },
+    {
+     "element": "certainty / scope",
+     "card": "stated as a proposal (abstract)",
+     "source": "Therefore, we propose ... we propose RLRT ...",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A22",
+   "text": "Finding 1 verdict: the OPSD recipe trains and is token-efficient in the authors' settings (4-8x over GRPO, one team); independent replication is open",
+   "source": "S1",
+   "source_origin": "fulltext",
+   "status": "DISTORTED",
+   "discrepancy": "figure: card asserts a specific '4-8x over GRPO' multiplier; the source never gives such a number — only qualitative claims of 'superior' / 'significantly improved' token efficiency",
+   "fragments": [
+    "achieving superior token efficiency compared to reinforcement learning methods",
+    "matches the performance of GRPO with significantly improved token efficiency and outperform supervised fine-tuning",
+    "\\ours{} achieves higher token learning efficiency within 100 steps of training as compared to GRPO"
+   ],
+   "location": "Abstract; §4.2 Main Results; Fig. 3 (Token Efficiency) caption",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "subject",
+     "card": "the OPSD recipe trains and is token-efficient in the authors' settings",
+     "source": "OPSD converges within 100 steps and is reported as token-efficient relative to GRPO/SFT across Qwen3-1.7B/4B/8B",
+     "ok": true
+    },
+    {
+     "element": "figure (multiplier)",
+     "card": "4-8x over GRPO",
+     "source": "no 4-8x figure anywhere; token-efficiency claims are qualitative ('superior', 'significantly improved', 'higher'); configuration ratio is ~125× per prompt, step ratio is 5× (100 vs 500 steps) — neither is '4-8x'",
+     "ok": false
+    },
+    {
+     "element": "replication",
+     "card": "one team; independent replication is open",
+     "source": "the paper is from a single author team (UCLA/HKU/Meta) and does not claim independent replication; this is editorial, not a source statement",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A24",
+   "text": "Finding 2: the only direct diversity-collapse measurement (falling rollout diversity, flattening pass@k) is on graph path-finding and science QA, not math",
+   "source": "S3",
+   "source_origin": "fulltext",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "rollout diversity decreases and pass@k curves flatten (i.e., generating more rollouts fails to improve accuracy).",
+    "On a controlled graph path-finding task and science question-answering benchmarks, self-distilled models match or exceed RL on average performance"
+   ],
+   "location": "Abstract; experiments in Sec. 4.1 (Concept-Graph) and Sec. 4.2 (Science QA)",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "direct diversity-collapse measurement (falling diversity, flattening pass@k)",
+     "card": "falling rollout diversity, flattening pass@k",
+     "source": "rollout diversity decreases and pass@k curves flatten",
+     "ok": true
+    },
+    {
+     "element": "domains measured",
+     "card": "graph path-finding and science QA",
+     "source": "controlled graph path-finding task and science question-answering benchmarks",
+     "ok": true
+    },
+    {
+     "element": "math absent from measurements",
+     "card": "not math",
+     "source": "paper does not test mathematical reasoning; math appears only as a motivating example",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A25",
+   "text": "Finding 3: a position score predicts teacher-token reliability with AUROC 0.83 versus at most 0.57 for local uncertainty scores (Qwen3-4B setting)",
+   "source": "S6",
+   "source_origin": "fulltext",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "On Qwen3-4B, we find that an oriented within-sequence position score is the strongest tested",
+    "$1-\\widetilde r$ (early-position score) & $\\mathbf{0.83}$ & $\\mathbf{[0.66, 0.95]}$",
+    "$h_{\\mathrm{trunc}}$ (top-$16$ valid entropy) & $0.57$ & $[0.51, 0.72]$",
+    "Branch-viability classification on Qwen3-4B."
+   ],
+   "location": "Abstract; Sec. 1 (Introduction); Sec. 3.2 (Motivation), Table 1 (tab:branch-auroc)",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "subject",
+     "card": "position score predicts teacher-token reliability",
+     "source": "oriented within-sequence position score is the strongest tested predictor of teacher-token reliability",
+     "ok": true
+    },
+    {
+     "element": "figure",
+     "card": "AUROC 0.83",
+     "source": "AUROC $0.83$",
+     "ok": true
+    },
+    {
+     "element": "comparator",
+     "card": "at most 0.57 for local uncertainty scores",
+     "source": "local uncertainty scores are at most $0.57$ (top-$16$ truncated entropy = 0.57, others 0.51-0.54)",
+     "ok": true
+    },
+    {
+     "element": "condition",
+     "card": "Qwen3-4B setting",
+     "source": "On Qwen3-4B / Branch-viability classification on Qwen3-4B",
+     "ok": true
+    },
+    {
+     "element": "scope",
+     "card": "position vs. local uncertainty diagnostics",
+     "source": "position vs. predictive entropy, MC-dropout MI, Dirichlet precision, top-16 truncated entropy",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A26",
+   "text": "Finding 3: entropy-aware distillation reports Pass@8 gains of +1.37, +2.39 and +5.05 on Qwen3-0.6B, 1.7B and 4B-Base across six math benchmarks",
+   "source": "S7",
+   "source_origin": "fulltext",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "Across six math reasoning benchmarks, this yields Pass@8 accuracy gains of $+1.37$ for Qwen3-0.6B-Base, $+2.39$ for Qwen3-1.7B-Base, and $+5.05$ for Qwen3-4B-Base compared to baseline on-policy distillation methods.",
+    "Pass@8 by $+1.37$ on average across the six benchmarks for the Qwen3-0.6B-Base model, Avg@8 by $+0.99$ and Pass@8 by $+2.39$ for the Qwen3-1.7B-Base model, and $+1.80$ in Avg@8 and $+5.05$ in Pass@8 for the Qwen3-4B-Base model."
+   ],
+   "location": "Abstract; Section 5 (Main Results, Performance on Mathematical Reasoning)",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "metric",
+     "card": "Pass@8 gains",
+     "source": "Pass@8 accuracy gains",
+     "ok": true
+    },
+    {
+     "element": "figure for 0.6B",
+     "card": "+1.37",
+     "source": "$+1.37$ for Qwen3-0.6B-Base",
+     "ok": true
+    },
+    {
+     "element": "figure for 1.7B",
+     "card": "+2.39",
+     "source": "$+2.39$ for Qwen3-1.7B-Base",
+     "ok": true
+    },
+    {
+     "element": "figure for 4B",
+     "card": "+5.05",
+     "source": "$+5.05$ for Qwen3-4B-Base",
+     "ok": true
+    },
+    {
+     "element": "scope",
+     "card": "across six math benchmarks",
+     "source": "Across six math reasoning benchmarks",
+     "ok": true
+    },
+    {
+     "element": "label 'Finding 3'",
+     "card": "Finding 3",
+     "source": "paper has no 'Finding' labels (uses RQ1–RQ4); same figures reported in abstract and Section 'Main Results'",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A27",
+   "text": "Finding 3: the title states privileged likelihood is not automatically value and proposes three checks for token credit in OPSD; content not specified (title only)",
+   "source": "S18",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "Privileged Likelihood Is Not Automatically Value: Three Checks for Token Credit in On-Policy Self-Distillation"
+   ],
+   "location": "Title (line 1)",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "title phrase 'privileged likelihood is not automatically value'",
+     "card": "title states privileged likelihood is not automatically value",
+     "source": "Privileged Likelihood Is Not Automatically Value",
+     "ok": true
+    },
+    {
+     "element": "three checks for token credit in OPSD",
+     "card": "proposes three checks for token credit in OPSD",
+     "source": "Three Checks for Token Credit in On-Policy Self-Distillation",
+     "ok": true
+    },
+    {
+     "element": "scope",
+     "card": "content not specified (title only)",
+     "source": "claim restricted to title; abstract exists but is not used by the claim",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A28",
+   "text": "Finding 3: a contrastive method assigns per-token credit by contrasting positive and negative prompts and also covers text-to-image",
+   "source": "S17",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "we propose Guidance Contrastive Policy Optimization (GCPO), a novel algorithm that enables per-token credit assignment by contrasting model predictions under positive and negative prompts",
+    "GCPO consistently outperforms GRPO and DAPO baselines on both text-to-image generation and chain-of-thought reasoning benchmarks"
+   ],
+   "location": "Abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "method is contrastive, assigns per-token credit",
+     "card": "contrastive method assigns per-token credit",
+     "source": "GCPO ... enables per-token credit assignment by contrasting model predictions under positive and negative prompts",
+     "ok": true
+    },
+    {
+     "element": "mechanism: positive vs negative prompts",
+     "card": "contrasting positive and negative prompts",
+     "source": "by contrasting model predictions under positive and negative prompts",
+     "ok": true
+    },
+    {
+     "element": "scope includes text-to-image",
+     "card": "also covers text-to-image",
+     "source": "text-to-image generation",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A29",
+   "text": "Finding 4 verdict: the correct full solution is not necessary and not reliably best; a solution from another problem can outperform it",
+   "source": "S12",
+   "source_origin": "fulltext",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "The experiments provide three forms of evidence. First, students can improve without the",
+    "and a solution from another problem can outperform the correct",
+    "Whether the correct reference improves performance depends on the teacher's"
+   ],
+   "location": "Conclusion (and Abstract); the paper does not number its findings",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "label 'Finding 4'",
+     "card": "Finding 4 verdict",
+     "source": "paper has no explicitly numbered 'Findings' — statement appears as 'First' of three forms of evidence in Conclusion and in the Abstract; treating 'Finding 4' as card-author indexing, not a claim about paper structure",
+     "ok": true
+    },
+    {
+     "element": "correct full solution not necessary",
+     "card": "is not necessary",
+     "source": "students can improve without the correct reference",
+     "ok": true
+    },
+    {
+     "element": "not reliably best",
+     "card": "not reliably best",
+     "source": "The correct reference does not provide a consistent performance benefit ... Whether the correct reference improves performance depends on the teacher's generation mode, the model size, and the training dataset.",
+     "ok": true
+    },
+    {
+     "element": "another problem can outperform",
+     "card": "a solution from another problem can outperform it",
+     "source": "a solution from another problem can outperform the correct solution",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A30",
+   "text": "Finding 4: rich-context teachers suppress uncertainty, so the richest context can be harmful",
+   "source": "S2",
+   "source_origin": "fulltext",
+   "status": "DISTORTED",
+   "discrepancy": "Location mismatch: the content the card attributes to Finding 4 (rich-context teachers suppress uncertainty / richest context harmful) is the subject of Takeaways 1 and 3; Finding/Takeaway 4 actually concerns the role of task coverage/generalization in making epistemic verbalization useful.",
+   "fragments": [
+    "\\textbf{Takeaway 4}}: Epistemic Verbalization Depends on Task Generalization",
+    "The value of epistemic verbalization scales with generalization demands: largely redundant for familiar, repetitive tasks (small $|\\mathcal{D}|$) and removable for efficiency, but increasingly important as task diversity grows."
+   ],
+   "location": "Takeaway 4 box (end of Section 5, Generalization)",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "topic of Finding/Takeaway 4",
+     "card": "Finding 4: rich-context teachers suppress uncertainty, so the richest context can be harmful",
+     "source": "Takeaway 4 is about the dependence of epistemic verbalization value on task generalization/coverage, not about rich-context teachers suppressing uncertainty",
+     "ok": false
+    },
+    {
+     "element": "content",
+     "card": "rich-context teachers suppress uncertainty / richest context harmful",
+     "source": "Takeaway 4: 'value of epistemic verbalization scales with generalization demands: largely redundant for familiar, repetitive tasks (small |D|) and removable for efficiency, but increasingly important as task diversity grows'",
+     "ok": false
+    }
+   ]
+  }
+ ],
+ "summary": {
+  "FOUND": 26,
+  "DISTORTED": 3,
+  "ABSENT": 0,
+  "SOURCE-UNAVAILABLE": 0,
+  "INVALID": 0,
+  "UNVERIFIED": 0,
+  "unsupported_rate": 0.103
+ },
+ "retries": 0,
+ "measures": [
+  {
+   "seconds": 111.8,
+   "host": "claude",
+   "cost_usd": 0.799918,
+   "tokens_in": 247785,
+   "tokens_out": 8815,
+   "turns": 8
+  },
+  {
+   "seconds": 59.2,
+   "host": "claude",
+   "cost_usd": 0.6511315000000001,
+   "tokens_in": 334874,
+   "tokens_out": 4226,
+   "turns": 10
+  },
+  {
+   "seconds": 27.3,
+   "host": "claude",
+   "cost_usd": 0.45488799999999996,
+   "tokens_in": 102461,
+   "tokens_out": 1839,
+   "turns": 5
+  },
+  {
+   "seconds": 96.3,
+   "host": "claude",
+   "cost_usd": 0.899162,
+   "tokens_in": 414698,
+   "tokens_out": 7359,
+   "turns": 12
+  },
+  {
+   "seconds": 37.1,
+   "host": "claude",
+   "cost_usd": 0.515807,
+   "tokens_in": 131679,
+   "tokens_out": 3038,
+   "turns": 5
+  },
+  {
+   "seconds": 25.3,
+   "host": "claude",
+   "cost_usd": 0.233119,
+   "tokens_in": 80053,
+   "tokens_out": 1936,
+   "turns": 4
+  },
+  {
+   "seconds": 77.9,
+   "host": "claude",
+   "cost_usd": 0.6258355,
+   "tokens_in": 133285,
+   "tokens_out": 6921,
+   "turns": 5
+  },
+  {
+   "seconds": 34.4,
+   "host": "claude",
+   "cost_usd": 0.240621,
+   "tokens_in": 80312,
+   "tokens_out": 2134,
+   "turns": 4
+  },
+  {
+   "seconds": 24.8,
+   "host": "claude",
+   "cost_usd": 0.24575850000000002,
+   "tokens_in": 134422,
+   "tokens_out": 1252,
+   "turns": 5
+  },
+  {
+   "seconds": 21.5,
+   "host": "claude",
+   "cost_usd": 0.234692,
+   "tokens_in": 107742,
+   "tokens_out": 1353,
+   "turns": 5
+  },
+  {
+   "seconds": 104.5,
+   "host": "claude",
+   "cost_usd": 0.6764545,
+   "tokens_in": 133460,
+   "tokens_out": 8856,
+   "turns": 5
+  },
+  {
+   "seconds": 76.7,
+   "host": "claude",
+   "cost_usd": 0.6029939999999999,
+   "tokens_in": 132896,
+   "tokens_out": 6044,
+   "turns": 5
+  },
+  {
+   "seconds": 40.1,
+   "host": "claude",
+   "cost_usd": 0.685424,
+   "tokens_in": 221877,
+   "tokens_out": 3317,
+   "turns": 6
+  },
+  {
+   "seconds": 26.7,
+   "host": "claude",
+   "cost_usd": 0.45099349999999994,
+   "tokens_in": 101882,
+   "tokens_out": 1957,
+   "turns": 5
+  },
+  {
+   "seconds": 95.9,
+   "host": "claude",
+   "cost_usd": 0.6394010000000001,
+   "tokens_in": 130822,
+   "tokens_out": 8339,
+   "turns": 5
+  },
+  {
+   "seconds": 66.2,
+   "host": "claude",
+   "cost_usd": 0.6626835000000001,
+   "tokens_in": 234811,
+   "tokens_out": 5202,
+   "turns": 8
+  },
+  {
+   "seconds": 34.2,
+   "host": "claude",
+   "cost_usd": 0.2602085,
+   "tokens_in": 80305,
+   "tokens_out": 2926,
+   "turns": 4
+  },
+  {
+   "seconds": 25.7,
+   "host": "claude",
+   "cost_usd": 0.241721,
+   "tokens_in": 79933,
+   "tokens_out": 2322,
+   "turns": 4
+  }
+ ],
+ "cost_usd": 9.1208,
+ "seconds": 985.6,
+ "sources_read": {
+  "per_source": {
+   "S1": {
+    "origin": "fulltext",
+    "fulltext": {
+     "status": "OK",
+     "method": "arxiv-latex",
+     "version": "v3",
+     "version_date": "2026-03-20"
+    }
+   },
+   "S15": {
+    "origin": "fulltext",
+    "fulltext": {
+     "status": "OK",
+     "method": "arxiv-latex",
+     "version": "v3",
+     "version_date": "2026-06-09"
+    }
+   },
+   "S2": {
+    "origin": "fulltext",
+    "fulltext": {
+     "status": "OK",
+     "method": "arxiv-latex",
+     "version": "v4",
+     "version_date": "2026-08-18"
+    }
+   },
+   "S10": {
+    "origin": "fulltext",
+    "fulltext": {
+     "status": "OK",
+     "method": "arxiv-latex",
+     "version": "v1",
+     "version_date": "2026-03-25"
+    }
+   },
+   "S12": {
+    "origin": "fulltext",
+    "fulltext": {
+     "status": "OK",
+     "method": "arxiv-latex",
+     "version": "v1",
+     "version_date": "2026-08-18"
+    }
+   },
+   "S13": {
+    "origin": "fulltext",
+    "fulltext": {
+     "status": "OK",
+     "method": "arxiv-latex",
+     "version": "v1",
+     "version_date": "2026-08-10"
+    }
+   },
+   "S3": {
+    "origin": "fulltext",
+    "fulltext": {
+     "status": "OK",
+     "method": "arxiv-latex",
+     "version": "v1",
+     "version_date": "2026-06-24"
+    }
+   },
+   "S4": {
+    "origin": "fulltext",
+    "fulltext": {
+     "status": "OK",
+     "method": "arxiv-latex",
+     "version": "v1",
+     "version_date": "2026-05-12"
+    }
+   },
+   "S5": {
+    "origin": "fulltext",
+    "fulltext": {
+     "status": "OK",
+     "method": "arxiv-latex",
+     "version": "v1",
+     "version_date": "2026-05-18"
+    }
+   },
+   "S6": {
+    "origin": "fulltext",
+    "fulltext": {
+     "status": "OK",
+     "method": "arxiv-latex",
+     "version": "v1",
+     "version_date": "2026-05-20"
+    }
+   },
+   "S7": {
+    "origin": "fulltext",
+    "fulltext": {
+     "status": "OK",
+     "method": "arxiv-latex",
+     "version": "v3",
+     "version_date": "2026-06-12"
+    }
+   },
+   "S11": {
+    "origin": "fulltext",
+    "fulltext": {
+     "status": "OK",
+     "method": "arxiv-latex",
+     "version": "v1",
+     "version_date": "2026-05-11"
+    }
+   },
+   "S14": {
+    "origin": "abstract",
+    "note": "(record + abstract)",
+    "fulltext": {
+     "status": "NOT-TRIED",
+     "reason": "full-text cap reached (12 documents, verifier.fulltext_cap)"
+    }
+   },
+   "S16": {
+    "origin": "abstract",
+    "note": "(record + abstract)",
+    "fulltext": {
+     "status": "NOT-TRIED",
+     "reason": "full-text cap reached (12 documents, verifier.fulltext_cap)"
+    }
+   },
+   "S17": {
+    "origin": "abstract",
+    "note": "(record + abstract)",
+    "fulltext": {
+     "status": "NOT-TRIED",
+     "reason": "full-text cap reached (12 documents, verifier.fulltext_cap)"
+    }
+   },
+   "S18": {
+    "origin": "abstract",
+    "note": "(record + abstract)",
+    "fulltext": {
+     "status": "NOT-TRIED",
+     "reason": "full-text cap reached (12 documents, verifier.fulltext_cap)"
+    }
+   },
+   "S8": {
+    "origin": "abstract",
+    "note": "(record + abstract)",
+    "fulltext": {
+     "status": "NOT-TRIED",
+     "reason": "full-text cap reached (12 documents, verifier.fulltext_cap)"
+    }
+   },
+   "S9": {
+    "origin": "abstract",
+    "note": "(record + abstract)",
+    "fulltext": {
+     "status": "NOT-TRIED",
+     "reason": "full-text cap reached (12 documents, verifier.fulltext_cap)"
+    }
+   }
+  },
+  "fulltext_attempted": 12,
+  "fulltext_obtained": 12,
+  "fulltext_not_tried_cap": 6,
+  "origins": {
+   "fulltext": 12,
+   "abstract": 6,
+   "missing": 0
+  },
+  "fulltext_mode": true,
+  "fulltext_cap": 12,
+  "gateway": {
+   "pool": "verifier",
+   "cap": 60,
+   "run": "an13"
+  }
+ },
+ "filter": {
+  "kept": [
+   {
+    "id": "A1",
+    "text": "OPSD trains a model on its own rollouts with a teacher that is the same model given privileged information such as a verified solution, while the student sees only the question",
+    "source": "S1",
+    "source_origin": "fulltext",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "a single LLM acts as both teacher and student with different contexts",
+     "The teacher policy conditions on privileged information (e.g., verified reasoning traces) while the student policy sees only the question",
+     "training minimizes the per-token divergence between these distributions over the student's own rollouts"
+    ],
+    "location": "Abstract (and reiterated in Fig. 1 caption / Methods §3)",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "subject/method",
+      "card": "OPSD trains a model on its own rollouts",
+      "source": "learning algorithm where a single LLM acts as both teacher and student... training minimizes the per-token divergence... over the student's own rollouts",
+      "ok": true
+     },
+     {
+      "element": "teacher",
+      "card": "teacher is the same model given privileged information such as a verified solution",
+      "source": "The teacher policy conditions on privileged information (e.g., verified reasoning traces)",
+      "ok": true
+     },
+     {
+      "element": "student",
+      "card": "student sees only the question",
+      "source": "the student policy sees only the question",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A3",
+    "text": "A rich-context teacher suppresses expression of uncertainty and shortens responses, degrading math performance by up to 40 % in Qwen3-8B, DeepSeek-Distill-Qwen-7B and Olmo3-7B-Instruct",
+    "source": "S2",
+    "source_origin": "fulltext",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "Across Qwen3-1.7B/8B, DeepSeek-Distill-Qwen-7B, and Olmo3-7B-Instruct, we observe performance drops of up to 40\\%.",
+     "conditioning the teacher on rich information suppresses uncertainty expression, enabling rapid in-domain optimization with limited task coverage but harming OOD performance",
+     "However, in mathematical reasoning, we find that it can reduce response length while degrading performance."
+    ],
+    "location": "Abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "mechanism (rich context suppresses uncertainty)",
+      "card": "rich-context teacher suppresses expression of uncertainty",
+      "source": "conditioning the teacher on rich information suppresses uncertainty expression",
+      "ok": true
+     },
+     {
+      "element": "shortens responses",
+      "card": "shortens responses",
+      "source": "reduce response length",
+      "ok": true
+     },
+     {
+      "element": "degrades math",
+      "card": "degrading math performance",
+      "source": "in mathematical reasoning ... reduce response length while degrading performance",
+      "ok": true
+     },
+     {
+      "element": "figure/scope",
+      "card": "up to 40 %",
+      "source": "performance drops of up to 40%",
+      "ok": true
+     },
+     {
+      "element": "models",
+      "card": "Qwen3-8B, DeepSeek-Distill-Qwen-7B and Olmo3-7B-Instruct",
+      "source": "Qwen3-1.7B/8B, DeepSeek-Distill-Qwen-7B, and Olmo3-7B-Instruct (the three listed are a subset of the four reported)",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A4",
+    "text": "PI inflates teacher confidence on solution-implied tokens and deflates it on deliberation tokens such as Wait, Let, Maybe",
+    "source": "S4",
+    "source_origin": "fulltext",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "it inflates the teacher's confidence on tokens already implied by the solution (structural connectives, verifiable claims) and deflates it on deliberation tokens"
+    ],
+    "location": "Abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "subject (privileged info/context)",
+      "card": "PI",
+      "source": "privileged context (c)",
+      "ok": true
+     },
+     {
+      "element": "effect on solution-implied tokens",
+      "card": "inflates teacher confidence on solution-implied tokens",
+      "source": "inflates the teacher's confidence on tokens already implied by the solution (structural connectives, verifiable claims)",
+      "ok": true
+     },
+     {
+      "element": "effect on deliberation tokens",
+      "card": "deflates on deliberation tokens such as Wait, Let, Maybe",
+      "source": "deflates it on deliberation tokens (Wait, Let, Maybe) that drive multi-step search",
+      "ok": true
+     },
+     {
+      "element": "direction",
+      "card": "inflate / deflate",
+      "source": "inflates / deflates",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A5",
+    "text": "Raw oracle solutions are linked to over-conditioned teacher distributions, implicit answer leakage and late-stage training collapse",
+    "source": "S5",
+    "source_origin": "fulltext",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "direct exposure to raw oracle solutions often induces over-conditioned teacher distributions, implicit answer leakage, and late-stage training collapse"
+    ],
+    "location": "Abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "subject",
+      "card": "raw oracle solutions",
+      "source": "raw oracle solutions",
+      "ok": true
+     },
+     {
+      "element": "effect 1",
+      "card": "over-conditioned teacher distributions",
+      "source": "over-conditioned teacher distributions",
+      "ok": true
+     },
+     {
+      "element": "effect 2",
+      "card": "implicit answer leakage",
+      "source": "implicit answer leakage",
+      "ok": true
+     },
+     {
+      "element": "effect 3",
+      "card": "late-stage training collapse",
+      "source": "late-stage training collapse",
+      "ok": true
+     },
+     {
+      "element": "causal link",
+      "card": "are linked to",
+      "source": "direct exposure ... often induces",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A6",
+    "text": "On-policy self-distillation with sampled demonstrations shows decreasing rollout diversity and flattening pass@k, on graph path-finding and science QA, not mathematics",
+    "source": "S3",
+    "source_origin": "fulltext",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "rollout diversity decreases and pass@k curves flatten (i.e., generating more rollouts fails to improve accuracy).",
+     "On a controlled graph path-finding task and science question-answering benchmarks, self-distilled models match or exceed RL on average performance"
+    ],
+    "location": "Abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "rollout diversity decreases",
+      "card": "decreasing rollout diversity",
+      "source": "rollout diversity decreases",
+      "ok": true
+     },
+     {
+      "element": "pass@k flattens",
+      "card": "flattening pass@k",
+      "source": "pass@k curves flatten",
+      "ok": true
+     },
+     {
+      "element": "domains tested",
+      "card": "graph path-finding and science QA",
+      "source": "controlled graph path-finding task and science question-answering benchmarks",
+      "ok": true
+     },
+     {
+      "element": "math not tested",
+      "card": "not mathematics",
+      "source": "math is absent from the listed benchmarks (only graph path-finding and science QA)",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A7",
+    "text": "Position-weighted OPSD gains +1.0 and +1.1 Avg@12 on AIME 2024 and 2025",
+    "source": "S6",
+    "source_origin": "fulltext",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "and AIME 2025 Avg@12 by $+1.0$ and $+1.1$ points,",
+     "\\pwopsd{} Moderate improves Avg@12 over \\opsd{} by $+1.0$ pp and $+1.1$ pp,"
+    ],
+    "location": "Abstract; Sec. 1 (Introduction); Sec. 4.2 (Main results on Qwen3-4B), Table 1",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "method",
+      "card": "Position-weighted OPSD (PW-OPSD)",
+      "source": "PW-OPSD",
+      "ok": true
+     },
+     {
+      "element": "figure",
+      "card": "+1.0 Avg@12 on AIME 2024",
+      "source": "+1.0 pp Avg@12 on AIME 2024",
+      "ok": true
+     },
+     {
+      "element": "figure",
+      "card": "+1.1 Avg@12 on AIME 2025",
+      "source": "+1.1 pp Avg@12 on AIME 2025",
+      "ok": true
+     },
+     {
+      "element": "comparator",
+      "card": "gains (vs. OPSD baseline implied)",
+      "source": "improvement over OPSD baseline",
+      "ok": true
+     },
+     {
+      "element": "metric",
+      "card": "Avg@12",
+      "source": "Avg@12",
+      "ok": true
+     },
+     {
+      "element": "direction",
+      "card": "gains (increase)",
+      "source": "improves",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A8",
+    "text": "An entropy gate switches off the PMI term once teacher entropy collapses, across five models from 4B to 30B, with up to 11.5 points over GRPO and 2 to 10x fewer training steps",
+    "source": "S4",
+    "source_origin": "fulltext",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "An entropy-triggered gate disables the term once the teacher entropy collapses",
+     "Across five models from 4B to 30B parameters on math reasoning benchmarks, AntiSD reaches the GRPO baseline's accuracy in $2$ to $10\\times$ fewer training steps and improves final accuracy by up to $11.5$ points."
+    ],
+    "location": "Abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "entropy gate switches off PMI term on collapse",
+      "card": "entropy gate switches off the PMI term once teacher entropy collapses",
+      "source": "An entropy-triggered gate disables the term once the teacher entropy collapses",
+      "ok": true
+     },
+     {
+      "element": "scope of models",
+      "card": "five models from 4B to 30B",
+      "source": "five models from 4B to 30B parameters",
+      "ok": true
+     },
+     {
+      "element": "accuracy gain magnitude",
+      "card": "up to 11.5 points over GRPO",
+      "source": "reaches the GRPO baseline's accuracy ... improves final accuracy by up to 11.5 points",
+      "ok": true
+     },
+     {
+      "element": "step speedup",
+      "card": "2 to 10x fewer training steps",
+      "source": "2 to 10x fewer training steps",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A9",
+    "text": "Entropy-aware forward/reverse KL mixing in an external-teacher setting is proposed because reverse KL reduces generation diversity",
+    "source": "S7",
+    "source_origin": "fulltext",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "the mode-seeking property of reverse KL reduces generation diversity and yields unstable learning signals when the teacher distribution has high entropy.",
+     "we introduce \\methodfullname~(\\method), which augments the reverse KL objective with forward KL on tokens where the teacher distribution has high entropy."
+    ],
+    "location": "Abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "method proposed (entropy-aware forward/reverse KL mixing)",
+      "card": "entropy-aware forward/reverse KL mixing",
+      "source": "EOPD augments reverse KL with forward KL on high-entropy tokens",
+      "ok": true
+     },
+     {
+      "element": "setting (external teacher)",
+      "card": "external-teacher setting",
+      "source": "student Qwen3-*-Base distilled from Qwen3-Instruct/Qwen3-8B teacher",
+      "ok": true
+     },
+     {
+      "element": "motivation",
+      "card": "because reverse KL reduces generation diversity",
+      "source": "mode-seeking property of reverse KL reduces generation diversity",
+      "ok": true
+     },
+     {
+      "element": "direction",
+      "card": "reduces diversity",
+      "source": "reduces generation diversity",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A10",
+    "text": "The correct reference gave no consistent benefit in OPSD and a solution from another problem can outperform the correct solution on several math benchmarks (Qwen3 1.7B-8B)",
+    "source": "S12",
+    "source_origin": "fulltext",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "The correct reference does not provide a consistent performance",
+     "outperform the correct solution on several mathematical reasoning benchmarks.",
+     "Qwen3 models ranging from 1.7B to 8B."
+    ],
+    "location": "Abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "correct reference → no consistent benefit",
+      "card": "no consistent benefit in OPSD",
+      "source": "The correct reference does not provide a consistent performance benefit across teacher generation modes, model sizes, and training datasets.",
+      "ok": true
+     },
+     {
+      "element": "solution from another problem can outperform",
+      "card": "a solution from another problem can outperform the correct solution on several math benchmarks",
+      "source": "a solution from another problem can outperform the correct solution on several mathematical reasoning benchmarks",
+      "ok": true
+     },
+     {
+      "element": "model-scale scope",
+      "card": "Qwen3 1.7B-8B",
+      "source": "Qwen3 models ranging from 1.7B to 8B",
+      "ok": true
+     },
+     {
+      "element": "domain scope",
+      "card": "math benchmarks",
+      "source": "several mathematical reasoning benchmarks",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A11",
+    "text": "OP2SD, using a problem and solution from a different example, improves over the base model across three models and three math benchmarks and stays competitive with OPSD",
+    "source": "S13",
+    "source_origin": "fulltext",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "paired reference with a problem and solution from a different example, while preserving the student rollout, teacher, and",
+     "Across three models and three mathematics benchmarks, \\method{} improves over the base model,",
+     "remains competitive with OPSD."
+    ],
+    "location": "Abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "method",
+      "card": "OP2SD uses problem and solution from a different example",
+      "source": "replaces the paired reference with a problem and solution from a different example",
+      "ok": true
+     },
+     {
+      "element": "scope",
+      "card": "across three models and three math benchmarks",
+      "source": "Across three models and three mathematics benchmarks",
+      "ok": true
+     },
+     {
+      "element": "direction vs base",
+      "card": "improves over the base model",
+      "source": "improves over the base model",
+      "ok": true
+     },
+     {
+      "element": "comparator vs OPSD",
+      "card": "stays competitive with OPSD",
+      "source": "remains competitive with OPSD",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A12",
+    "text": "OPSD gains do not necessarily come from access to the reference solution; the teacher's context-induced behaviour is an important factor",
+    "source": "S13",
+    "source_origin": "fulltext",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "The success of \\method{} implies that OPSD gains do not necessarily come from access to the reference solution, and that the teacher's context-induced behavior is an important factor."
+    ],
+    "location": "Abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "claim 1",
+      "card": "OPSD gains do not necessarily come from access to the reference solution",
+      "source": "OPSD gains do not necessarily come from access to the reference solution",
+      "ok": true
+     },
+     {
+      "element": "claim 2",
+      "card": "the teacher's context-induced behaviour is an important factor",
+      "source": "the teacher's context-induced behavior is an important factor",
+      "ok": true
+     },
+     {
+      "element": "spelling",
+      "card": "behaviour (UK)",
+      "source": "behavior (US)",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A13",
+    "text": "Trajectory-grounded guidance gives the highest aggregate question-only accuracy among compared methods, beating the full solution",
+    "source": "S14",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "PS-OPSD achieves the highest aggregate question-only accuracy among the compared methods",
+     "which replaces the complete solution with trajectory-grounded guidance describing the initial state, goal conditions, constraints, and a selected state-transition path"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "subject/method",
+      "card": "trajectory-grounded guidance (PS-OPSD)",
+      "source": "PS-OPSD replaces the complete solution with trajectory-grounded guidance",
+      "ok": true
+     },
+     {
+      "element": "figure/metric",
+      "card": "aggregate question-only accuracy",
+      "source": "aggregate question-only accuracy",
+      "ok": true
+     },
+     {
+      "element": "direction",
+      "card": "highest",
+      "source": "achieves the highest",
+      "ok": true
+     },
+     {
+      "element": "scope",
+      "card": "among compared methods",
+      "source": "among the compared methods",
+      "ok": true
+     },
+     {
+      "element": "comparator",
+      "card": "beating the full solution",
+      "source": "PS-OPSD replaces the complete solution (= vanilla OPSD baseline), which is in the compared methods it tops",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A14",
+    "text": "Full teacher exposure is not reliably the best choice and teacher-student mismatch grows monotonically with exposure",
+    "source": "S15",
+    "source_origin": "fulltext",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "1) full exposure is not reliably the best choice, and 2) student--teacher mismatch grows monotonically as the teacher sees more privileged reasoning"
+    ],
+    "location": "Abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "full exposure not reliably best",
+      "card": "Full teacher exposure is not reliably the best choice",
+      "source": "full exposure is not reliably the best choice",
+      "ok": true
+     },
+     {
+      "element": "mismatch grows monotonically",
+      "card": "teacher-student mismatch grows monotonically with exposure",
+      "source": "student--teacher mismatch grows monotonically as the teacher sees more privileged reasoning",
+      "ok": true
+     },
+     {
+      "element": "location",
+      "card": "abstract",
+      "source": "abstract",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A15",
+    "text": "A learnable reveal ratio adds +0.95, +2.05 and +2.33 Avg@12 over OPSD on AIME 24, AIME 25 and HMMT 25 for Qwen3-1.7B, 4B and 8B",
+    "source": "S15",
+    "source_origin": "fulltext",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "Experiments on AIME\\,24, AIME\\,25, and HMMT\\,25 across Qwen3-\\{1.7B, 4B, 8B\\} show that \\methodname{} consistently outperforms competitive self-distillation and RL baselines",
+     "improving over OPSD by $+0.95$, $+2.05$, and $+2.33$ Average@12 points respectively"
+    ],
+    "location": "Abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "learnable reveal ratio / learned exposure",
+      "card": "A learnable reveal ratio",
+      "source": "models the reveal ratio with a lightweight Beta-policy controller ... learnable training-time control variable",
+      "ok": true
+     },
+     {
+      "element": "gains +0.95, +2.05, +2.33 Avg@12 over OPSD",
+      "card": "+0.95, +2.05 and +2.33 Avg@12 over OPSD",
+      "source": "improving over OPSD by $+0.95$, $+2.05$, and $+2.33$ Average@12 points respectively",
+      "ok": true
+     },
+     {
+      "element": "benchmarks",
+      "card": "AIME 24, AIME 25 and HMMT 25",
+      "source": "AIME\\,24, AIME\\,25, and HMMT\\,25",
+      "ok": true
+     },
+     {
+      "element": "model scales",
+      "card": "Qwen3-1.7B, 4B and 8B",
+      "source": "Qwen3-\\{1.7B, 4B, 8B\\}",
+      "ok": true
+     },
+     {
+      "element": "location",
+      "card": "abstract",
+      "source": "abstract",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A16",
+    "text": "Temporal annealing is part of AMR-SD, which names late-stage training collapse as the failure it addresses",
+    "source": "S5",
+    "source_origin": "fulltext",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "Combined with temporal annealing, this mechanism preserves the base environmental reward while filtering out distributional noise.",
+     "achieving robust long-horizon stability and successfully preventing late-stage collapse."
+    ],
+    "location": "Abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "temporal annealing part of AMR-SD",
+      "card": "temporal annealing is part of AMR-SD",
+      "source": "Combined with temporal annealing, this mechanism preserves the base environmental reward",
+      "ok": true
+     },
+     {
+      "element": "AMR-SD names late-stage (training) collapse as failure addressed",
+      "card": "names late-stage training collapse as the failure it addresses",
+      "source": "successfully preventing late-stage collapse",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A17",
+    "text": "Vanilla OPSD is the beta=1 member of a family interpolating between reference policy and privileged teacher, with return-to-go credit, outperforming vanilla OPSD on mathematical benchmarks",
+    "source": "S8",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "vanilla OPSD is precisely the $β=1$ member of a broader policy-optimization family",
+     "its optimal policy as a geometric interpolation between the reference policy and the privileged teacher",
+     "Return-to-go credit assignment further aligns token updates with the sequence-level objective",
+     "Experiments on mathematical reasoning benchmarks show that $β$-OPSD consistently outperforms vanilla OPSD"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "vanilla OPSD = beta=1 member of a family",
+      "card": "beta=1 member of a family",
+      "source": "vanilla OPSD is precisely the β=1 member of a broader policy-optimization family",
+      "ok": true
+     },
+     {
+      "element": "interpolation between reference policy and privileged teacher",
+      "card": "interpolating between reference policy and privileged teacher",
+      "source": "geometric interpolation between the reference policy and the privileged teacher",
+      "ok": true
+     },
+     {
+      "element": "return-to-go credit",
+      "card": "with return-to-go credit",
+      "source": "Return-to-go credit assignment further aligns token updates",
+      "ok": true
+     },
+     {
+      "element": "outperforms vanilla OPSD on mathematical benchmarks",
+      "card": "outperforming vanilla OPSD on mathematical benchmarks",
+      "source": "Experiments on mathematical reasoning benchmarks show that β-OPSD consistently outperforms vanilla OPSD",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A18",
+    "text": "Privileged self-distillation applied only to all-fail prompts yields pass@4 +0.8 to +1.1 % and pass@8 +0.4 to +1.7 % while keeping greedy accuracy (Qwen2.5-Math-1.5B-Instruct)",
+    "source": "S10",
+    "source_origin": "fulltext",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "HDPO identifies prompts where all rollouts fail, generates privileged rollouts by providing the model with ground-truth information",
+     "Experiments on OpenMathInstruct-2 with Qwen2.5-Math-1.5B-Instruct show that HDPO consistently improves coverage metrics",
+     "(\\textit{pass@4} by $+0.8$--$1.1\\%$, \\textit{pass@8} by $+0.4$--$1.7\\%$) while maintaining greedy accuracy"
+    ],
+    "location": "Abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "method/subject",
+      "card": "privileged self-distillation applied only to all-fail prompts",
+      "source": "HDPO identifies prompts where all rollouts fail, generates privileged rollouts... distills the teacher's token-level distribution into the student",
+      "ok": true
+     },
+     {
+      "element": "figure pass@4",
+      "card": "+0.8 to +1.1 %",
+      "source": "pass@4 by $+0.8$--$1.1\\%$",
+      "ok": true
+     },
+     {
+      "element": "figure pass@8",
+      "card": "+0.4 to +1.7 %",
+      "source": "pass@8 by $+0.4$--$1.7\\%$",
+      "ok": true
+     },
+     {
+      "element": "greedy accuracy",
+      "card": "keeping greedy accuracy",
+      "source": "while maintaining greedy accuracy",
+      "ok": true
+     },
+     {
+      "element": "model",
+      "card": "Qwen2.5-Math-1.5B-Instruct",
+      "source": "Qwen2.5-Math-1.5B-Instruct",
+      "ok": true
+     },
+     {
+      "element": "direction",
+      "card": "+ (improvements)",
+      "source": "consistently improves coverage metrics",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A19",
+    "text": "In RLVR, Pass@1 improves while high-k Pass@k degrades under overtraining; restricting updates to zero-success problems lifts Pass@256 above the base model",
+    "source": "S16",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "RLVR often suffers from \\emph{diversity collapse}: Pass@$1$ improves while high-$k$ Pass@$k$ degrades",
+     "most updates in standard RLVR are overtraining from the boundary perspective",
+     "restricting updates to problems with zero observed success lifts Pass@$256$ above the base model on difficult benchmarks"
+    ],
+    "location": "Abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "Pass@1 improves while high-k Pass@k degrades",
+      "card": "Pass@1 up, high-k Pass@k down",
+      "source": "Pass@1 improves while high-k Pass@k degrades",
+      "ok": true
+     },
+     {
+      "element": "framework / condition",
+      "card": "under overtraining",
+      "source": "formalize this diversity collapse through the lens of overtraining; most updates in standard RLVR are overtraining",
+      "ok": true
+     },
+     {
+      "element": "intervention",
+      "card": "restricting updates to zero-success problems",
+      "source": "restricting updates to problems with zero observed success",
+      "ok": true
+     },
+     {
+      "element": "outcome",
+      "card": "lifts Pass@256 above the base model",
+      "source": "lifts Pass@256 above the base model on difficult benchmarks",
+      "ok": true
+     },
+     {
+      "element": "scope detail",
+      "card": "(unqualified)",
+      "source": "on difficult benchmarks",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A20",
+    "text": "A policy-gradient hybrid combining verifier advantages, reverse KL to the teacher and reference KL reports better stability and performance than RLVR and self-distillation baselines",
+    "source": "S9",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "SDPG, a self-distilled policy-gradient framework that combines group-relative verifier advantages with normalized standard deviation, exact full-vocabulary on-policy self-distillation, as well as reference-policy KL regularization",
+     "Empirically, SDPG improves stability and performance over RLVR and self-distillation baselines",
+     "an auxiliary full-vocabulary student-to-teacher reverse Kullback-Leibler divergence loss"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "subject (policy-gradient hybrid)",
+      "card": "policy-gradient hybrid",
+      "source": "self-distilled policy-gradient framework (SDPG)",
+      "ok": true
+     },
+     {
+      "element": "component: verifier advantages",
+      "card": "verifier advantages",
+      "source": "group-relative verifier advantages with normalized standard deviation",
+      "ok": true
+     },
+     {
+      "element": "component: reverse KL to the teacher",
+      "card": "reverse KL to the teacher",
+      "source": "auxiliary full-vocabulary student-to-teacher reverse Kullback-Leibler divergence loss / exact full-vocabulary on-policy self-distillation",
+      "ok": true
+     },
+     {
+      "element": "component: reference KL",
+      "card": "reference KL",
+      "source": "reference-policy KL regularization",
+      "ok": true
+     },
+     {
+      "element": "outcome",
+      "card": "better stability and performance",
+      "source": "improves stability and performance",
+      "ok": true
+     },
+     {
+      "element": "comparator",
+      "card": "RLVR and self-distillation baselines",
+      "source": "over RLVR and self-distillation baselines",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A21",
+    "text": "On successful rollouts the teacher mechanism overwrites the student's own choices; reversing the signal on correct rollouts is proposed",
+    "source": "S11",
+    "source_origin": "fulltext",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "on successful rollouts, the same mechanism instead overwrites the student's choices and suppresses it's own reasoning",
+     "Therefore, we propose reading the original self-distillation signal in reverse",
+     "we propose RLRT (RLVR with Reversed Teacher), which augments GRPO by reinforcing these tokens on correct rollouts"
+    ],
+    "location": "Abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "subject/mechanism",
+      "card": "teacher mechanism overwrites student's own choices",
+      "source": "the same mechanism instead overwrites the student's choices",
+      "ok": true
+     },
+     {
+      "element": "condition",
+      "card": "on successful rollouts",
+      "source": "on successful rollouts",
+      "ok": true
+     },
+     {
+      "element": "proposal / direction",
+      "card": "reversing the signal on correct rollouts is proposed",
+      "source": "we propose reading the original self-distillation signal in reverse ... augments GRPO by reinforcing these tokens on correct rollouts",
+      "ok": true
+     },
+     {
+      "element": "certainty / scope",
+      "card": "stated as a proposal (abstract)",
+      "source": "Therefore, we propose ... we propose RLRT ...",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A24",
+    "text": "Finding 2: the only direct diversity-collapse measurement (falling rollout diversity, flattening pass@k) is on graph path-finding and science QA, not math",
+    "source": "S3",
+    "source_origin": "fulltext",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "rollout diversity decreases and pass@k curves flatten (i.e., generating more rollouts fails to improve accuracy).",
+     "On a controlled graph path-finding task and science question-answering benchmarks, self-distilled models match or exceed RL on average performance"
+    ],
+    "location": "Abstract; experiments in Sec. 4.1 (Concept-Graph) and Sec. 4.2 (Science QA)",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "direct diversity-collapse measurement (falling diversity, flattening pass@k)",
+      "card": "falling rollout diversity, flattening pass@k",
+      "source": "rollout diversity decreases and pass@k curves flatten",
+      "ok": true
+     },
+     {
+      "element": "domains measured",
+      "card": "graph path-finding and science QA",
+      "source": "controlled graph path-finding task and science question-answering benchmarks",
+      "ok": true
+     },
+     {
+      "element": "math absent from measurements",
+      "card": "not math",
+      "source": "paper does not test mathematical reasoning; math appears only as a motivating example",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A25",
+    "text": "Finding 3: a position score predicts teacher-token reliability with AUROC 0.83 versus at most 0.57 for local uncertainty scores (Qwen3-4B setting)",
+    "source": "S6",
+    "source_origin": "fulltext",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "On Qwen3-4B, we find that an oriented within-sequence position score is the strongest tested",
+     "$1-\\widetilde r$ (early-position score) & $\\mathbf{0.83}$ & $\\mathbf{[0.66, 0.95]}$",
+     "$h_{\\mathrm{trunc}}$ (top-$16$ valid entropy) & $0.57$ & $[0.51, 0.72]$",
+     "Branch-viability classification on Qwen3-4B."
+    ],
+    "location": "Abstract; Sec. 1 (Introduction); Sec. 3.2 (Motivation), Table 1 (tab:branch-auroc)",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "subject",
+      "card": "position score predicts teacher-token reliability",
+      "source": "oriented within-sequence position score is the strongest tested predictor of teacher-token reliability",
+      "ok": true
+     },
+     {
+      "element": "figure",
+      "card": "AUROC 0.83",
+      "source": "AUROC $0.83$",
+      "ok": true
+     },
+     {
+      "element": "comparator",
+      "card": "at most 0.57 for local uncertainty scores",
+      "source": "local uncertainty scores are at most $0.57$ (top-$16$ truncated entropy = 0.57, others 0.51-0.54)",
+      "ok": true
+     },
+     {
+      "element": "condition",
+      "card": "Qwen3-4B setting",
+      "source": "On Qwen3-4B / Branch-viability classification on Qwen3-4B",
+      "ok": true
+     },
+     {
+      "element": "scope",
+      "card": "position vs. local uncertainty diagnostics",
+      "source": "position vs. predictive entropy, MC-dropout MI, Dirichlet precision, top-16 truncated entropy",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A26",
+    "text": "Finding 3: entropy-aware distillation reports Pass@8 gains of +1.37, +2.39 and +5.05 on Qwen3-0.6B, 1.7B and 4B-Base across six math benchmarks",
+    "source": "S7",
+    "source_origin": "fulltext",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "Across six math reasoning benchmarks, this yields Pass@8 accuracy gains of $+1.37$ for Qwen3-0.6B-Base, $+2.39$ for Qwen3-1.7B-Base, and $+5.05$ for Qwen3-4B-Base compared to baseline on-policy distillation methods.",
+     "Pass@8 by $+1.37$ on average across the six benchmarks for the Qwen3-0.6B-Base model, Avg@8 by $+0.99$ and Pass@8 by $+2.39$ for the Qwen3-1.7B-Base model, and $+1.80$ in Avg@8 and $+5.05$ in Pass@8 for the Qwen3-4B-Base model."
+    ],
+    "location": "Abstract; Section 5 (Main Results, Performance on Mathematical Reasoning)",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "metric",
+      "card": "Pass@8 gains",
+      "source": "Pass@8 accuracy gains",
+      "ok": true
+     },
+     {
+      "element": "figure for 0.6B",
+      "card": "+1.37",
+      "source": "$+1.37$ for Qwen3-0.6B-Base",
+      "ok": true
+     },
+     {
+      "element": "figure for 1.7B",
+      "card": "+2.39",
+      "source": "$+2.39$ for Qwen3-1.7B-Base",
+      "ok": true
+     },
+     {
+      "element": "figure for 4B",
+      "card": "+5.05",
+      "source": "$+5.05$ for Qwen3-4B-Base",
+      "ok": true
+     },
+     {
+      "element": "scope",
+      "card": "across six math benchmarks",
+      "source": "Across six math reasoning benchmarks",
+      "ok": true
+     },
+     {
+      "element": "label 'Finding 3'",
+      "card": "Finding 3",
+      "source": "paper has no 'Finding' labels (uses RQ1–RQ4); same figures reported in abstract and Section 'Main Results'",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A27",
+    "text": "Finding 3: the title states privileged likelihood is not automatically value and proposes three checks for token credit in OPSD; content not specified (title only)",
+    "source": "S18",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "Privileged Likelihood Is Not Automatically Value: Three Checks for Token Credit in On-Policy Self-Distillation"
+    ],
+    "location": "Title (line 1)",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "title phrase 'privileged likelihood is not automatically value'",
+      "card": "title states privileged likelihood is not automatically value",
+      "source": "Privileged Likelihood Is Not Automatically Value",
+      "ok": true
+     },
+     {
+      "element": "three checks for token credit in OPSD",
+      "card": "proposes three checks for token credit in OPSD",
+      "source": "Three Checks for Token Credit in On-Policy Self-Distillation",
+      "ok": true
+     },
+     {
+      "element": "scope",
+      "card": "content not specified (title only)",
+      "source": "claim restricted to title; abstract exists but is not used by the claim",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A28",
+    "text": "Finding 3: a contrastive method assigns per-token credit by contrasting positive and negative prompts and also covers text-to-image",
+    "source": "S17",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "we propose Guidance Contrastive Policy Optimization (GCPO), a novel algorithm that enables per-token credit assignment by contrasting model predictions under positive and negative prompts",
+     "GCPO consistently outperforms GRPO and DAPO baselines on both text-to-image generation and chain-of-thought reasoning benchmarks"
+    ],
+    "location": "Abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "method is contrastive, assigns per-token credit",
+      "card": "contrastive method assigns per-token credit",
+      "source": "GCPO ... enables per-token credit assignment by contrasting model predictions under positive and negative prompts",
+      "ok": true
+     },
+     {
+      "element": "mechanism: positive vs negative prompts",
+      "card": "contrasting positive and negative prompts",
+      "source": "by contrasting model predictions under positive and negative prompts",
+      "ok": true
+     },
+     {
+      "element": "scope includes text-to-image",
+      "card": "also covers text-to-image",
+      "source": "text-to-image generation",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A29",
+    "text": "Finding 4 verdict: the correct full solution is not necessary and not reliably best; a solution from another problem can outperform it",
+    "source": "S12",
+    "source_origin": "fulltext",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "The experiments provide three forms of evidence. First, students can improve without the",
+     "and a solution from another problem can outperform the correct",
+     "Whether the correct reference improves performance depends on the teacher's"
+    ],
+    "location": "Conclusion (and Abstract); the paper does not number its findings",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "label 'Finding 4'",
+      "card": "Finding 4 verdict",
+      "source": "paper has no explicitly numbered 'Findings' — statement appears as 'First' of three forms of evidence in Conclusion and in the Abstract; treating 'Finding 4' as card-author indexing, not a claim about paper structure",
+      "ok": true
+     },
+     {
+      "element": "correct full solution not necessary",
+      "card": "is not necessary",
+      "source": "students can improve without the correct reference",
+      "ok": true
+     },
+     {
+      "element": "not reliably best",
+      "card": "not reliably best",
+      "source": "The correct reference does not provide a consistent performance benefit ... Whether the correct reference improves performance depends on the teacher's generation mode, the model size, and the training dataset.",
+      "ok": true
+     },
+     {
+      "element": "another problem can outperform",
+      "card": "a solution from another problem can outperform it",
+      "source": "a solution from another problem can outperform the correct solution",
+      "ok": true
+     }
+    ]
+   }
+  ],
+  "removed": [
+   {
+    "id": "A2",
+    "text": "OPSD is reported as 4-8x more token-efficient than GRPO on mathematical reasoning benchmarks",
+    "source": "S1",
+    "source_origin": "fulltext",
+    "status": "DISTORTED",
+    "discrepancy": "figure: card says '4-8x more token-efficient'; the source states token efficiency only qualitatively ('superior', 'significantly improved') and gives no multiplier; the per-prompt token ratio implied by the configs (1 × 1024 vs 8 × 16k) is ~125×, not 4-8×",
+    "fragments": [
+     "achieving superior token efficiency compared to reinforcement learning methods",
+     "matches the performance of GRPO with significantly improved token efficiency and outperform supervised fine-tuning",
+     "each problem requiring only 1024 sampled tokens, whereas GRPO requires 8 rollouts of 16k tokens each"
+    ],
+    "location": "Abstract; §4.2 Main Results; Table 2 (Training Configuration)",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "comparator",
+      "card": "more token-efficient than GRPO",
+      "source": "superior token efficiency compared to reinforcement learning methods; matches/exceeds GRPO with significantly improved token efficiency",
+      "ok": true
+     },
+     {
+      "element": "domain",
+      "card": "on mathematical reasoning benchmarks",
+      "source": "competition-level mathematical reasoning benchmarks (AIME24/25, HMMT25)",
+      "ok": true
+     },
+     {
+      "element": "figure (multiplier)",
+      "card": "4-8x",
+      "source": "no numerical multiplier is reported; qualitative only ('superior', 'significantly improved', 'higher token learning efficiency'); the per-prompt token budgets are 1024 (OPSD, 1 rollout) vs 16k × 8 rollouts (GRPO), i.e. ~125× per prompt — not 4-8×",
+      "ok": false
+     }
+    ]
+   },
+   {
+    "id": "A22",
+    "text": "Finding 1 verdict: the OPSD recipe trains and is token-efficient in the authors' settings (4-8x over GRPO, one team); independent replication is open",
+    "source": "S1",
+    "source_origin": "fulltext",
+    "status": "DISTORTED",
+    "discrepancy": "figure: card asserts a specific '4-8x over GRPO' multiplier; the source never gives such a number — only qualitative claims of 'superior' / 'significantly improved' token efficiency",
+    "fragments": [
+     "achieving superior token efficiency compared to reinforcement learning methods",
+     "matches the performance of GRPO with significantly improved token efficiency and outperform supervised fine-tuning",
+     "\\ours{} achieves higher token learning efficiency within 100 steps of training as compared to GRPO"
+    ],
+    "location": "Abstract; §4.2 Main Results; Fig. 3 (Token Efficiency) caption",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "subject",
+      "card": "the OPSD recipe trains and is token-efficient in the authors' settings",
+      "source": "OPSD converges within 100 steps and is reported as token-efficient relative to GRPO/SFT across Qwen3-1.7B/4B/8B",
+      "ok": true
+     },
+     {
+      "element": "figure (multiplier)",
+      "card": "4-8x over GRPO",
+      "source": "no 4-8x figure anywhere; token-efficiency claims are qualitative ('superior', 'significantly improved', 'higher'); configuration ratio is ~125× per prompt, step ratio is 5× (100 vs 500 steps) — neither is '4-8x'",
+      "ok": false
+     },
+     {
+      "element": "replication",
+      "card": "one team; independent replication is open",
+      "source": "the paper is from a single author team (UCLA/HKU/Meta) and does not claim independent replication; this is editorial, not a source statement",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A23",
+    "text": "Finding 2 verdict: bias on uncertainty expression is probable, supported by degradation of up to 40 % in three models",
+    "source": "S2",
+    "source_origin": "fulltext",
+    "status": "ABSENT",
+    "discrepancy": "Finding/Takeaway 2 in the source makes no 'probable' verdict and is not supported by a '40% in three models' observation — it concerns SFT with a single model.",
+    "fragments": [],
+    "location": "Takeaway 2 box (after Section 3 / SFT)",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "framing as a verdict with 'probable' certainty",
+      "card": "verdict: bias on uncertainty expression is probable",
+      "source": "no verdict/probability wording; the paper states causal/empirical findings in Takeaway boxes",
+      "ok": false
+     },
+     {
+      "element": "attribution to Finding/Takeaway 2",
+      "card": "Finding 2 is about bias on uncertainty expression supported by degradation of up to 40 % in three models",
+      "source": "Takeaway 2 states only: 'Even when trained on correct trajectories, excessively suppressing epistemic verbalization can substantially degrade reasoning performance' — it is based on SFT with one model (DeepSeek-R1-Distill-Qwen-7B) on four math benchmarks, with no '40%' figure and no 'three models'",
+      "ok": false
+     },
+     {
+      "element": "scope (three models)",
+      "card": "three models",
+      "source": "Takeaway 2's underlying experiment uses one model; the '40 %, three models' phrasing belongs to the abstract/on-policy section, not Takeaway 2",
+      "ok": false
+     }
+    ]
+   },
+   {
+    "id": "A30",
+    "text": "Finding 4: rich-context teachers suppress uncertainty, so the richest context can be harmful",
+    "source": "S2",
+    "source_origin": "fulltext",
+    "status": "DISTORTED",
+    "discrepancy": "Location mismatch: the content the card attributes to Finding 4 (rich-context teachers suppress uncertainty / richest context harmful) is the subject of Takeaways 1 and 3; Finding/Takeaway 4 actually concerns the role of task coverage/generalization in making epistemic verbalization useful.",
+    "fragments": [
+     "\\textbf{Takeaway 4}}: Epistemic Verbalization Depends on Task Generalization",
+     "The value of epistemic verbalization scales with generalization demands: largely redundant for familiar, repetitive tasks (small $|\\mathcal{D}|$) and removable for efficiency, but increasingly important as task diversity grows."
+    ],
+    "location": "Takeaway 4 box (end of Section 5, Generalization)",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "topic of Finding/Takeaway 4",
+      "card": "Finding 4: rich-context teachers suppress uncertainty, so the richest context can be harmful",
+      "source": "Takeaway 4 is about the dependence of epistemic verbalization value on task generalization/coverage, not about rich-context teachers suppressing uncertainty",
+      "ok": false
+     },
+     {
+      "element": "content",
+      "card": "rich-context teachers suppress uncertainty / richest context harmful",
+      "source": "Takeaway 4: 'value of epistemic verbalization scales with generalization demands: largely redundant for familiar, repetitive tasks (small |D|) and removable for efficiency, but increasingly important as task diversity grows'",
+      "ok": false
+     }
+    ]
+   },
+   {
+    "id": "A31",
+    "text": "Finding 5 verdict: adaptive exposure via a learned reveal ratio (+0.95 to +2.33 Avg@12 over OPSD) is the nearest published analogue of guidance decay",
+    "source": "S15",
+    "source_origin": "fulltext",
+    "status": "ABSENT",
+    "discrepancy": "The source paper does not label any item 'Finding 5', does not use the term 'guidance decay', and does not frame its learned exposure as an analogue of guidance decay. These are external characterizations not supported by the paper, which calls its mechanism 'Adaptive Teacher Exposure' (ATESD) learned via a Beta controller with a discounted learning-progress reward and hold/lookahead schedule.",
+    "fragments": [],
+    "location": "n/a",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "Finding 5 verdict",
+      "card": "Finding 5 verdict",
+      "source": "not present (paper has no 'Finding 5' label)",
+      "ok": false
+     },
+     {
+      "element": "guidance decay analogue",
+      "card": "nearest published analogue of guidance decay",
+      "source": "no mention of 'guidance decay' or framing as 'analogue of'",
+      "ok": false
+     },
+     {
+      "element": "numeric range +0.95 to +2.33",
+      "card": "+0.95 to +2.33 Avg@12 over OPSD",
+      "source": "present (per-scale gains)",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A32",
+    "text": "Finding 5: the distillation weight lambda is described as an exploration-exploitation trade-off",
+    "source": "S10",
+    "source_origin": "fulltext",
+    "status": "ABSENT",
+    "discrepancy": "label element: card says 'Finding 5', source has no numbered findings; the lambda / exploration-exploitation idea is discussed, but it is never framed, numbered, or titled as 'Finding 5'",
+    "fragments": [],
+    "location": "n/a (no 'Finding 5' label anywhere in the paper)",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "label 'Finding 5'",
+      "card": "Finding 5 (numbered/explicit finding)",
+      "source": "no numbered findings exist in the paper; sections, subsections, propositions, lemmas only",
+      "ok": false
+     },
+     {
+      "element": "concept lambda as exploration-exploitation tradeoff",
+      "card": "lambda described as exploration-exploitation trade-off",
+      "source": "present several times (abstract, Results, Discussion, Conclusion)",
+      "ok": true
+     }
+    ]
+   }
+  ],
+  "to_flag": []
+ }
+}

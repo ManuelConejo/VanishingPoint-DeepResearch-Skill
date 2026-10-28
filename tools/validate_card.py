@@ -7,9 +7,13 @@ Checks: 1 card.json (minimal schema); 2 source keys (identifier doi/arxiv/pmid/p
 sections of the output contract, in order (Executive Summary 200-400 words, Introduction, Main Analysis with 4 to 8 findings headed
 `### Finding n — <title>`, Synthesis & Insights, Limitations & Caveats, Recommendations, Bibliography, Methodology Appendix); 7 unverified claims
 flagged; 8 result.json valid (validate_result); 9 run.json consistent with the journal; 10 "Source coverage" block present (in the methodology
-appendix), with its active and skipped lines; 11 each [n] of the text is in the bibliography and each [n] entry is cited; 12 prose >= 80 % (bullet lines <= 20 %).
-Output: problems (empty = OK), exit code 1 if there are any. Import: problems(dir) -> [str]; header(dir) -> dict."""
-import json, pathlib, re, sys
+appendix), with its active and skipped lines; 11 each [n] of the text is in the bibliography and each [n] entry is cited; 12 prose >= 80 % (bullet lines <= 20 %);
+13 (command line, runs with a gateway journal only) end steps done on the current files: state/finish_run.json, written by tools/finish_run.py,
+whose fingerprints of REPORT.md, card.json, result.json and verdicts.json match the files (else: run finish_run.py, which runs these checks,
+the retraction check, law_checks and the exports).
+Output: problems (empty = OK), exit code 1 if there are any. Import: problems(dir) -> [str] (checks 1-12); end_problems(dir) -> [str] (check 13);
+header(dir) -> dict."""
+import hashlib, json, pathlib, re, sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from validate_result import problems as pb_result
 import sources as _reg   # noqa: E402  (source registry)
@@ -84,7 +88,31 @@ def header(folder):
         e['calls_per_command'][l.get('call')] = e['calls_per_command'].get(l.get('call'), 0) + 1
         e['errors'] += bool(l.get('error')); seen |= {i for i in (l.get('ids') or []) if i}
     e['ids_seen'] = len(seen)
+    pools = {}
+    for l in lines: pools[l.get('pool') or 'search'] = pools.get(l.get('pool') or 'search', 0) + 1
+    if set(pools) - {'search'}: e['calls_per_pool'] = pools               # the verifier's own budget (gateway pool 'verifier')
     return e
+
+
+FINISH_INPUTS = ('REPORT.md', 'card.json', 'result.json', 'verdicts.json')   # what the end steps read; a change after them makes them stale
+
+
+def fingerprints(folder):
+    """sha256 of each end-step input (None when absent), as written by tools/finish_run.py in state/finish_run.json."""
+    d = pathlib.Path(folder)
+    return {f: (hashlib.sha256((d / f).read_bytes()).hexdigest() if (d / f).is_file() else None) for f in FINISH_INPUTS}
+
+
+def end_problems(folder):
+    """Check 13: with a gateway journal (script mode), the end steps of tools/finish_run.py ran on the current files."""
+    d = pathlib.Path(folder)
+    if not (d / 'state' / 'journal.jsonl').exists(): return []          # injected mode: no script, no end-step receipt
+    cmd = f'python3 -I tools/finish_run.py {folder} --T <T> --plugin plugins/<d>.md (it runs these checks, the retraction check, law_checks and the exports)'
+    r = load(d / 'state' / 'finish_run.json') if (d / 'state' / 'finish_run.json').exists() else None
+    if not isinstance(r, dict) or not isinstance(r.get('inputs'), dict): return [f'13 end steps not run (state/finish_run.json missing): run {cmd}']
+    now = fingerprints(d)
+    changed = [f for f in FINISH_INPUTS if r['inputs'].get(f) != now[f]]
+    return [f'13 end steps stale: {", ".join(changed)} changed since the last finish_run.py: run {cmd}'] if changed else []
 
 
 def problems(folder):
@@ -154,7 +182,8 @@ if __name__ == '__main__':
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     if not args: print(__doc__); sys.exit(2)
     d = pathlib.Path(args[0])
+    if not d.is_dir(): print(f'validate_card.py: not a directory: {args[0]!r} (a relative path is read from the current directory {pathlib.Path.cwd()})'); sys.exit(2)
     if '--header' in sys.argv:
         (d / 'run.json').write_text(json.dumps(header(d), ensure_ascii=False, indent=1)); print('run.json written')
-    p = problems(d)
+    p = problems(d) + end_problems(d)
     print('\n'.join(p) if p else 'OK'); sys.exit(1 if p else 0)

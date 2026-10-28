@@ -1,0 +1,272 @@
+[
+ {
+  "id": "2026self",
+  "type": "article",
+  "citation-label": "[1]",
+  "title": "Self-Distilled Reasoner: On-Policy Self-Distillation for LLMs",
+  "issued": {
+   "date-parts": [
+    [
+     2026
+    ]
+   ]
+  },
+  "URL": "https://arxiv.org/abs/2601.18734",
+  "note": "VP id: arxiv:2601.18734; basis: abstract; report [1]"
+ },
+ {
+  "id": "2026does",
+  "type": "article",
+  "citation-label": "[2]",
+  "title": "Why Does Self-Distillation (Sometimes) Degrade the Reasoning Capability of LLMs?",
+  "issued": {
+   "date-parts": [
+    [
+     2026
+    ]
+   ]
+  },
+  "URL": "https://arxiv.org/abs/2603.24472",
+  "note": "VP id: arxiv:2603.24472; basis: abstract; report [2]"
+ },
+ {
+  "id": "2026policy",
+  "type": "article",
+  "citation-label": "[3]",
+  "title": "On-Policy Self-Distillation with Sampled Demonstrations Reduces Output Diversity",
+  "issued": {
+   "date-parts": [
+    [
+     2026
+    ]
+   ]
+  },
+  "URL": "https://arxiv.org/abs/2606.26091",
+  "note": "VP id: arxiv:2606.26091; basis: abstract; report [3]"
+ },
+ {
+  "id": "2026anti",
+  "type": "article",
+  "citation-label": "[4]",
+  "title": "Anti-Self-Distillation (AntiSD) via Pointwise Mutual Information",
+  "issued": {
+   "date-parts": [
+    [
+     2026
+    ]
+   ]
+  },
+  "URL": "https://arxiv.org/abs/2605.11609",
+  "note": "VP id: arxiv:2605.11609; basis: abstract; report [4]"
+ },
+ {
+  "id": "2026asymmetric",
+  "type": "article",
+  "citation-label": "[5]",
+  "title": "AMR-SD: Asymmetric Meta-Reflective Self-Distillation for Token-Level Credit Assignment",
+  "issued": {
+   "date-parts": [
+    [
+     2026
+    ]
+   ]
+  },
+  "URL": "https://arxiv.org/abs/2605.18529",
+  "note": "VP id: arxiv:2605.18529; basis: abstract; report [5]"
+ },
+ {
+  "id": "2026when",
+  "type": "article",
+  "citation-label": "[6]",
+  "title": "When Are Teacher Tokens Reliable? Position-Weighted On-Policy Self-Distillation for Reasoning",
+  "issued": {
+   "date-parts": [
+    [
+     2026
+    ]
+   ]
+  },
+  "URL": "https://arxiv.org/abs/2605.21606",
+  "note": "VP id: arxiv:2605.21606; basis: abstract; report [6]"
+ },
+ {
+  "id": "2026entropy",
+  "type": "article",
+  "citation-label": "[7]",
+  "title": "Entropy-Aware On-Policy Distillation of Language Models",
+  "issued": {
+   "date-parts": [
+    [
+     2026
+    ]
+   ]
+  },
+  "URL": "https://arxiv.org/abs/2603.07079",
+  "note": "VP id: arxiv:2603.07079; basis: abstract; report [7]"
+ },
+ {
+  "id": "2026beta",
+  "type": "article",
+  "citation-label": "[8]",
+  "title": "beta-OPSD: Deriving with Policy Optimization, Training with Self-Distillation",
+  "issued": {
+   "date-parts": [
+    [
+     2026
+    ]
+   ]
+  },
+  "URL": "https://arxiv.org/abs/2607.28582",
+  "note": "VP id: arxiv:2607.28582; basis: abstract; report [8]"
+ },
+ {
+  "id": "2026selfa",
+  "type": "article",
+  "citation-label": "[9]",
+  "title": "Self-Distilled Policy Gradient",
+  "issued": {
+   "date-parts": [
+    [
+     2026
+    ]
+   ]
+  },
+  "URL": "https://arxiv.org/abs/2606.04036",
+  "note": "VP id: arxiv:2606.04036; basis: abstract; report [9]"
+ },
+ {
+  "id": "2026hdpo",
+  "type": "article",
+  "citation-label": "[10]",
+  "title": "HDPO: Hybrid Distillation Policy Optimization via Privileged Self-Distillation",
+  "issued": {
+   "date-parts": [
+    [
+     2026
+    ]
+   ]
+  },
+  "URL": "https://arxiv.org/abs/2603.23871",
+  "note": "VP id: arxiv:2603.23871; basis: abstract; report [10]"
+ },
+ {
+  "id": "2026rebellious",
+  "type": "article",
+  "citation-label": "[11]",
+  "title": "Rebellious Student: Reversing Teacher Signals (RLRT)",
+  "issued": {
+   "date-parts": [
+    [
+     2026
+    ]
+   ]
+  },
+  "URL": "https://arxiv.org/abs/2605.10781",
+  "note": "VP id: arxiv:2605.10781; basis: abstract; report [11]"
+ },
+ {
+  "id": "2026rethinking",
+  "type": "article",
+  "citation-label": "[12]",
+  "title": "Rethinking Privileged Information in On-Policy Self-Distillation",
+  "issued": {
+   "date-parts": [
+    [
+     2026
+    ]
+   ]
+  },
+  "URL": "https://arxiv.org/abs/2608.18271",
+  "note": "VP id: arxiv:2608.18271; basis: abstract; report [12]"
+ },
+ {
+  "id": "2026privileged",
+  "type": "article",
+  "citation-label": "[13]",
+  "title": "Privileged Solutions or Context-Induced Teacher Behavior? Dissecting On-Policy Self-Distillation",
+  "issued": {
+   "date-parts": [
+    [
+     2026
+    ]
+   ]
+  },
+  "URL": "https://arxiv.org/abs/2608.09228",
+  "note": "VP id: arxiv:2608.09228; basis: abstract; report [13]"
+ },
+ {
+  "id": "2026more",
+  "type": "article",
+  "citation-label": "[14]",
+  "title": "Is More Privileged Information Better? Solution Traces to Problem-Solving Structure in Self-Distilled Reasoning",
+  "issued": {
+   "date-parts": [
+    [
+     2026
+    ]
+   ]
+  },
+  "URL": "https://arxiv.org/abs/2608.01589",
+  "note": "VP id: arxiv:2608.01589; basis: abstract; report [14]"
+ },
+ {
+  "id": "2026adaptive",
+  "type": "article",
+  "citation-label": "[15]",
+  "title": "Adaptive Teacher Exposure for Self-Distillation in LLM Reasoning",
+  "issued": {
+   "date-parts": [
+    [
+     2026
+    ]
+   ]
+  },
+  "URL": "https://arxiv.org/abs/2605.11458",
+  "note": "VP id: arxiv:2605.11458; basis: abstract; report [15]"
+ },
+ {
+  "id": "2026understanding",
+  "type": "article",
+  "citation-label": "[16]",
+  "title": "Understanding Diversity Collapse in RLVR via the Lens of Overtraining",
+  "issued": {
+   "date-parts": [
+    [
+     2026
+    ]
+   ]
+  },
+  "URL": "https://arxiv.org/abs/2606.15455",
+  "note": "VP id: arxiv:2606.15455; basis: abstract; report [16]"
+ },
+ {
+  "id": "2026guidance",
+  "type": "article",
+  "citation-label": "[17]",
+  "title": "Guidance Contrastive Token Credit Assignment for Discrete Policy Optimization",
+  "issued": {
+   "date-parts": [
+    [
+     2026
+    ]
+   ]
+  },
+  "URL": "https://arxiv.org/abs/2605.29198",
+  "note": "VP id: arxiv:2605.29198; basis: abstract; report [17]"
+ },
+ {
+  "id": "2026privilegeda",
+  "type": "article",
+  "citation-label": "[18]",
+  "title": "Privileged Likelihood Is Not Automatically Value: Three Checks for Token Credit in OPSD",
+  "issued": {
+   "date-parts": [
+    [
+     2026
+    ]
+   ]
+  },
+  "URL": "https://arxiv.org/abs/2608.09263",
+  "note": "VP id: arxiv:2608.09263; basis: title; report [18]"
+ }
+]

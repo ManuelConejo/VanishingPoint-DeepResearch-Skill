@@ -1,0 +1,22 @@
+{
+ "source": "state/journal.jsonl",
+ "run": [
+  "an13"
+ ],
+ "T": [
+  "2026-08-26"
+ ],
+ "calls": 50,
+ "calls_per_command": {
+  "search-arxiv": 15,
+  "search-openalex": 1,
+  "read": 33,
+  "search-openreview": 1
+ },
+ "errors": 0,
+ "ids_seen": 88,
+ "calls_per_pool": {
+  "search": 44,
+  "verifier": 6
+ }
+}

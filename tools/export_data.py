@@ -10,6 +10,7 @@ openreview without venue), software (`path@SHA`, osv:, a code host URL), dataset
 (thesesfr). Authors, title, year, venue, DOI are taken from these files only, never guessed beyond them: a field not found stays empty;
 the URL is the one written in the entry, else the stable link of its doi/pmid/arxiv/pmcid. The VP identifier goes in note (BibTeX),
 AN + N1 (RIS), note (CSL). BibTeX keys: author + year + first title word, ASCII, deduplicated by a, b, c in bibliography order.
+passages.json / PASSAGES.md (when the run has verdicts.json): the cited passages of tools/passages.py, per claim, exact source text only.
 Usage: export_data.py RUN_DIR [--out DIR]     Exit: 0 written (paths printed); 2 no REPORT.md.
 Import: entries(dir) -> [dict]; studies(dir) -> (header, rows); bibtex/ris/csl(entries) -> str."""
 import argparse, csv, io, json, pathlib, re, sys, unicodedata
@@ -281,6 +282,9 @@ def main(argv=None):
     es = entries(d); head, rows = studies(d, es)
     for name, text in (('studies.csv', to_csv(head, rows)), ('references.bib', bibtex(es)), ('references.ris', ris(es)), ('references.json', csl(es))):
         (out / name).write_bytes(text.encode('utf-8')); print((out / name).resolve())
+    import passages as PS
+    r = PS.write(d, out)
+    if r: [print(f.resolve()) for f in r[1]]
     print(f'{len(rows)} studies, {len(es)} references')
     return 0
 

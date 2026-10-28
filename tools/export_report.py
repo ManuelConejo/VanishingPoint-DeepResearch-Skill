@@ -7,6 +7,10 @@ links), each [n] linked to its bibliography entry (with back-links), doi:/pmid:/
 a header taken from card.json / run.json / result.json / verdicts.json / scope.md when they give it, print CSS (A4, page breaks before
 the bibliography and the appendix). Every character of the report is HTML-escaped (the text comes from sources); a link is kept
 only for http, https, mailto or an in-page #anchor, images become their alt text.
+Cited passages (when the run has verdicts.json): under each bibliography entry, the claims checked against it, each with the exact passage
+of its source (tools/passages.py: located from the verifier's machine-checked fragments in DIR/sources/<KEY>/source.txt, never written by
+a model; escaped, the verified fragment highlighted) and its origin (identifier, full text with version or record + abstract), or the reason
+why no passage was verified. REPORT.md itself is not changed.
 PDF: the first converter found, in this order: WeasyPrint (Python module, then `weasyprint` command), Chromium/Chrome headless
 (`--no-sandbox` only on a retry inside a container, as root or when the sandbox could not start), `wkhtmltopdf`, `pandoc` with a PDF engine found on PATH.
 None found or all failed: the HTML stays, one line says so, exit 0 (the HTML prints to PDF from any browser).
@@ -65,6 +69,16 @@ a.cite{font-size:.82em;white-space:nowrap}
 .bib .n{display:inline-block;min-width:2.6rem;text-indent:0;font-weight:600;font-size:.86em;color:#45454d}
 .bib .back{font-size:.8em;margin-left:.3rem}
 .bib p:target{background:#fff6d6}
+.cp{margin:-.2rem 0 .9rem 2.6rem;font-size:.86rem;line-height:1.45}
+.cp .c{margin:.45rem 0 .15rem;color:#2d2d33}
+.cp .id{font-family:"Helvetica Neue",Arial,"DejaVu Sans",sans-serif;font-weight:600;font-size:.8em;color:#5b5b66;margin-right:.3rem}
+.cp .st{font-family:"Helvetica Neue",Arial,"DejaVu Sans",sans-serif;font-size:.72em;font-weight:600;padding:0 .3em;border-radius:3px;background:#e9f3ea;color:#1f5f2a;margin-right:.35rem}
+.cp .st.d{background:#fbeee0;color:#7a4300}
+.cp .st.n{background:#efeff3;color:#55555f}
+.cp blockquote{margin:.15rem 0 .1rem;padding:.25rem .7rem;border-left:3px solid #8fb79a;background:#f7faf7;color:#1d1d1f;font-style:normal;overflow-wrap:anywhere}
+.cp mark{background:#fff0b3;color:inherit;padding:0}
+.cp .o,.cp .none{font-size:.92em;color:#66666f}
+.cp .none{font-style:italic}
 footer{margin-top:3rem;font-size:.78rem;color:#77777f;border-top:1px solid #e3e3e8;padding-top:.6rem}
 @page{size:A4;margin:20mm 18mm 22mm 18mm;@bottom-center{content:counter(page) " / " counter(pages);font:9pt Arial,"DejaVu Sans",sans-serif;color:#777}}
 @media print{
@@ -229,7 +243,34 @@ def blocks(lines, inl, ctx):
     return '\n'.join(out)
 
 
-def bibliography(lines, inl):
+def _passage_html(p):
+    t, out, i = p['text'], [], 0
+    for a, b in sorted(p.get('marks') or []):
+        if a < i: continue
+        out += [html.escape(t[i:a], quote=True), '<mark>', html.escape(t[a:b], quote=True), '</mark>']; i = b
+    out.append(html.escape(t[i:], quote=True))
+    return '<blockquote>' + ''.join(out) + (' [&#8230;]' if p.get('truncated') else '') + '</blockquote>'
+
+
+def passages_html(claims):
+    """Block of the cited passages of one reference (tools/passages.py output): every piece escaped, the passage is source text, never markup."""
+    out = []
+    for c in claims:
+        st = str(c.get('status') or ''); cls = '' if st == 'FOUND' else ' d' if st == 'DISTORTED' else ' n'
+        o = c.get('origin') or {}
+        org = ', '.join(x for x in (o.get('id'), o.get('kind'), ' '.join(x for x in (o.get('version'), f"({o['version_date']})" if o.get('version_date') else '') if x)) if x)
+        out.append(f'<div class="c"><span class="id">{html.escape(str(c.get("id")))}</span><span class="st{cls}">{html.escape(st)}</span>'
+                   f'{html.escape(" ".join(str(c.get("claim") or "").split()), quote=True)}</div>')
+        if c.get('passages'):
+            out += [_passage_html(p) for p in c['passages']]
+            out.append(f'<div class="o">Source text read by the verifier: {html.escape(org, quote=True)}</div>')
+        else:
+            out.append(f'<div class="none">{html.escape(str(c.get("reason") or "no verified passage"), quote=True)}'
+                       + (f' ({html.escape(org, quote=True)})' if org else '') + '.</div>')
+    return '<div class="cp">' + ''.join(out) + '</div>' if out else ''
+
+
+def bibliography(lines, inl, cited=None):
     entries, cur = [], None
     for l in lines:
         if (m := BIB_LINE.match(l)): cur = [int(m.group(1)), m.group(2).strip()]; entries.append(cur)
@@ -241,11 +282,17 @@ def bibliography(lines, inl):
         back = ''.join(f' <a href="#{c}" title="back to citation">&#8617;{chr(97 + k) if k < 26 else k + 1}</a>' for k, c in enumerate(inl.cites.get(num, [])))
         out.append(f'<p id="ref-{num}"><span class="n">[{num}]</span>{inl(text, cite=False)}'
                    + (f'<span class="back">{back}</span>' if back else '') + '</p>')
+        if cited: out.append(passages_html(cited.get(num, [])))
+    if cited and cited.get(None):
+        out.append('<p>Claims whose source is not in this bibliography:</p>' + passages_html(cited[None]))
+    if cited:
+        out.insert(0, '<p class="pre">Under each reference: the claims checked against it, each with the passage of the source that supports '
+                      'it (verified fragment highlighted), copied by code from the text the verifier read, never written by a model.</p>')
     return '<div class="bib">\n' + '\n'.join(out) + '\n</div>'
 
 
-def render(md, meta=(), title_fallback='Report'):
-    """REPORT.md text + [(label, value)] -> complete HTML page (str)."""
+def render(md, meta=(), title_fallback='Report', passages=None):
+    """REPORT.md text + [(label, value)] (+ tools/passages.py build() output) -> complete HTML page (str)."""
     md = md.replace('\r\n', '\n').replace('\r', '\n').replace('\x00', '')
     lines = md.split('\n')
     refs, inbib = set(), False
@@ -256,7 +303,9 @@ def render(md, meta=(), title_fallback='Report'):
     h1 = next((HEAD.match(l).group(2) for l in lines if HEAD.match(l) and len(HEAD.match(l).group(1)) == 1), None)
     ctx = {'used': {'contents'}, 'toc': [], 'after_h1': '\x02HEADER\x02', 'bib': '\x02BIB\x02'}
     body = blocks(lines, inl, ctx)
-    bib = bibliography(ctx.get('bib_lines', []), inl)
+    cited = {}
+    for c in (passages or {}).get('claims') or []: cited.setdefault(c.get('ref'), []).append(c)
+    bib = bibliography(ctx.get('bib_lines', []), inl, cited)
     dl = ''.join(f'<dt>{html.escape(k)}</dt><dd>{html.escape(str(v))}</dd>' for k, v in meta)
     toc, open3 = [], False
     for lvl, hid, label in ctx['toc']:
@@ -319,6 +368,15 @@ def meta(folder):
     if isinstance(calls, int): out.append(('Gateway calls', calls))
     if (r := _join(run.get('run')) or _join(card.get('card_id'))): out.append(('Run', r))
     return out
+
+
+def cited_passages(folder):
+    """tools/passages.py build() for the run, or None (no verdicts.json, or any failure: the report is exported without the blocks)."""
+    try:
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent)); import passages
+        return passages.build(folder)
+    except Exception:
+        return None
 
 
 # ---------- PDF ----------
@@ -441,7 +499,7 @@ def main(argv=None):
     if not src.is_file(): print(f'no REPORT.md in {d}', file=sys.stderr); return 2
     out = pathlib.Path(a.out) if a.out else d; out.mkdir(parents=True, exist_ok=True)
     page = out / 'REPORT.html'
-    page.write_text(render(src.read_text(encoding='utf-8', errors='replace'), meta(d)), encoding='utf-8')
+    page.write_text(render(src.read_text(encoding='utf-8', errors='replace'), meta(d), passages=cited_passages(d)), encoding='utf-8')
     print(f'{page.resolve()}')
     if a.pdf:
         pdf = out / 'REPORT.pdf'

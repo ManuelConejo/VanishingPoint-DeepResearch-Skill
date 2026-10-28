@@ -1,0 +1,143 @@
+TY  - UNPB
+TI  - Self-Distilled Reasoner: On-Policy Self-Distillation for LLMs
+PY  - 2026
+UR  - https://arxiv.org/abs/2601.18734
+AN  - arxiv:2601.18734
+N1  - VP id: arxiv:2601.18734; basis: abstract; report [1]
+ER  - 
+
+TY  - UNPB
+TI  - Why Does Self-Distillation (Sometimes) Degrade the Reasoning Capability of LLMs?
+PY  - 2026
+UR  - https://arxiv.org/abs/2603.24472
+AN  - arxiv:2603.24472
+N1  - VP id: arxiv:2603.24472; basis: abstract; report [2]
+ER  - 
+
+TY  - UNPB
+TI  - On-Policy Self-Distillation with Sampled Demonstrations Reduces Output Diversity
+PY  - 2026
+UR  - https://arxiv.org/abs/2606.26091
+AN  - arxiv:2606.26091
+N1  - VP id: arxiv:2606.26091; basis: abstract; report [3]
+ER  - 
+
+TY  - UNPB
+TI  - Anti-Self-Distillation (AntiSD) via Pointwise Mutual Information
+PY  - 2026
+UR  - https://arxiv.org/abs/2605.11609
+AN  - arxiv:2605.11609
+N1  - VP id: arxiv:2605.11609; basis: abstract; report [4]
+ER  - 
+
+TY  - UNPB
+TI  - AMR-SD: Asymmetric Meta-Reflective Self-Distillation for Token-Level Credit Assignment
+PY  - 2026
+UR  - https://arxiv.org/abs/2605.18529
+AN  - arxiv:2605.18529
+N1  - VP id: arxiv:2605.18529; basis: abstract; report [5]
+ER  - 
+
+TY  - UNPB
+TI  - When Are Teacher Tokens Reliable? Position-Weighted On-Policy Self-Distillation for Reasoning
+PY  - 2026
+UR  - https://arxiv.org/abs/2605.21606
+AN  - arxiv:2605.21606
+N1  - VP id: arxiv:2605.21606; basis: abstract; report [6]
+ER  - 
+
+TY  - UNPB
+TI  - Entropy-Aware On-Policy Distillation of Language Models
+PY  - 2026
+UR  - https://arxiv.org/abs/2603.07079
+AN  - arxiv:2603.07079
+N1  - VP id: arxiv:2603.07079; basis: abstract; report [7]
+ER  - 
+
+TY  - UNPB
+TI  - beta-OPSD: Deriving with Policy Optimization, Training with Self-Distillation
+PY  - 2026
+UR  - https://arxiv.org/abs/2607.28582
+AN  - arxiv:2607.28582
+N1  - VP id: arxiv:2607.28582; basis: abstract; report [8]
+ER  - 
+
+TY  - UNPB
+TI  - Self-Distilled Policy Gradient
+PY  - 2026
+UR  - https://arxiv.org/abs/2606.04036
+AN  - arxiv:2606.04036
+N1  - VP id: arxiv:2606.04036; basis: abstract; report [9]
+ER  - 
+
+TY  - UNPB
+TI  - HDPO: Hybrid Distillation Policy Optimization via Privileged Self-Distillation
+PY  - 2026
+UR  - https://arxiv.org/abs/2603.23871
+AN  - arxiv:2603.23871
+N1  - VP id: arxiv:2603.23871; basis: abstract; report [10]
+ER  - 
+
+TY  - UNPB
+TI  - Rebellious Student: Reversing Teacher Signals (RLRT)
+PY  - 2026
+UR  - https://arxiv.org/abs/2605.10781
+AN  - arxiv:2605.10781
+N1  - VP id: arxiv:2605.10781; basis: abstract; report [11]
+ER  - 
+
+TY  - UNPB
+TI  - Rethinking Privileged Information in On-Policy Self-Distillation
+PY  - 2026
+UR  - https://arxiv.org/abs/2608.18271
+AN  - arxiv:2608.18271
+N1  - VP id: arxiv:2608.18271; basis: abstract; report [12]
+ER  - 
+
+TY  - UNPB
+TI  - Privileged Solutions or Context-Induced Teacher Behavior? Dissecting On-Policy Self-Distillation
+PY  - 2026
+UR  - https://arxiv.org/abs/2608.09228
+AN  - arxiv:2608.09228
+N1  - VP id: arxiv:2608.09228; basis: abstract; report [13]
+ER  - 
+
+TY  - UNPB
+TI  - Is More Privileged Information Better? Solution Traces to Problem-Solving Structure in Self-Distilled Reasoning
+PY  - 2026
+UR  - https://arxiv.org/abs/2608.01589
+AN  - arxiv:2608.01589
+N1  - VP id: arxiv:2608.01589; basis: abstract; report [14]
+ER  - 
+
+TY  - UNPB
+TI  - Adaptive Teacher Exposure for Self-Distillation in LLM Reasoning
+PY  - 2026
+UR  - https://arxiv.org/abs/2605.11458
+AN  - arxiv:2605.11458
+N1  - VP id: arxiv:2605.11458; basis: abstract; report [15]
+ER  - 
+
+TY  - UNPB
+TI  - Understanding Diversity Collapse in RLVR via the Lens of Overtraining
+PY  - 2026
+UR  - https://arxiv.org/abs/2606.15455
+AN  - arxiv:2606.15455
+N1  - VP id: arxiv:2606.15455; basis: abstract; report [16]
+ER  - 
+
+TY  - UNPB
+TI  - Guidance Contrastive Token Credit Assignment for Discrete Policy Optimization
+PY  - 2026
+UR  - https://arxiv.org/abs/2605.29198
+AN  - arxiv:2605.29198
+N1  - VP id: arxiv:2605.29198; basis: abstract; report [17]
+ER  - 
+
+TY  - UNPB
+TI  - Privileged Likelihood Is Not Automatically Value: Three Checks for Token Credit in OPSD
+PY  - 2026
+UR  - https://arxiv.org/abs/2608.09263
+AN  - arxiv:2608.09263
+N1  - VP id: arxiv:2608.09263; basis: title; report [18]
+ER  - 

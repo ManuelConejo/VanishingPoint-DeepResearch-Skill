@@ -183,7 +183,7 @@ def plugin_report(path):
 
 
 def report(plugins=()):
-    files = [pathlib.Path(p) for p in plugins] or sorted(p for p in (P.parent / 'plugins').glob('*.md') if not p.name.startswith('_'))
+    files = [gw.plugin_path(p) for p in plugins] or sorted(p for p in (P.parent / 'plugins').glob('*.md') if not p.name.startswith('_'))
     rs = [plugin_report(p) for p in files]
     missing = sorted({i['variable'] for r in rs for i in r['skipped'] + r['degraded'] + r.get('keyed_not_wired', [])})
     return {'plugins': rs, 'missing_keys': missing, 'ok': not any(r['skipped'] or r['degraded'] for r in rs), 'mode': mode(), 'contradictors': contradictors()}
@@ -245,7 +245,8 @@ def main(argv=None):
     ap.add_argument('--announce', action='store_true', help='text for the first message (first run or change), otherwise an empty string')
     ap.add_argument('--suggest', metavar='ANGLES', help='angles of the question: suggestions of missing free-key sources (<= 2), otherwise empty')
     a = ap.parse_args(argv)
-    rep = report(a.plugin)
+    try: rep = report(a.plugin)
+    except gw.PluginNotFound as e: print(f'check_keys.py: {e}', file=sys.stderr); return 2
     if a.suggest is not None:
         s = suggest(rep, a.suggest)
         print(json.dumps({'suggestions': s}, ensure_ascii=False) if a.json else '\n'.join(x['text'] for x in s), end='\n' if s or a.json else '')

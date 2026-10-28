@@ -395,3 +395,37 @@ Fix of a temporal leak: `tools/verifier/fetch_fulltext.py` (`verifier.py --fullt
 - **User sources** (opt-in): `~/.config/vp/sources/*.py`, loaded only with `VP_USER_SOURCES=1`, announced on stderr (and `user_sources` in `sources`); a directory present without the flag is reported, not loaded.
 - **Added**: `tools/sources/_TEMPLATE.py`, `CONTRIBUTING.md` (barrier rules, access policy, keys, tests), and `tests/test_sources_contract.py` (12 tests over every source: complete declaration, unique names and prefixes, plugin `access:` = declaration, key hosts declared, prefixes routed, 0 request to key hosts without the key, fake key never leaked and sent only as declared, user sources opt-in, template valid). README / KEYS: "Adding a source" pointer. SKILL.md: Inventory line only.
 - **Behaviour unchanged**: same engine names, commands, options, JSON outputs, receipts, journal, cache keys, pacing and key handling. `gateway.<name>` compatibility kept for every former function or constant (`gateway.fetch = ...` / `gateway.STATE = ...` reach every source). Checked: the 22 existing test files green, unchanged (207 tests; 219 with the contract test); `check_keys.py` (text, JSON, suggest) and `setup_keys.py` (listing, unknown name, checks) outputs byte-identical, with and without keys; derived tables, identifier kinds, forms and export types identical to v0.4.9 (only difference: OpenAlex's stop on 429, formerly special-cased in `fetch`, is now declared in `STOP`, same effect); `--help` and offline refusals identical. Live, from copies at T = 2026-10-26 with fresh state dirs (pubmed, crossref, arxiv, openreview, eurlex, justice-administrative, dbnomics search + read, versions, sources, fred and judilibre without a key): v0.4.9 run just before and v0.5.0 identical, cache keys and journal included. The only difference was the 4th EUR-Lex hit, which alternates between two judgments of the same day: two v0.4.9 runs also disagreed.
+
+## v0.5.1, 2026-10-28 - real verification at bounded cost, cited passages, robust tool calls
+
+Adopted after two duels (protocols frozen by sha256 before the first paid call): mechanics duel, 5 cases x 2 arms against v0.5.0
+(compliant runs 5/5 against 0/5; precise supported claims 178 against 110; claims lost to the shared call cap 0 against 37; put on hold
+for cost, median x2.86), then a confirmation run of this configuration (full text off by default) on the two costly cases: median
+cost ratio over the five cases 1.63 (threshold 1.8), 2/2 runs compliant, no abandon. Limits: n = 2 new runs for the confirmation,
+one judge family for its error rate; legal texts stay the most expensive case (x2.86, the verifier reads long decisions whole).
+
+### Verifier
+- Own call budget: the verifier's gateway readings use their own pool (`verifier.call_cap`, default 60; counter
+  `state/counter-<run>.verifier.txt`; `calls_per_pool` in `run.json`). A search cap already reached no longer turns claims into
+  SOURCE-UNAVAILABLE (v0.5.0: up to 77 % of a report's claims). Sources are read in order of the claims they carry.
+- No model name fixed: `verifier.model` is empty = the host CLI's default (`--model` / `VP_MODEL` override).
+- Optional, off by default: `--fulltext` reads the open full text pinned before T (`verifier.fulltext`, `verifier.fulltext_cap`);
+  measured to multiply the verifier's cost (up to 9 USD-equivalent on a 12-paper report). `--windows windows` sends only the
+  code-chosen windows of long sources (exact substrings; ABSENT on windows is judged again on the whole text); not yet validated
+  with a model (one replay: -40 % cost on a legal case but 9 claims left UNVERIFIED), so `verifier.windows.mode` stays `whole`.
+
+### Cited passages
+- New `tools/passages.py`: under each reference of REPORT.html, the claims checked against it with the exact source sentence
+  (verified fragment highlighted, origin: full text or record + abstract). Shown only when the fragment is found in the text the
+  verifier actually read: an invented quotation never appears. Also `passages.json` and `PASSAGES.md`. REPORT.md is unchanged.
+  On the nine runs of the earlier duel: every FOUND or DISTORTED claim gets a passage (288 of 488), none inexact.
+
+### End of run and tool calls
+- `finish_run.py` is the end command (SKILL.md section 8): validation, retraction check, law checks, exports; it writes a receipt
+  `state/finish_run.json` and `validate_card.py DIR` refuses a gateway run without a fresh receipt (check 13).
+- `--plugin` takes a path, `plugins/<d>.md` or a bare `<d>`; the tools run from any directory; one-line errors, no traceback.
+- SKILL.md section 0: one script per Bash call (no `mkdir`, `&&`, `;`, pipes or heredocs), retry a denied call once in the bare form,
+  never stop on a denial (without it, 6 runs of 6 stopped at the first denied compound command).
+
+### Tests
+- New `tests/test_run_mechanics.py`, `tests/test_passages.py`, `tests/test_windows.py`; full offline suite green as uid 1000.
