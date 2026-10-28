@@ -21,7 +21,7 @@ Command line:
   PISTE engines (plugins/law.md, credentials PISTE_CLIENT_ID + PISTE_CLIENT_SECRET, else skipped with 0 request): judilibre [--court cc|ca|tj|tcom]
     [--chamber civ1|soc|cr...] [--from] [--to], legifrance [--fund code|loda|jorf] (read judilibre:<id> | legi:LEGIARTI.../LEGITEXT... | jorf:JORFTEXT...)
   AI engines (plugins/cs-ai.md): openreview, zenodo, hal-info (id: openreview:<forum id> | zenodo:<record id>); code engine usage <pypi|npm|cargo|...>:<package> (ecosyste.ms)
-  A key the provider rejects (NCBI 400 "API key invalid", OpenAlex 401/403, Software Heritage 401/403) is dropped for the rest of the run
+  A key the provider rejects (NCBI 400 "API key invalid" or "not wellformed", OpenAlex 401/403, Software Heritage 401/403) is dropped for the rest of the run
   (<state>/keys-invalid.json, names only), the call is retried once without it, and every answer carries key_invalid: [NAME].
 Import:
   from gateway import Gateway
@@ -77,7 +77,8 @@ def live_key(name):
 
 
 # host -> (variable, HTTP codes meaning "key rejected", marker required in the body); the body is read, never logged (NCBI echoes the key)
-KEY_REJECTED = {'eutils.ncbi.nlm.nih.gov': ('NCBI_API_KEY', (400,), b'api key invalid'), 'api.openalex.org': ('OPENALEX_KEY', (401, 403), b'')}
+# NCBI: 400 "API key invalid", or "API key not wellformed" for any mistyped key (measured 2026-10-28; the old marker missed it: 5 retries then failure)
+KEY_REJECTED = {'eutils.ncbi.nlm.nih.gov': ('NCBI_API_KEY', (400,), (b'api key invalid', b'api key not wellformed')), 'api.openalex.org': ('OPENALEX_KEY', (401, 403), (b'',))}
 
 
 def strip_key(url):
@@ -119,7 +120,7 @@ def fetch(url, headers=None):
         except Exception as e:
             code = getattr(e, 'code', None) or ('timeout' if isinstance(e, TimeoutError) or isinstance(getattr(e, 'reason', None), TimeoutError) else None)
             rej = KEY_REJECTED.get(host)
-            if rej and code in rej[1] and 'api_key=' in url and rej[2] in (e.read() or b'').lower():   # key rejected: once without it, then key-less
+            if rej and code in rej[1] and 'api_key=' in url and (lambda b: any(m in b for m in rej[2]))((e.read() or b'').lower()):   # key rejected: once without it, then key-less
                 sc.mark_invalid(STATE, rej[0]); url = strip_key(url)
                 cache = STATE / 'cache' / hashlib.sha256((url + (json.dumps(headers, sort_keys=True) if headers else '')).encode()).hexdigest()
                 if cache.exists(): return cache.read_bytes()

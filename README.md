@@ -70,7 +70,9 @@ or `.agents/skills/vanishingpoint/SKILL.md`), then the plugin it selects.
 
 1. Create a working directory for the question (one directory per question) and open the agent there.
 2. Optional, once: `python3 -I "$SKILL/tools/check_keys.py"` (with `SKILL=~/.claude/skills/vanishingpoint` or `~/.codex/skills/vanishingpoint`: the tools live in the skill directory, not in the working directory) prints, per plugin, the sources that are active, degraded or skipped
-   for lack of a key, with the link to obtain each key (never a value). KEYS.md explains where keys go (`~/.config/vp/`).
+   for lack of a key, with the link to obtain each key (never a value). To install one: `python3 -I "$SKILL/tools/setup_keys.py" <NAME>`
+   (for instance `piste` or `openalex`; without a name it lists the keys and asks): hidden input, saved, then checked live,
+   one plain verdict line per source. Manual method (secondary): KEYS.md, files in `~/.config/vp/`.
 3. Ask the question, with the date T if it is not today, for instance:
    "Use the vanishingpoint skill. T = 2026-10-27. What does arXiv:2610.17471 say and what would it be useful for to a
    tool that splits plans into tasks? Work in the current directory."
@@ -97,7 +99,8 @@ python3 -I "$SKILL/tools/gateway.py" --T 2026-10-26 --run try --state /tmp/vp-st
 ## Keys (optional) and access policy
 
 - KEYS.md: every key is optional; without one, the source is skipped or degraded with a receipt, never "nothing found".
-  Resolution: environment variable `NAME`, else `~/.config/vp/<name in lower case>.key`. No value is ever printed or logged.
+  Install and check one: `python3 -I tools/setup_keys.py <NAME>` (`--check`, `--remove`). Manual method: environment variable
+  `NAME`, else the file `~/.config/vp/<name in lowercase>.key` (the resolution order). No value is ever printed or logged.
 - ACCESS-POLICY.md: three levels (documented API; public pages even under robots.txt with a declared user agent, cadence
   and cache; never a reserved access, a captcha bypass or a service whose terms forbid automation). Set `VP_CONTACT` to a
   team or project address for the user agent, never a personal one.
@@ -189,7 +192,7 @@ Run the tests as a normal user (not root): the code-capsule and whole-reading te
 ```
 SKILL.md            the engine (one file, read by the host)        plugins/     cs-ai, code, finance, biology, law, _TEMPLATE
 tools/gateway.py    date-bounded documentary access                tools/verifier.py (+ verifier/ROLE.md, citation_check.py, fetch_fulltext.py)
-tools/check_keys.py keys and mode                                   tools/validate_card.py, validate_result.py   mechanical checks
+tools/check_keys.py keys and mode (setup_keys.py: install + live check) tools/validate_card.py, validate_result.py   mechanical checks
 tools/finish_run.py all end steps in one command (checks, retractions, law checks, exports; not yet in SKILL.md)
 tools/code_capsule.py, condense_repo.py, whole_reading.py, contradictor.py   code plugin tools (capsule, Y condensation, whole reading, contradictor)
 tools/config.json   caps, models, host command profiles             tests/  examples/  KEYS.md  ACCESS-POLICY.md  CHANGELOG.md  LICENSE  NOTICE
