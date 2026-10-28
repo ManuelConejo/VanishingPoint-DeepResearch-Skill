@@ -52,7 +52,7 @@ SOURCE = {
                                        #   form, form_msg, example, date_filter}}; 'serves': plugin names served by that code engine
     'ids': [{'prefix': 'example',      # identifier `example:<value>`, routed by gateway read; card / result.json field of the same name
              'form': r'[A-Za-z0-9]+',  # accepted value in result.json (validate_result.py)
-             'export': 'article',      # export_data type: article preprint paper thesis dataset software standard trial case legislation
+             'export': 'article',      # export_data type: article preprint paper thesis dataset software standard trial case legislation report
              'export_rank': 110}],     # (or a callable(ident, venue)); lowest rank wins when a source carries several identifiers
                                        # law sources add 'law_form' (strict form used by law_checks.py)
     # 'match': fn(ident) -> bool       # optional: claim identifiers without a declared prefix (bare PMIDs, preprint DOIs)

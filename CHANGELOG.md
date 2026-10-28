@@ -624,3 +624,39 @@ HOME and no pytest.
   -> 0 rows (judgment of 2024-04-09 excluded by the provider-side bound); at T 2024-04-10 -> 4 rows served (KlimaSeniorinnen ENG and
   FRE, Careme and Duarte Agostinho decisions), all dated 2024-04-09. The same day, the HUDOC JSON back end used by `hudoc` had
   answered Python's client with a Cloudflare 403 (probe recorded in `plugins/law.md`); the feed answered 200 to that client.
+
+## v0.5.7, 2026-10-28 - declared sources wired: Unpaywall, OpenCitations, SEC EDGAR, GitHub Advisory Database, DataCite
+
+Five sources that the plugins already declared as `not_wired` are now served by the gateway, one file each in `tools/sources/`. Each is keyless or has an optional credential. Every record is dated strictly before T, and an undated record is refused.
+
+- `unpaywall` (biology, cs-ai, finance, law; `tools/sources/unpaywall.py`). `search-unpaywall "<DOI> [<DOI> ...]"` returns the open copies of a DOI that existed before T. A copy is listed only when its `oa_date` is before T; undated or later copies are dropped and counted (`later_or_undated_copies`). The record passes only when `published_date` is before T and Crossref attests deposit AND publication before T. `is_oa` and `oa_status` are current values and are never served. Each item names the `fetch_fulltext.py` command that reads the text, pinned to its last version before T; the cited passages come from that text. Unpaywall needs an e-mail address in `VP_CONTACT`; without one the engine returns `skipped` / `not_configured` and sends 0 requests.
+- `opencitations` (biology, cs-ai, finance; `tools/sources/opencitations.py`). `search-opencitations "<DOI>" | "citing:<DOI>" | "references:<DOI>"` returns the works that cite a DOI and the works it cites. A citing work needs a `creation` date before T, then a Crossref recheck. A cited work needs the Crossref recheck. Rows without a DOI or a date are refused. The source also extends `citing` and `references` of a DOI: works that OpenCitations has and the chain did not list are appended after the existing items, marked `via: opencitations`, up to n. The same work under a PMID is not added twice. The existing items and their order do not change. When something is added, the total reads `"<total> (+k from OpenCitations ...)"`. Setting `linked_sources.opencitations_complement` to false restores the v0.5.6 answer exactly. Published limit: 180 requests/minute; pacing 0.4 s.
+- `edgar` (finance; `tools/sources/edgar.py`). The SEC requires a declared User-Agent with an e-mail contact, so the engine uses `VP_CONTACT`; without an address it returns `not_configured` and sends 0 requests.
+  - `search-edgar "<words> [form:<form>]"` runs EDGAR full-text search over a provider window of [start, eve of T], which `--from`/`--to` can narrow. Beyond 10,000 hits the `errorType` answer becomes a typed error, never an empty list.
+  - `search-edgar "cik:<CIK> [form:<form>]"` lists one company's filings from `submissions`.
+  - `read edgar:<CIK>/<accession number>` returns the filing record and the start of its primary document.
+  - Barrier: filing date AND acceptance time before T. The company name is the current one, and the record flags it.
+  - Pacing: `linked_sources.sec_interval` = 0.5 s per host (the SEC caps traffic at 10 requests/s). The engine stops on 403/404/429.
+- `github-advisory` (code engine; `tools/sources/ghsa.py`). `advisories <ecosystem>:<package>[@<version>]` lists GitHub advisories published in [start, eve of T]; `read ghsa:<GHSA id>` reads one. It uses the `CodeClient` transport: HTTPS only, closed host list, no redirect, receipts without URL or token, 6.1 s between calls. The read-only `VP_GITHUB_TOKEN` is sent as a Bearer token to `api.github.com` only when present; without it the calls are anonymous (60/h). A token that GitHub rejects with 401 is remembered as invalid, and the call is repeated without it. An advisory updated on or after T keeps its id, aliases and publication date, but its summary, description, ranges, severity, CVSS, CWEs and references are masked. Review, NVD and withdrawal dates are shown only when before T. EPSS is never served.
+- `datacite` (cs-ai, biology; `tools/sources/datacite.py`). `search-datacite "<words> [type:dataset|software|...]"` filters on the provider side on `created` AND `registered` up to the eve of T. Locally it rechecks the Issued date (or the publication year as an upper bound), `created` and `registered`. When the metadata was updated on or after T, the description and version are masked. Counts are never served. `read doi:<DOI>` now falls back on DataCite when Crossref does not attest the DOI; before this release such DOIs were refused as "not found" or "deposit not attested".
+- Not wired, by decision:
+  - EBI Search (biology): the API gives no date for the content of an entry. UniProt offers only `creation_date` and `last_modification_date`, and every entry probed was modified on 2026-06-10. Ensembl genes have no date field.
+  - Finance series from ECB, Eurostat, World Bank indicators, IMF, OECD, BIS and INSEE are reached via dbnomics and are not wired apart; `plugins/finance.md` now says so. World Bank WDS documents stay not wired.
+- Registry: new export type `report` (BibTeX `techreport`, RIS `RPRT`, CSL `report`) for SEC filings. New identifier prefixes `edgar:` and `ghsa:`. `tools/config.json` has a new `linked_sources` block: `unpaywall_dois` 10, `opencitations_complement` true, `opencitations_max` 100, `sec_interval` 0.5, `sec_submission_files` 3, `sec_text_chars` 20000, `ghsa_types` "reviewed".
+- Docs updated: plugins (sources blocks, sections, finance "via dbnomics"), KEYS.md (`VP_CONTACT` e-mail for unpaywall and edgar; what works without a key), README (wired list), SKILL.md (identifier list), and the `gateway.py` help.
+- Tests:
+  - New `tests/test_engines_linked.py` (15 tests). It runs on responses recorded live on 2026-10-28 (`tests/fixtures/linked_sources.json`: OpenCitations, DataCite, GitHub advisories); the Unpaywall and EDGAR answers follow their documented shapes. It covers:
+    - the provider filter at the eve of T;
+    - refusal after T, refusal without a date, and identifiers;
+    - text injected into titles, summaries and documents, served as plain data;
+    - 0 requests without a contact;
+    - the token sent only as Bearer to its host, and the 401 fallback;
+    - the complement off, which returns the v0.5.6 answer exactly.
+  - `test_gateway.py` and `test_validate_result.py` were updated for the new engine and prefixes.
+  - The full offline suite passes as uid 1000, including `test_sources_contract.py`.
+- Live checks on 2026-10-28, 1 to 3 requests per service:
+  - DataCite search: T 2022-06-15, 5 software DOIs, all before T. `read doi:10.5281/zenodo.4288886` comes back through the DataCite fallback.
+  - OpenCitations, T 2014-01-01: 217 citing rows, 4 before T; 72 reference rows, 62 dated.
+  - GitHub, `pypi:jinja2` at T 2019-06-01: 2 advisories, both masked because they were updated in 2024.
+  - Unpaywall and EDGAR without `VP_CONTACT`: `not_configured`, 0 requests. **Not yet verified live with a contact address** (none available at release).
+- Known limit: GitHub matches the version itself. `affects=jinja2@2.4.1` returned 0 at T 2019-06-01, against 2 for the package alone. Use the package form, or `vulns` (OSV), for a version.

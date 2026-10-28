@@ -6,11 +6,11 @@ Read by the engine (SKILL.md). Four fixed sections. Every source says where its 
 
 Block read by `tools/gateway.py` (format: README.md, "Adding a plugin"); engines that are not wired are declared anyway: the gateway lists them `not_wired` and refuses them cleanly. Access marked according to `ACCESS-POLICY.md`: `api` (level 1, documented API, robots.txt has no effect), `page` (level 2: public page, pacing 1 request / 2 s / host, declarative UA, cache, stop on 429/403), `browser` (reserved and unused: a page behind a JS challenge is reported `bot_challenge`, never worked around), `tos_forbidden` and `technical_block` (level 3: listed, disabled). Probes below are dated 2026-10-26 unless stated.
 ```sources
-engines: openalex, crossref, arxiv, europepmc, dblp, semantic-scholar, hf-papers, catalyzex, datacite, hal-info, zenodo, openaire, openreview, paper-code, hf-models, hf-datasets, standards, proceedings   # wired: openalex, crossref, arxiv, europepmc, dblp, openreview, zenodo, hal-info, paper-code (code engine, HF Papers; serves hf-papers), hf-models, hf-datasets, standards, proceedings (v0.4.6) ; not wired: semantic-scholar, catalyzex, datacite (planned), openaire (option)
+engines: openalex, crossref, arxiv, europepmc, dblp, semantic-scholar, hf-papers, catalyzex, datacite, hal-info, zenodo, openaire, openreview, paper-code, hf-models, hf-datasets, standards, proceedings, opencitations, unpaywall   # wired: openalex, crossref, arxiv, europepmc, dblp, openreview, zenodo, hal-info, paper-code (code engine, HF Papers; serves hf-papers), hf-models, hf-datasets, standards, proceedings (v0.4.6), datacite, opencitations, unpaywall (VP_CONTACT e-mail, else not_configured) (v0.5.7) ; not wired: semantic-scholar, catalyzex, openaire (option)
 cap: 60                                  # safety cap on calls
 keys: OPENALEX_KEY, S2_API_KEY, OPENAIRE_TOKEN   # optional ; resolution KEYS.md (env NAME, ~/.config/vp/<name>.key) ; never required, never displayed
 useful_when: semantic-scholar=citations, reference graph, recent cs/AI, citing papers, recommendations, state of the art ; openaire=European institutional repositories, funded projects, publication-data-software links ; openalex=broad searches, citation chaining, outside arXiv   # free-key sources ; read by tools/check_keys.py --suggest
-access: openalex=api, crossref=api, arxiv=api, europepmc=api, dblp=api, semantic-scholar=api, hf-papers=api, catalyzex=page, datacite=api, hal-info=api, zenodo=api, openaire=api, openreview=api, paper-code=api, hf-models=api, hf-datasets=api, standards=api, proceedings=page   # ACCESS-POLICY.md ; level-2 pacing on `page` (to be wired)
+access: openalex=api, crossref=api, arxiv=api, europepmc=api, dblp=api, semantic-scholar=api, hf-papers=api, catalyzex=page, datacite=api, hal-info=api, zenodo=api, openaire=api, openreview=api, paper-code=api, hf-models=api, hf-datasets=api, standards=api, proceedings=page, opencitations=api, unpaywall=api   # ACCESS-POLICY.md ; level-2 pacing on `page` (to be wired)
 disabled: google-scholar=browser, alphaxiv=technical_block, base=technical_block, ieee=technical_block, elicit=technical_block   # listed, not called ; reason under "Set aside"
 ```
 
@@ -70,10 +70,11 @@ Recommended call order: 1 -> 4 and 9 -> 10 to search, 5 -> 8 to chain and link t
    - Bound: `firstIndexDate` AND `firstPublicationDate` < T. Key: none. Rate: 0.25 s gateway.
    - Relevance: 0/5 on the arXiv frontier (measured on our benches); call only to chain from a source already found.
 
-9. **DataCite REST** (DOIs of datasets and software, absent from OpenAlex) - `access: api`; not wired
-   - Endpoint: DataCite REST API (doc `support.datacite.org/docs/api`); established parameters: `query=<text>`, `resource-type-id=software`; exact host URL and path: not established (to be recorded when wired).
-   - Date bound: year only (`published=<YYYY>`); mandatory local re-check on the dates of the record.
-   - Key: none. Rate: 3,000 req / 5 min, User-Agent with contact; probe 200 on 2026-10-26. Role: fill the "artefacts" gap (data, code with DOI).
+9. **DataCite REST** (DOIs of datasets and software, absent from Crossref and OpenAlex) - `access: api`; **wired** (engine `datacite`, v0.5.7)
+   - Endpoint: `https://api.datacite.org/dois?query=<words> AND created:[<start> TO <day before T>] AND registered:[<start> TO <day before T>]&page[size]=<n <= 50>&resource-type-id=<type>` (query word `type:dataset|software|...`); probe 200 (2026-10-28).
+   - Date bound: provider side `created` AND `registered` <= day before T; local re-check: `Issued` date (else publication year, upper bound), `created` AND `registered` < T; metadata `updated` on/after T -> description and version masked, title as now (flagged); views, downloads and citation counts never served. Items `doi:<DOI>`; `read doi:<DataCite DOI>` falls back on DataCite when Crossref does not attest the DOI.
+   - Key: none. Rate: 500 requests / 5 min per IP without credentials, 1,000 with an e-mail in the User-Agent (documented); 1 s local, stop on 429. Metadata CC0. Role: fill the "artefacts" gap (data, code with DOI).
+   - Same release: `opencitations` (citing and references of a DOI, complement of the chaining) and `unpaywall` (free copy of a DOI open before T, `VP_CONTACT` e-mail required) are wired for this plugin too; details in `biology.md`, Sources 5 and 8.
 
 10. **HAL, computer science domain** (INRIA/CNRS theses and reports, French-speaking) - `access: api` (robots `Disallow: /search/` on the API host has no effect, level 1; same adapter as `law.md`, Sources 7)
     - Endpoint: `https://api.archives-ouvertes.fr/search/?q=&fq=level1_domain_s:<cs code>&wt=json&fl=halId_s,title_s,producedDate_s,doiId_s,uri_s,docType_s,authFullName_s&start=&rows=100`.

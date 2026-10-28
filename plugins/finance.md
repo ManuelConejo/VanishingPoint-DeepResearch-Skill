@@ -6,11 +6,11 @@ Read by the engine (SKILL.md). Four fixed sections. Sources, format and verifica
 
 Block read by `tools/gateway.py` (format README.md); engines that are not wired are declared anyway and refused cleanly. Access marked according to `ACCESS-POLICY.md` (`api` level 1; `page` level 2, pacing 1 request / 2 s / host, declarative UA, cache, stop on 429/403; `browser` reserved and unused (no browser route); `tos_forbidden`, `technical_block` level 3, listed and disabled). Probes dated 2026-10-26 unless stated.
 ```sources
-engines: econbiz, openalex, crossref, europepmc, arxiv, edgar, fred, dbnomics, ecb, eurostat, worldbank, worldbank-wds, imf, oecd, bis, insee-bdm   # wired: econbiz, openalex, crossref, europepmc, arxiv (econ.*, q-fin.*), dbnomics, fred (FRED_API_KEY) ; the others: not wired (ecb...insee-bdm: shared SDMX adapter planned; reachable today through dbnomics)
+engines: econbiz, openalex, crossref, europepmc, arxiv, edgar, fred, dbnomics, ecb, eurostat, worldbank, worldbank-wds, imf, oecd, bis, insee-bdm, opencitations, unpaywall   # wired: econbiz, openalex, crossref, europepmc, arxiv (econ.*, q-fin.*), dbnomics, fred (FRED_API_KEY), edgar (VP_CONTACT e-mail, else not_configured), opencitations, unpaywall (v0.5.7) ; via dbnomics (not wired apart, by decision): ecb, eurostat, worldbank (indicators), imf, oecd, bis, insee-bdm ; not wired: worldbank-wds (documents, not in DBnomics)
 cap: 60                                  # safety cap on calls
 keys: OPENALEX_KEY, FRED_API_KEY         # optional ; FRED without key = skipped, credential_missing, 0 request
 useful_when: fred=US macroeconomic series, rates, inflation, GDP, unemployment, point-in-time values, data revisions, ALFRED ; openalex=broad searches, working papers, citation chaining   # free-key sources ; read by tools/check_keys.py --suggest
-access: econbiz=api, openalex=api, crossref=api, europepmc=api, arxiv=api, edgar=api, fred=api, dbnomics=page, ecb=api, eurostat=api, worldbank=api, worldbank-wds=api, imf=api, oecd=api, bis=api, insee-bdm=api   # ACCESS-POLICY.md (DBnomics: named example of level 2, rate not published -> level-2 pacing)
+access: econbiz=api, openalex=api, crossref=api, europepmc=api, arxiv=api, edgar=api, fred=api, dbnomics=page, ecb=api, eurostat=api, worldbank=api, worldbank-wds=api, imf=api, oecd=api, bis=api, insee-bdm=api, opencitations=api, unpaywall=api   # ACCESS-POLICY.md (DBnomics: named example of level 2, rate not published -> level-2 pacing)
 disabled: ssrn=tos_forbidden, yahoo=tos_forbidden, repec-ideas=technical_block, cepr=technical_block, econlit=technical_block, scopus=technical_block, xbrl-us=technical_block   # listed, not called ; reason under "Set aside"
 ```
 
@@ -46,6 +46,7 @@ Date bound: the day before T on the provider side, then local re-check of every 
    - Query: by CIK and us-gaap tag; the period is read on `start/end`, **never on `fy`** (fiscal year of the filing). Beyond 10,000 results `efts` answers **HTTP 200 with `errorType: ResponseError`**: to be typed `bounded`, never "empty".
    - Date bound: yes (`startdt`/`enddt` for efts; `end` and filing date for XBRL; `filingDate` in `submissions`).
    - Key: none; **declarative User-Agent mandatory** (name + contact, VP_CONTACT; without it, 403 everywhere). Rate: SEC cap 10 req/s; prototype at 4 req/s without 429.
+   - **State (v0.5.7): wired**, engine `edgar`: `search-edgar "<words> [form:<form>]"` (EDGAR full-text search, 2001 onwards; provider window `startdt`/`enddt` = [start, day before T], `--from`/`--to` narrow it; beyond 10,000 hits the `errorType` answer is a typed error, never "empty") and `search-edgar "cik:<CIK> [form:<form>]"` (the filings of one company, from `submissions`, plus at most `linked_sources.sec_submission_files` older files); items `edgar:<CIK>/<accession number>` (form, filing date, period of report, company name as now). `read edgar:<CIK>/<accession>`: filing record and the first `linked_sources.sec_text_chars` characters of its primary document (`www.sec.gov/Archives`). Barrier: filing date AND acceptance time < T; no filing date -> refused. Declared User-Agent `VanishingPoint/1 (+VP_CONTACT)`; without an e-mail address in `VP_CONTACT`: `skipped` / `not_configured`, 0 request. Pacing `linked_sources.sec_interval` (0.5 s, i.e. 2 req/s per host, under the SEC cap of 10 req/s), stop on 403/404/429. XBRL `companyfacts` / `frames` stay with the verifier (not served by the gateway). Terms read 2026-10-28 (SEC notice served to undeclared tools): declare the traffic in the User-Agent with company information, at most 10 requests per second; no clause on AI use.
    - Measured on our benches (72 true + 288 mutations, 59 companies): 0/72 false alarms, 288/288 mutations detected; limit: rounding (+/- 0.2 % invisible in 48 to 51 of 57 cases); partial circularity (frames and companyfacts = same XBRL base).
 
 7. **FRED / ALFRED (St. Louis Fed)** - US and international macro series, values **as known at a date** (point-in-time vintages) - `access: api` (key required by the service, free)
@@ -62,35 +63,37 @@ Date bound: the day before T on the provider side, then local re-check of every 
    - Key: none. Terms (db.nomics.world/about, docs.db.nomics.world, read 2026-10-28): DBnomics aggregation under ODbL; each series under the licence and terms of use of its original provider (`terms_of_use` URL returned by every read, e.g. ECB disclaimer); the documentation offers LLM-friendly versions "for AI agents" (no anti-AI clause). Robots: `Disallow: /` on `api.db.nomics.world` (level 2, ACCESS-POLICY.md), `db.nomics.world` open. Rate: not published -> 2 s local.
    - State (2026-10-28): wired, `search-dbnomics "<q>"` (items `dbnomics:<provider>/<dataset>/<series>`) and `read dbnomics:<...>` (last `data_series.obs_max` observations before T).
 
-9. **ECB Data Portal** (rates, exchange rates, euro-area aggregates; European primary source) - `access: api`
+Sources 9 to 15 (ECB, Eurostat, World Bank indicators, IMF, OECD, BIS, INSEE) are **reached via dbnomics** (section 8: `search-dbnomics`, `read dbnomics:<provider>/<dataset>/<series>`, current values with the revision caveat) and are **not wired apart** (decision of v0.5.7: a native connector would add no date barrier that DBnomics lacks, except vintages, which FRED/ALFRED already serves). Their native endpoints are kept below for reference. The World Bank Documents & Reports (WDS, dated grey literature) are not in DBnomics and stay not wired.
+
+9. **ECB Data Portal** (rates, exchange rates, euro-area aggregates; European primary source) - `access: api`; via dbnomics (provider `ECB`)
    - Endpoint: SDMX 2.1 `https://data-api.ecb.europa.eu/service/data/{flow}/{key}?startPeriod=&endPeriod=` (probe 200, CSV).
    - Date bound: yes (`startPeriod`/`endPeriod`). Key: none. Rate and licence: not established -> 1 s local.
 
-10. **Eurostat** (official EU statistics) - `access: api`
+10. **Eurostat** (official EU statistics) - `access: api`; via dbnomics (provider `Eurostat`)
     - Endpoint: `https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/{code}` (JSON-stat), `sinceTimePeriod=`/`untilTimePeriod=` (probe 200).
     - Date bound: yes. Key: none. Reuse with source attribution (CC BY 4.0 editorial). Rate: not established -> 1 s local.
 
-11. **World Bank - Indicators and Documents & Reports (WDS)** (macro, 200 countries; **dated grey literature**: Policy Research Working Papers) - `access: api`
+11. **World Bank - Indicators and Documents & Reports (WDS)** (macro, 200 countries; **dated grey literature**: Policy Research Working Papers) - `access: api`; indicators via dbnomics (provider `WB`); WDS documents not wired
     - Endpoints: `https://api.worldbank.org/v2/country/{iso}/indicator/{code}?date=<a>:<b>&format=json` ("API keys no longer necessary"); documents: `https://search.worldbank.org/api/v3/wds?qterm=<q>&strdate=&enddate=&format=json` (probe 200: 24,604 documents for "inflation").
     - Date bound: yes (`date=a:b`; `strdate`/`enddate`). Key: none. Terms: no commercial use without agreement; datasets CC BY 4.0. Rate: not established -> 1 s local.
 
-12. **IMF, SDMX 3.0 (2025)** (WEO, IFS, balance of payments) - `access: api`
+12. **IMF, SDMX 3.0 (2025)** (WEO, IFS, balance of payments) - `access: api`; via dbnomics (provider `IMF`)
     - Endpoint: `https://api.imf.org/external/sdmx/3.0/...` (probe 200); the old `dataservices.imf.org` has **disappeared (NXDOMAIN)**.
     - Date bound: by SDMX period. Key: none. Terms: not established. Rate: not established -> 1 s local.
 
-13. **OECD (SDMX)** (OECD indicators) - `access: api`
+13. **OECD (SDMX)** (OECD indicators) - `access: api`; via dbnomics (provider `OECD`)
     - Endpoint: `https://sdmx.oecd.org/public/rest/data/{flow}/{key}?startPeriod=` (v1); v2: `c[TIME_PERIOD]`, `updatedAfter` (probe 200). The URL `data.oecd.org/api` proposed by a reviewer is **wrong**.
     - Date bound: yes. Key: none. Licence: not established (terms page 403). Rate: not established -> 1 s local.
 
-14. **BIS** (cross-border credit, debt, property prices, monetary policy) - `access: api`
+14. **BIS** (cross-border credit, debt, property prices, monetary policy) - `access: api`; via dbnomics (provider `BIS`)
     - Endpoint: `https://stats.bis.org/api/v2/data/dataflow/BIS/{flow}/{ver}/{key}?startPeriod=` (probe 200).
     - Date bound: yes. Key: none. Use "unrestricted" with citation; IP cut-off possible -> 1 s pacing, stop on 429/403.
 
-15. **INSEE BDM** (French series) - `access: api`
+15. **INSEE BDM** (French series) - `access: api`; via dbnomics (provider `INSEE`)
     - Endpoint: SDMX BDM (probe 200; doc `insee.fr/fr/information/8184146`); exact path: not established (to be recorded when wired). The other INSEE APIs (Sirene...) need a key: option.
     - Date bound: by SDMX period. Key: none (BDM). Licence: not established. Rate: not established -> 1 s local.
 
-Planned wiring: a **single SDMX adapter** for 9, 12, 13, 14, 15 (until then, their series are read through DBnomics, with its revision caveat).
+Not planned: a native SDMX adapter for 9 to 15; their series are read via dbnomics, with its revision caveat (values known at T: FRED/ALFRED). `opencitations` and `unpaywall` (v0.5.7) serve finance DOIs as in `biology.md`, Sources 5 and 8.
 
 Options (not declared): **Banque de France Webstat** (key, account, 10,000 calls/day, 401 without key) `api`; **GLEIF LEI** `https://api.gleif.org/api/v1/lei-records?filter[entity.legalName]=` (probe 200, JSON:API, group structures; rate and licence not established; identity, not a source of claims) `api`; **BLS API v2** (without key 25 req/day, free key 500/day, `startyear`/`endyear`; FRED covers) `api`; **BEA** (key, 100 req/min), **Fed DDP** (without key, SDMX per publication), **FRASER** (key on request, 30/min, OAI-PMH); **UK Companies House** (key, 600 req / 5 min) `api`; **CitEc** `citec.repec.org/api/{plain|amf|citedby}/<handle>` (without key up to 500 requests, probe 200; `citing` of a RePEc handle already known; commercial use excluded) `api`; **Alpha Vantage, Finnhub** (key required; AV 25 req/day free; option if a question requires a price, never default) `api`; **Stooq** (robots `Disallow: /` only, never probed) `page`, option never default; **OpenBB** = Apache-2.0 Python aggregator, not a source (its key-less extensions overlap 9-15).
 
