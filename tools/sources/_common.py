@@ -28,13 +28,13 @@ STATE = pathlib.Path(os.environ.get('VP_STATE') or 'vp-state')
 def _ua():
     # Identification contact: env VP_CONTACT (a team or project address, never a personal address by default).
     # Without it, a generic identification with no e-mail; sources that require a contact are skipped with a receipt.
-    c = os.environ.get('VP_CONTACT', '').strip()
+    c = sc.contact()
     return {'User-Agent': 'VanishingPoint/1 (+' + c + ')' if c else 'VanishingPoint/1 (research skill)'}
 
 
 def _mailto(sep='&'):
     """Crossref polite-pool contact: only the VP_CONTACT value, never a literal address."""
-    c = os.environ.get('VP_CONTACT', '').strip()
+    c = sc.contact()
     return sep + 'mailto=' + urllib.parse.quote(c) if c else ''
 
 

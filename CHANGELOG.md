@@ -660,3 +660,6 @@ Five sources that the plugins already declared as `not_wired` are now served by 
   - GitHub, `pypi:jinja2` at T 2019-06-01: 2 advisories, both masked because they were updated in 2024.
   - Unpaywall and EDGAR without `VP_CONTACT`: `not_configured`, 0 requests. **Not yet verified live with a contact address** (none available at release).
 - Known limit: GitHub matches the version itself. `affects=jinja2@2.4.1` returned 0 at T 2019-06-01, against 2 for the package alone. Use the package form, or `vulns` (OSV), for a version.
+
+### Contact
+- `VP_CONTACT` now follows the key rule: environment variable, then `~/.config/vp/vp_contact.key` (one helper, `code_sources.contact()`, used by the User-Agent, the Crossref polite pool, Unpaywall and EDGAR). Live check 2026-10-28 with a contact set: Unpaywall served the open copies of a 2013 Nature DOI dated before T; EDGAR full-text search served 10-K filings with their filing dates.

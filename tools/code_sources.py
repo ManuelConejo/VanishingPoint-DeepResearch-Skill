@@ -24,7 +24,7 @@ CRED_HOST = {'VP_GITHUB_TOKEN': 'api.github.com', 'SWH_TOKEN': 'archive.software
 TOKEN_PATH = None     # no token file fallback (kept as a module variable so tests can monkeypatch it harmlessly)
 FALLBACK_DIRS = ()    # no fallback key directory (kept as a module variable so tests can monkeypatch it harmlessly)
 MAX_BYTES, MAX_QUERY = 5_000_000, 512
-UA = 'VanishingPoint/1 (+' + os.environ['VP_CONTACT'].strip() + ')' if os.environ.get('VP_CONTACT', '').strip() else 'VanishingPoint/1 (research skill)'
+UA = 'VanishingPoint/1 (research skill)'   # replaced below once key() is defined: VP_CONTACT follows the key rule (env, then ~/.config/vp/vp_contact.key)
 SWH = 'https://archive.softwareheritage.org/'
 ORIGIN = r'https://[A-Za-z0-9.-]+(?::\d+)?/\S*'   # an origin for Software Heritage: HTTPS, a plain host (no userinfo), a path
 SWHID = r'swh:1:(cnt|dir|rev|rel|snp):[a-f0-9]{40}'
@@ -157,6 +157,14 @@ def key(name):
     except OSError:
         return None
     return v or None
+
+
+def contact():
+    """Identification contact VP_CONTACT, same rule as the keys (env, then ~/.config/vp/vp_contact.key); '' when absent."""
+    return key('VP_CONTACT') or ''
+
+
+UA = 'VanishingPoint/1 (+' + contact() + ')' if contact() else UA
 
 
 def read_token():
