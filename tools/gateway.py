@@ -13,7 +13,8 @@ Command line:
   opens the pool `verifier` (`counter-<run>.verifier.txt`, cap: config verifier.call_cap), so verification never competes with the searches.
   commands: sources | search-<engine> "<query>" | read <id> | citing <id> | references <id> | related <id> (OpenAlex related works, same barrier)
   wired engines: pubmed, europepmc, crossref, openalex, arxiv   (id: pmid:NNN | doi:10.x | arxiv:2501.01234)
-  law engines (plugins/law.md): eurlex, justice-administrative [--court CE|TA75|CAA69] [--from YYYY-MM-DD] [--to YYYY-MM-DD], hal, theses-fr
+  law engines (plugins/law.md): eurlex, justice-administrative [--court CE|TA75|CAA69] [--from YYYY-MM-DD] [--to YYYY-MM-DD], hal, theses-fr,
+  hudoc, europarl, isidore (id: hudoc:<itemid> | europarl:<document id> | isidore:<Isidore URI> | ecli:ECLI:CE:ECHR:...)
     (id: celex:32016R0679 | ecli:ECLI:EU:... | ecli:ECLI:FR:... | ja:<court>/<file> | hal:hal-0123 | thesesfr:<nnt>)
   code engines (code_sources.py; served only when a plugin declares them): search-code "<pattern>" [--language L] [--repo owner/repo] |
     versions <pypi|npm|cargo>:<package>@<version> | paper-code <arxiv> | provenance <origin https://... | swh:1:...>

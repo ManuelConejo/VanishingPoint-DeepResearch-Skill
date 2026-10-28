@@ -2,6 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """End of a run in one command (SKILL.md section 8, plus the shared retraction rule of the plugins). Standard library, no model.
 Usage: finish_run.py RUN_DIR [--T YYYY-MM-DD] [--plugin plugins/law.md ...] [--offline] [--rw-csv FILE] [--json]
+                     [--prisma] [--followups] [--prior-art]
+Optional steps (never by default; SKILL.md, optional sections): --prisma writes PRISMA.md / PRISMA.svg / prisma.json (tools/prisma.py) and
+appends the diagram to REPORT.html; --followups writes FOLLOWUPS.md / followups.json (tools/followups.py) and appends them to REPORT.html;
+--prior-art ("Prior art?" mode) first writes PRIOR-ART.md (tools/prior_art.py), then validates with validate_card.py --prior-art and skips
+validate_result (no result.json in that mode).
 Runs, in this order, each step whatever the others gave (status ok | problems | skipped, with the reason):
   1 validate_card.py DIR --header (--header skipped without state/journal.jsonl)   2 validate_result.py DIR/result.json
   3 retraction check (below; writes DIR/retractions.json)   4 law_checks.py DIR (only when a law plugin is used: --plugin, else scope.md)
@@ -140,9 +145,13 @@ def verification(d):
     return {k: v.get(k) for k in ('summary', 'fulltext_mode', 'fulltext_cap', 'fulltext_attempted', 'fulltext_obtained', 'fulltext_not_tried_cap', 'origins', 'gateway', 'model')}
 
 
-def finish(d, T=None, plugins=(), offline=False, rw_csv=None):
+def finish(d, T=None, plugins=(), offline=False, rw_csv=None, prisma=False, followups=False, prior_art=False):
     d = pathlib.Path(d).resolve(); steps, files = [], []
     receipt = d / 'state' / 'finish_run.json'
+    pre = []
+    if prior_art:                                                 # the answer is written before the fingerprints: it is an input of check 13
+        c0, o = _run(['prior_art.py', d]); pre.append({'step': 'prior_art', 'status': 'ok' if c0 == 0 else 'problems', 'detail': o})
+        files.extend(_paths(o))
     inputs = vc.fingerprints(d)                                   # before any step: a file changed later makes this receipt stale (check 13)
     receipt.parent.mkdir(parents=True, exist_ok=True)
     receipt.write_text(json.dumps({'started_utc': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'), 'inputs': inputs, 'T': T,
@@ -150,13 +159,15 @@ def finish(d, T=None, plugins=(), offline=False, rw_csv=None):
 
     def step(name, status, detail, out=()):
         steps.append({'step': name, 'status': status, 'detail': detail}); files.extend(x for x in out if x not in files)
+    steps.extend(pre)
     # 1 validate_card --header
     hdr = (d / 'state' / 'journal.jsonl').exists()
-    c1, o = _run(['validate_card.py', d] + (['--header'] if hdr else []))
+    c1, o = _run(['validate_card.py', d] + (['--header'] if hdr else []) + (['--prior-art'] if prior_art else []))
     step('validate_card' + (' --header' if hdr else ''), 'ok' if c1 == 0 else 'problems',
          ('' if hdr else 'header skipped: no state/journal.jsonl (injected mode); ') + o, [str(d / 'run.json')] if hdr and (d / 'run.json').exists() else [])
     # 2 validate_result
-    if (d / 'result.json').exists():
+    if prior_art: c2 = 0; step('validate_result', 'skipped', 'prior-art mode: no result.json')
+    elif (d / 'result.json').exists():
         c2, o = _run(['validate_result.py', d / 'result.json']); step('validate_result', 'ok' if c2 == 0 else 'problems', o)
     else: c2 = 1; step('validate_result', 'problems', 'result.json missing')
     # 3 retractions
@@ -177,9 +188,14 @@ def finish(d, T=None, plugins=(), offline=False, rw_csv=None):
         step('law_checks', st if c4 == 0 else 'problems', o if s is None else f"to_apply {s.get('to_apply')}, to_flag {s.get('to_flag')} (applied by the orchestrator, SKILL.md section 7)",
              [s['out']] if s and s.get('out') else [])
     else: step('law_checks', 'skipped', 'no law plugin (--plugin or scope.md)')
+    # optional: PRISMA flow diagram, follow-up questions (before the exports, which append them to REPORT.html)
+    for flag, name in ((prisma, 'prisma'), (followups, 'followups')):
+        if flag:
+            c, o = _run([f'{name}.py', d]); step(name, 'ok' if c == 0 else 'problems', o.splitlines()[-1] if o else '', _paths(o))
     # 5-6 exports
     if (d / 'REPORT.md').exists():
-        for name, a in (('export_report', ['export_report.py', d, '--pdf', '--open']), ('export_data', ['export_data.py', d])):
+        xr = (['--prisma'] if prisma else []) + (['--followups'] if followups else [])
+        for name, a in (('export_report', ['export_report.py', d, '--pdf', '--open'] + xr), ('export_data', ['export_data.py', d])):
             c, o = _run(a); pdf_note = [l for l in o.splitlines() if l.startswith('PDF:')]
             step(name, 'ok' if c == 0 else 'problems', (' '.join(pdf_note) or o.splitlines()[-1]) if o else '', _paths(o))
     else:
@@ -196,10 +212,13 @@ def main(argv=None):
     ap.add_argument('run_dir'); ap.add_argument('--T'); ap.add_argument('--plugin', action='append', default=[])
     ap.add_argument('--offline', action='store_true', help='no network: retraction check from the cache, law_checks --no-fetch')
     ap.add_argument('--rw-csv', help='Retraction Watch CSV (crossref/retraction-watch-data), optional'); ap.add_argument('--json', action='store_true')
+    ap.add_argument('--prisma', action='store_true', help='optional: PRISMA 2020 flow diagram (tools/prisma.py), also in REPORT.html')
+    ap.add_argument('--followups', action='store_true', help='optional: follow-up questions (tools/followups.py), also in REPORT.html')
+    ap.add_argument('--prior-art', action='store_true', help='optional "Prior art?" mode: PRIOR-ART.md (tools/prior_art.py), validate_card --prior-art')
     a = ap.parse_args(argv)
     if not pathlib.Path(a.run_dir).is_dir(): print(f'not a directory: {a.run_dir}', file=sys.stderr); return 2
     if a.T and not re.fullmatch(r'\d{4}-\d{2}-\d{2}', a.T): ap.error(f'date expected as YYYY-MM-DD: {a.T!r}')
-    r = finish(a.run_dir, a.T, a.plugin, a.offline, a.rw_csv)
+    r = finish(a.run_dir, a.T, a.plugin, a.offline, a.rw_csv, prisma=a.prisma, followups=a.followups, prior_art=a.prior_art)
     if a.json: print(json.dumps(r, ensure_ascii=False, indent=1))
     else:
         for s in r['steps']:

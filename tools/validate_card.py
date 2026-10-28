@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 """Mechanical check of a question's working directory before delivery (SKILL.md, sections 6 to 8). No network, no model, standard library.
-Usage: validate_card.py DIR [--header]      --header: derives run.json from state/journal.jsonl (never written by hand)
+Usage: validate_card.py DIR [--header] [--prior-art]      --header: derives run.json from state/journal.jsonl (never written by hand)
+--prior-art (optional "Prior art?" mode, SKILL.md; never by default): checks 1-5 and 9 and 13, plus the prior-art checks PA1-PA4 of
+tools/prior_art.py (prior_art.json, element claims, PRIOR-ART.md current and consistent with the verified claims, a NOT FOUND with a recorded
+search) in place of the report checks 6, 7, 8, 10, 11, 12 (no REPORT.md nor result.json in that mode).
 Checks: 1 card.json (minimal schema); 2 source keys (identifier doi/arxiv/pmid/pmcid, or `code` for a file read at a SHA); 3 placeholders;
 4 searches/ (>= 3, with queries); 5 verdicts.json handled (no ABSENT/INVALID left, known statuses); 6 REPORT.md: exactly the eight level-2
 sections of the output contract, in order (Executive Summary 200-400 words, Introduction, Main Analysis with 4 to 8 findings headed
@@ -94,7 +97,7 @@ def header(folder):
     return e
 
 
-FINISH_INPUTS = ('REPORT.md', 'card.json', 'result.json', 'verdicts.json')   # what the end steps read; a change after them makes them stale
+FINISH_INPUTS = ('REPORT.md', 'card.json', 'result.json', 'verdicts.json', 'prior_art.json', 'PRIOR-ART.md')   # what the end steps read; a change after them makes them stale (the last two: prior-art mode only, absent otherwise)
 
 
 def fingerprints(folder):
@@ -115,7 +118,8 @@ def end_problems(folder):
     return [f'13 end steps stale: {", ".join(changed)} changed since the last finish_run.py: run {cmd}'] if changed else []
 
 
-def problems(folder):
+def problems(folder, prior_art=False):
+    """Checks 1-12; prior_art=True: checks 1-5 and 9 plus PA1-PA4 (tools/prior_art.py) in place of the report and result.json checks."""
     d = pathlib.Path(folder); pb = []
     # 1-2-3 card.json
     f = load(d / 'card.json') if (d / 'card.json').exists() else None
@@ -158,8 +162,12 @@ def problems(folder):
             if s not in STATUSES: pb.append(f'5 claim {i}: unknown status {s!r}')
             elif s in UNHANDLED: pb.append(f'5 claim {i}: {s} not handled (removal or re-verification): card not deliverable')
             elif s != 'FOUND': unverified.append(i)
+    if prior_art:
+        import prior_art as _pa
+        pb += _pa.problems(d)
     # 6-7-10-11-12 REPORT.md
-    if not (d / 'REPORT.md').exists(): pb.append('6 REPORT.md: missing')
+    if prior_art: pass
+    elif not (d / 'REPORT.md').exists(): pb.append('6 REPORT.md: missing')
     else:
         t = (d / 'REPORT.md').read_text(encoding='utf-8', errors='replace')
         pb += report_problems(t)
@@ -167,7 +175,8 @@ def problems(folder):
         if unverified and not re.search(r'unverified|not verified', t, re.I): pb.append(f'7 REPORT.md: {len(unverified)} unverified claim(s) not flagged')
     # 8 result.json
     r = load(d / 'result.json') if (d / 'result.json').exists() else None
-    if r is None: pb.append('8 result.json: missing')
+    if prior_art: pass
+    elif r is None: pb.append('8 result.json: missing')
     elif isinstance(r, Exception): pb.append('8 result.json: unreadable JSON')
     else: pb += ['8 result.json: ' + x for x in pb_result(r)]
     # 9 header
@@ -185,5 +194,5 @@ if __name__ == '__main__':
     if not d.is_dir(): print(f'validate_card.py: not a directory: {args[0]!r} (a relative path is read from the current directory {pathlib.Path.cwd()})'); sys.exit(2)
     if '--header' in sys.argv:
         (d / 'run.json').write_text(json.dumps(header(d), ensure_ascii=False, indent=1)); print('run.json written')
-    p = problems(d) + end_problems(d)
+    p = problems(d, prior_art='--prior-art' in sys.argv) + end_problems(d)
     print('\n'.join(p) if p else 'OK'); sys.exit(1 if p else 0)

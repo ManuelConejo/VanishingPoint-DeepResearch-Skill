@@ -20,7 +20,7 @@ Declaration (keys of SOURCE; `_TEMPLATE.py` is the commented reference):
 import importlib, importlib.util, os, pathlib, re, sys
 
 HERE = pathlib.Path(__file__).resolve().parent
-ACCESS = ('api', 'page', 'browser', 'tos_forbidden', 'technical_block')   # ACCESS-POLICY.md
+ACCESS = ('api', 'page', 'browser', 'local', 'tos_forbidden', 'technical_block')   # ACCESS-POLICY.md; local = files of the user, no network
 SEND = re.compile(r'(query:[A-Za-z_][\w-]*|bearer|header:[A-Za-z][\w-]*|oauth-client-credentials)')   # how a key may be sent
 EXPORT_TYPES = ('article', 'preprint', 'paper', 'thesis', 'dataset', 'software', 'standard', 'trial', 'case', 'legislation')
 WITHOUT = ('degraded', 'skipped')
@@ -68,7 +68,9 @@ def _norm(src, file):
         if op in s and not (callable(s[op]) or isinstance(s[op], str)): _err(s, f'{op}: callable or "not served" message')
     if s['wired']:
         if s.get('access') not in ACCESS: _err(s, f'access must be one of {ACCESS}')
-        if not s.get('hosts'): _err(s, 'hosts required (every host called, with its pacing)')
+        if s['access'] == 'local':
+            if s.get('hosts'): _err(s, 'a local source calls no host (hosts must be empty)')
+        elif not s.get('hosts'): _err(s, 'hosts required (every host called, with its pacing)')
         if not (s.get('terms') and s.get('barrier')): _err(s, 'terms and barrier notes required')
         if not (s['engines'] or s['commands'] or ids): _err(s, 'a wired source declares engines, commands or ids')
     s['hosts'] = {h: dict(v or {}) for h, v in (s.get('hosts') or {}).items()}

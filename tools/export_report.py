@@ -14,7 +14,10 @@ why no passage was verified. REPORT.md itself is not changed.
 PDF: the first converter found, in this order: WeasyPrint (Python module, then `weasyprint` command), Chromium/Chrome headless
 (`--no-sandbox` only on a retry inside a container, as root or when the sandbox could not start), `wkhtmltopdf`, `pandoc` with a PDF engine found on PATH.
 None found or all failed: the HTML stays, one line says so, exit 0 (the HTML prints to PDF from any browser).
-Usage: export_report.py RUN_DIR [--pdf] [--out DIR]     Exit: 0 written; 2 no REPORT.md. Import: render(md, meta) -> str; meta(dir) -> [(k, v)]."""
+Optional appendices (never by default): --prisma adds the PRISMA 2020 flow diagram of tools/prisma.py (inline SVG, built from the run's
+records at export time); --followups adds the follow-up questions of tools/followups.py (fixed templates filled from the run's files).
+Usage: export_report.py RUN_DIR [--pdf] [--out DIR] [--prisma] [--followups]     Exit: 0 written; 2 no REPORT.md.
+Import: render(md, meta, extra=[(id, title, html)]) -> str; meta(dir) -> [(k, v)]; extras(dir, prisma, followups) -> [(id, title, html)]."""
 import argparse, datetime as dt, html, importlib, importlib.util, json, os, pathlib, re, shutil, subprocess, sys, tempfile
 
 TIMEOUT = 180  # seconds per converter attempt
@@ -291,8 +294,9 @@ def bibliography(lines, inl, cited=None):
     return '<div class="bib">\n' + '\n'.join(out) + '\n</div>'
 
 
-def render(md, meta=(), title_fallback='Report', passages=None):
-    """REPORT.md text + [(label, value)] (+ tools/passages.py build() output) -> complete HTML page (str)."""
+def render(md, meta=(), title_fallback='Report', passages=None, extra=()):
+    """REPORT.md text + [(label, value)] (+ tools/passages.py build() output) (+ optional appendices [(id, title, html)], placed after the
+    report and listed in the contents) -> complete HTML page (str)."""
     md = md.replace('\r\n', '\n').replace('\r', '\n').replace('\x00', '')
     lines = md.split('\n')
     refs, inbib = set(), False
@@ -306,6 +310,9 @@ def render(md, meta=(), title_fallback='Report', passages=None):
     cited = {}
     for c in (passages or {}).get('claims') or []: cited.setdefault(c.get('ref'), []).append(c)
     bib = bibliography(ctx.get('bib_lines', []), inl, cited)
+    for xid, xtitle, xhtml in extra:
+        hid = slug(xid, ctx['used']); ctx['toc'].append((2, hid, html.escape(xtitle)))
+        body += f'\n<h2 id="{hid}" class="pb">{html.escape(xtitle)}</h2>\n{xhtml}'
     dl = ''.join(f'<dt>{html.escape(k)}</dt><dd>{html.escape(str(v))}</dd>' for k, v in meta)
     toc, open3 = [], False
     for lvl, hid, label in ctx['toc']:
@@ -377,6 +384,31 @@ def cited_passages(folder):
         return passages.build(folder)
     except Exception:
         return None
+
+
+# ---------- optional appendices ----------
+def extras(folder, prisma=False, followups=False):
+    """[(id, title, html)] of the optional appendices asked for; a tool that fails leaves its appendix out with one escaped line."""
+    out = []
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+    if prisma:
+        try:
+            import prisma as _pr
+            data = _pr.build(folder)
+            out.append(('prisma', 'PRISMA 2020 flow diagram', f'<div class="tw">{_pr.svg(data)}</div><p class="pre">{html.escape(_pr.DEFINITIONS)}</p>'))
+        except Exception as e:
+            out.append(('prisma', 'PRISMA 2020 flow diagram', f'<p class="pre">Not produced: {html.escape(type(e).__name__)}.</p>'))
+    if followups:
+        try:
+            import followups as _fu
+            data = _fu.build(folder)
+            items = ''.join(f'<li>{html.escape(q["text"])} <span class="pre">({html.escape(q["family"])}; from {html.escape(q["from"])})</span></li>' for q in data['questions'])
+            note = ('<p class="pre">Derived mechanically from this run by fixed templates (tools/followups.py); no model wrote them.'
+                    + (f' Only {len(data["questions"])} question(s) derivable; none invented to reach {data["min"]}.' if data['short'] else '') + '</p>')
+            out.append(('followups', 'Follow-up questions', note + (f'<ol>{items}</ol>' if items else '<p>No follow-up question is derivable from this run.</p>')))
+        except Exception as e:
+            out.append(('followups', 'Follow-up questions', f'<p class="pre">Not produced: {html.escape(type(e).__name__)}.</p>'))
+    return out
 
 
 # ---------- PDF ----------
@@ -494,12 +526,14 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description='REPORT.md -> REPORT.html (always) and REPORT.pdf (--pdf), offline.')
     ap.add_argument('run_dir'); ap.add_argument('--pdf', action='store_true'); ap.add_argument('--out')
     ap.add_argument('--open', action='store_true', help='open the PDF (else the HTML) with the desktop viewer, if the machine has a screen')
+    ap.add_argument('--prisma', action='store_true', help='optional: append the PRISMA 2020 flow diagram (tools/prisma.py)')
+    ap.add_argument('--followups', action='store_true', help='optional: append the follow-up questions (tools/followups.py)')
     a = ap.parse_args(argv)
     d = pathlib.Path(a.run_dir); src = d / 'REPORT.md'
     if not src.is_file(): print(f'no REPORT.md in {d}', file=sys.stderr); return 2
     out = pathlib.Path(a.out) if a.out else d; out.mkdir(parents=True, exist_ok=True)
     page = out / 'REPORT.html'
-    page.write_text(render(src.read_text(encoding='utf-8', errors='replace'), meta(d), passages=cited_passages(d)), encoding='utf-8')
+    page.write_text(render(src.read_text(encoding='utf-8', errors='replace'), meta(d), passages=cited_passages(d), extra=extras(d, a.prisma, a.followups)), encoding='utf-8')
     print(f'{page.resolve()}')
     if a.pdf:
         pdf = out / 'REPORT.pdf'

@@ -27,7 +27,7 @@ Legal note: the French text-and-data-mining exception (Art. L.122-5-3 of the Fre
 - Using credentials other than those provided for (read-only GitHub token, optional keys of `~/.config/vp/`).
 
 ## Marking in plugins
-Each source of the `sources` block and of the table carries `access: api | page | browser | tos_forbidden | technical_block` (`technical_block` is reserved for the restricted accesses of level 3). The gateway applies the level 2 cadence to `page` sources.
+Each source of the `sources` block and of the table carries `access: api | page | browser | local | tos_forbidden | technical_block` (`local`: the user's own files, no network) (`technical_block` is reserved for the restricted accesses of level 3). The gateway applies the level 2 cadence to `page` sources.
 
 ## Exceptions granted
 (none)
