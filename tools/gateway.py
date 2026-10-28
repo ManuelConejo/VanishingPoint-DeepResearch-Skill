@@ -28,6 +28,11 @@ Command line:
   AI engines (plugins/cs-ai.md): openreview, zenodo, hal-info (id: openreview:<forum id> | zenodo:<record id>); code engine usage <pypi|npm|cargo|...>:<package> (ecosyste.ms)
   finance data engines (plugins/finance.md): dbnomics (keyless; current values marked as_of "now"; read dbnomics:<provider>/<dataset>/<series>),
     fred (FRED_API_KEY, else skipped with 0 request; ALFRED vintage of the eve of T; read fred:<series id>); observations kept only when their period ends before T
+    edgar (SEC EDGAR; e-mail in VP_CONTACT, else skipped with 0 request): search-edgar "<words> [form:<form>]" [--from] [--to] | "cik:<CIK> [form:<form>]";
+    read edgar:<CIK>/<accession number> (filing date AND acceptance time < T)
+  linked sources (v0.5.7): unpaywall "<DOI> [<DOI> ...]" (open copies dated before T; e-mail in VP_CONTACT, else skipped with 0 request),
+    opencitations "<DOI>" | "citing:<DOI>" | "references:<DOI>" (also appended to citing / references of a DOI), datacite "<words> [type:dataset|software]"
+    (DataCite DOIs, read doi:<DataCite DOI>); code engine github-advisory: advisories <ecosystem>:<package>[@<version>] ; read ghsa:<GHSA id>
   A key the provider rejects (NCBI 400 "API key invalid" or "not wellformed", OpenAlex 401/403, Software Heritage 401/403; FRED 400 about api_key: no key-less FRED, skipped) is dropped for the rest of the run
   (<state>/keys-invalid.json, names only), the call is retried once without it, and every answer carries key_invalid: [NAME].
 Import:

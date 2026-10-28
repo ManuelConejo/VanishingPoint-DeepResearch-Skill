@@ -33,7 +33,7 @@ TYPES = {  # type -> (BibTeX, RIS, CSL)
     'article': ('article', 'JOUR', 'article-journal'), 'preprint': ('misc', 'UNPB', 'article'), 'software': ('misc', 'COMP', 'software'),
     'dataset': ('misc', 'DATA', 'dataset'), 'legislation': ('misc', 'LEGAL', 'legislation'), 'case': ('misc', 'CASE', 'legal_case'),
     'trial': ('misc', 'GEN', 'document'), 'thesis': ('phdthesis', 'THES', 'thesis'), 'standard': ('techreport', 'STAND', 'standard'),
-    'paper': ('inproceedings', 'CPAPER', 'paper-conference')}
+    'paper': ('inproceedings', 'CPAPER', 'paper-conference'), 'report': ('techreport', 'RPRT', 'report')}
 BIBTEX_ESC = {'\\': r'\textbackslash{}', '{': r'\{', '}': r'\}', '&': r'\&', '%': r'\%', '$': r'\$', '#': r'\#', '_': r'\_',
               '~': r'\textasciitilde{}', '^': r'\textasciicircum{}'}
 

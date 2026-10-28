@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.5.6, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.5.7, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -208,7 +208,7 @@ The gateway reads, in the Sources section, a fenced block:
 
 ````
 ```sources
-engines: openalex, crossref, arxiv     # wired engines: pubmed, europepmc, crossref, openalex, arxiv, clinicaltrials, biorxiv, medrxiv, dblp, econbiz, dbnomics, fred (FRED_API_KEY) ; law: eurlex, justice-administrative, hal, theses-fr, hudoc, europarl, isidore, judilibre, legifrance (PISTE pair) ; ai: openreview, zenodo, hal-info, hf-models, hf-datasets, standards, proceedings ; code, versions, paper-code, provenance, osv, ecosyste.ms
+engines: openalex, crossref, arxiv     # wired engines: pubmed, europepmc, crossref, openalex, arxiv, clinicaltrials, biorxiv, medrxiv, dblp, econbiz, dbnomics, fred (FRED_API_KEY), edgar (VP_CONTACT e-mail), opencitations, unpaywall (VP_CONTACT e-mail), datacite ; law: eurlex, justice-administrative, hal, theses-fr, hudoc, hudoc-feed, europarl, isidore, judilibre, legifrance (PISTE pair) ; ai: openreview, zenodo, hal-info, hf-models, hf-datasets, standards, proceedings ; code, versions, paper-code, provenance, osv, ecosyste.ms, github-advisory
 since: 2015                            # optional lower bound (year)
 cap: 60                                # optional safety cap on calls
 keys: OPENALEX_KEY                     # optional keys, resolved as in KEYS.md, never required

@@ -22,7 +22,7 @@ import importlib, importlib.util, os, pathlib, re, sys
 HERE = pathlib.Path(__file__).resolve().parent
 ACCESS = ('api', 'page', 'browser', 'local', 'tos_forbidden', 'technical_block')   # ACCESS-POLICY.md; local = files of the user, no network
 SEND = re.compile(r'(query:[A-Za-z_][\w-]*|bearer|header:[A-Za-z][\w-]*|oauth-client-credentials)')   # how a key may be sent
-EXPORT_TYPES = ('article', 'preprint', 'paper', 'thesis', 'dataset', 'software', 'standard', 'trial', 'case', 'legislation')
+EXPORT_TYPES = ('article', 'preprint', 'paper', 'thesis', 'dataset', 'software', 'standard', 'trial', 'case', 'legislation', 'report')
 WITHOUT = ('degraded', 'skipped')
 CHAIN = ('citing', 'references', 'related')
 USER_DIR = pathlib.Path.home() / '.config' / 'vp' / 'sources'

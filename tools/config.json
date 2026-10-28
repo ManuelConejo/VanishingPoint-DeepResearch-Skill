@@ -8,6 +8,16 @@
   "dbnomics_datasets": 3,
   "note": "Finance data engines (gateway dbnomics, fred). obs_max = observations returned per read (the last ones before T; 240 = 20 years monthly, a reading budget, not a measured optimum). dbnomics_datasets = datasets of the DBnomics search whose matching series are listed (one request each, 2 s pacing)."
  },
+ "linked_sources": {
+  "unpaywall_dois": 10,
+  "opencitations_complement": true,
+  "opencitations_max": 100,
+  "sec_interval": 0.5,
+  "sec_submission_files": 3,
+  "sec_text_chars": 20000,
+  "ghsa_types": "reviewed",
+  "note": "Sources wired in v0.5.7 (tools/sources/unpaywall.py, opencitations.py, edgar.py, ghsa.py, datacite.py). unpaywall_dois = most DOIs looked up by one search-unpaywall call (one request each). opencitations_complement = citing/references of a DOI add the OpenCitations works not already listed (after the existing ones, within n); false = the v0.5.6 output exactly. opencitations_max = most OpenCitations works per DOI and direction kept after the date filter and rechecked on Crossref (batches of 40; one OpenCitations request per direction reads every row). sec_interval = seconds between two calls to one SEC host (SEC fair access: at most 10 requests/s per user, all machines; 0.5 s = 2/s, under the 4/s of the lab prototype that saw no 429). sec_submission_files = older submissions files (beyond the recent 1,000 filings) scanned by read edgar:. sec_text_chars = characters of the filing's primary document served by read (start of the text). ghsa_types = GitHub advisory type listed by the advisories command (reviewed: curated by GitHub; unreviewed: raw NVD imports). Bounds of politeness and reading, not measured optima."
+ },
  "code_intervals": {
   "api.github.com": 6.1,
   "archive.softwareheritage.org": 6.0,

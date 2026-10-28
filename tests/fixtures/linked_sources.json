@@ -1,0 +1,355 @@
+{
+ "opencitations_citations": [
+  {
+   "oci": "06110725530-06190834283",
+   "citing": "omid:br/06110725530 doi:10.4161/onci.26494 openalex:W1982779947 pmid:24482747",
+   "cited": "omid:br/06190834283 doi:10.1186/1756-8722-6-59 pmid:23958373 openalex:W2120377900",
+   "creation": "2013-11",
+   "timespan": "P0Y2M",
+   "journal_sc": "no",
+   "author_sc": "no"
+  },
+  {
+   "oci": "061804297321-06190834283",
+   "citing": "omid:br/061804297321 openalex:W4387693965 doi:10.1038/s41598-023-44956-0",
+   "cited": "omid:br/06190834283 doi:10.1186/1756-8722-6-59 pmid:23958373 openalex:W2120377900",
+   "creation": "",
+   "timespan": "",
+   "journal_sc": "no",
+   "author_sc": "no"
+  },
+  {
+   "oci": "06010196038-06190834283",
+   "citing": "omid:br/06010196038 doi:10.1016/j.molstruc.2025.142829 openalex:W4410815743",
+   "cited": "omid:br/06190834283 doi:10.1186/1756-8722-6-59 pmid:23958373 openalex:W2120377900",
+   "creation": "2025-10",
+   "timespan": "P12Y1M",
+   "journal_sc": "no",
+   "author_sc": "no"
+  },
+  {
+   "oci": "06010379349-06190834283",
+   "citing": "omid:br/06010379349 openalex:W4414167565 doi:10.1016/j.bioorg.2025.108985",
+   "cited": "omid:br/06190834283 doi:10.1186/1756-8722-6-59 pmid:23958373 openalex:W2120377900",
+   "creation": "2025-10",
+   "timespan": "P12Y1M",
+   "journal_sc": "no",
+   "author_sc": "no"
+  }
+ ],
+ "opencitations_references": [
+  {
+   "oci": "06190834283-06101389277",
+   "citing": "omid:br/06190834283 doi:10.1186/1756-8722-6-59 pmid:23958373 openalex:W2120377900",
+   "cited": "omid:br/06101389277 doi:10.1124/dmd.111.040840 pmid:21742900 openalex:W2062199715",
+   "creation": "2013-08-19",
+   "timespan": "P2Y1M11D",
+   "journal_sc": "no",
+   "author_sc": "no"
+  },
+  {
+   "oci": "06190834283-06102258727",
+   "citing": "omid:br/06190834283 doi:10.1186/1756-8722-6-59 pmid:23958373 openalex:W2120377900",
+   "cited": "omid:br/06102258727 openalex:W2024881920 doi:10.1093/hmg/3.10.1743 pmid:7880320",
+   "creation": "2013-08-19",
+   "timespan": "P19Y",
+   "journal_sc": "no",
+   "author_sc": "no"
+  },
+  {
+   "oci": "06190834283-06103522789",
+   "citing": "omid:br/06190834283 doi:10.1186/1756-8722-6-59 pmid:23958373 openalex:W2120377900",
+   "cited": "omid:br/06103522789 openalex:W2146029333 pmid:22449073 doi:10.3109/08830185.2012.664797",
+   "creation": "2013-08-19",
+   "timespan": "P1Y4M29D",
+   "journal_sc": "no",
+   "author_sc": "no"
+  }
+ ],
+ "datacite_search": {
+  "data": [
+   {
+    "id": "10.5281/zenodo.4288886",
+    "type": "dois",
+    "attributes": {
+     "doi": "10.5281/zenodo.4288886",
+     "titles": [
+      {
+       "title": "althonos/pyhmmer: 0.1.0-a4"
+      }
+     ],
+     "publisher": "Zenodo",
+     "publicationYear": 2020,
+     "dates": [
+      {
+       "date": "2020-11-24",
+       "dateType": "Issued"
+      }
+     ],
+     "types": {
+      "schemaOrg": "SoftwareSourceCode",
+      "resourceTypeGeneral": "Software",
+      "citeproc": "article",
+      "bibtex": "misc",
+      "ris": "COMP"
+     },
+     "creators": [
+      {
+       "nameType": "Personal",
+       "affiliation": [
+        "EMBL, @zellerlab"
+       ],
+       "givenName": "Martin",
+       "familyName": "Larralde",
+       "name": "Larralde, Martin",
+       "nameIdentifiers": [
+        {
+         "nameIdentifierScheme": "ORCID",
+         "schemeUri": "https://orcid.org",
+         "nameIdentifier": "https://orcid.org/0000-0002-3947-4444"
+        }
+       ]
+      }
+     ],
+     "relatedIdentifiers": [
+      {
+       "relationType": "IsSupplementTo",
+       "resourceTypeGeneral": "Software",
+       "relatedIdentifier": "https://github.com/althonos/pyhmmer/tree/v0.1.0-a4",
+       "relatedIdentifierType": "URL"
+      },
+      {
+       "relationType": "IsDocumentedBy",
+       "resourceTypeGeneral": "Text",
+       "relatedIdentifier": "https://pyhmmer.readthedocs.io/en/v0.1.0-a4/",
+       "relatedIdentifierType": "URL"
+      }
+     ],
+     "descriptions": [
+      {
+       "description": "<em><strong>🐍🟡♦️🟦 pyHMMER </strong></em> <em>Cython bindings and Python interface to HMMER3.</em> <strong>🗺️ Overview</strong> HMMER is a biological sequence analysis tool that uses profile hidden Mar"
+      }
+     ],
+     "version": "v0.1.0-a4",
+     "created": "2020-11-24T15:23:52Z",
+     "registered": "2020-11-24T15:23:53Z",
+     "updated": "2025-05-08T16:42:53Z"
+    }
+   },
+   {
+    "id": "10.5281/zenodo.3968738",
+    "type": "dois",
+    "attributes": {
+     "doi": "10.5281/zenodo.3968738",
+     "titles": [
+      {
+       "title": "althonos/pronto: 2.2.3"
+      }
+     ],
+     "publisher": "Zenodo",
+     "publicationYear": 2020,
+     "dates": [
+      {
+       "date": "2020-07-31",
+       "dateType": "Issued"
+      }
+     ],
+     "types": {
+      "schemaOrg": "SoftwareSourceCode",
+      "resourceTypeGeneral": "Software",
+      "citeproc": "article",
+      "bibtex": "misc",
+      "ris": "COMP"
+     },
+     "creators": [
+      {
+       "nameType": "Personal",
+       "affiliation": [
+        "European Molecular Biology Laboratory"
+       ],
+       "givenName": "Martin",
+       "familyName": "Larralde",
+       "name": "Larralde, Martin",
+       "nameIdentifiers": [
+        {
+         "nameIdentifierScheme": "ORCID",
+         "schemeUri": "https://orcid.org",
+         "nameIdentifier": "https://orcid.org/0000-0002-3947-4444"
+        }
+       ]
+      }
+     ],
+     "relatedIdentifiers": [
+      {
+       "relationType": "IsSupplementTo",
+       "resourceTypeGeneral": "Software",
+       "relatedIdentifier": "https://github.com/althonos/pronto/tree/v2.2.3",
+       "relatedIdentifierType": "URL"
+      },
+      {
+       "relationType": "Cites",
+       "resourceTypeGeneral": "Text",
+       "relatedIdentifier": "10.7490/f1000research.1117405.1",
+       "relatedIdentifierType": "DOI"
+      }
+     ],
+     "descriptions": [
+      {
+       "description": "<strong><code>pronto</code> </strong> <em>A Python frontend to ontologies.</em> <strong>🗺️ Overview</strong> Pronto is a Python library to parse, browse, create, and export ontologies, supporting seve"
+      }
+     ],
+     "version": "v2.2.3",
+     "created": "2020-07-31T15:55:46Z",
+     "registered": "2020-07-31T15:55:47Z",
+     "updated": "2025-03-05T14:02:07Z"
+    }
+   }
+  ],
+  "meta": {
+   "total": 12
+  }
+ },
+ "ghsa_list": [
+  {
+   "ghsa_id": "GHSA-462w-v97r-4m45",
+   "cve_id": "CVE-2019-10906",
+   "url": "https://api.github.com/advisories/GHSA-462w-v97r-4m45",
+   "html_url": "https://github.com/advisories/GHSA-462w-v97r-4m45",
+   "summary": "Jinja2 sandbox escape via string formatting",
+   "description": "In Pallets Jinja before 2.10.1, `str.format_map` allows a sandbox escape.\n\nThe sandbox is used to restrict what code can be evaluated when rendering untrusted, user-provided templates. Due to the way string formatting works in Python, the `str.format_map` method could be used to escape the sandbox.\n",
+   "type": "reviewed",
+   "severity": "high",
+   "identifiers": [
+    {
+     "value": "GHSA-462w-v97r-4m45",
+     "type": "GHSA"
+    },
+    {
+     "value": "CVE-2019-10906",
+     "type": "CVE"
+    }
+   ],
+   "references": [
+    "https://nvd.nist.gov/vuln/detail/CVE-2019-10906",
+    "https://access.redhat.com/errata/RHSA-2019:1152",
+    "https://access.redhat.com/errata/RHSA-2019:1237",
+    "https://access.redhat.com/errata/RHSA-2019:1329",
+    "https://github.com/advisories/GHSA-462w-v97r-4m45",
+    "https://lists.apache.org/thread.html/09fc842ff444cd43d9d4c510756fec625ef8eb1175f14fd21de2605f@%3Cdevnull.infra.apache.org%3E",
+    "https://lists.apache.org/thread.html/2b52b9c8b9d6366a4f1b407a8bde6af28d9fc73fdb3b37695fd0d9ac@%3Cdevnull.infra.apache.org%3E",
+    "https://lists.apache.org/thread.html/320441dccbd9a545320f5f07306d711d4bbd31ba43dc9eebcfc602df@%3Cdevnull.infra.apache.org%3E",
+    "https://lists.apache.org/thread.html/46c055e173b52d599c648a98199972dbd6a89d2b4c4647b0500f2284@%3Cdevnull.infra.apache.org%3E",
+    "https://lists.apache.org/thread.html/57673a78c4d5c870d3f21465c7e2946b9f8285c7c57e54c2ae552f02@%3Ccommits.airflow.apache.org%3E",
+    "https://lists.apache.org/thread.html/7f39f01392d320dfb48e4901db68daeece62fd60ef20955966739993@%3Ccommits.airflow.apache.org%3E",
+    "https://lists.apache.org/thread.html/b2380d147b508bbcb90d2cad443c159e63e12555966ab4f320ee22da@%3Ccommits.airflow.apache.org%3E",
+    "https://lists.apache.org/thread.html/f0c4a03418bcfe70c539c5dbaf99c04c98da13bfa1d3266f08564316@%3Ccommits.airflow.apache.org%3E",
+    "https://palletsprojects.com/blog/jinja-2-10-1-released",
+    "http://lists.opensuse.org/opensuse-security-announce/2019-05/msg00030.html",
+    "http://lists.opensuse.org/opensuse-security-announce/2019-06/msg00064.html",
+    "https://usn.ubuntu.com/4011-2",
+    "https://usn.ubuntu.com/4011-1",
+    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/TS7IVZAJBWOHNRDMFJDIZVFCMRP6YIUQ",
+    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/QCDYIS254EJMBNWOG4S5QY6AOTOR4TZU",
+    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/DSW3QZMFVVR7YE3UT4YRQA272TYAL5AF",
+    "https://github.com/pypa/advisory-database/tree/main/vulns/jinja2/PYSEC-2019-217.yaml"
+   ],
+   "published_at": "2019-04-10T14:30:24Z",
+   "updated_at": "2024-09-24T20:49:57Z",
+   "github_reviewed_at": "2020-06-16T20:57:35Z",
+   "nvd_published_at": "2019-04-07T00:29:00Z",
+   "withdrawn_at": null,
+   "vulnerabilities": [
+    {
+     "package": {
+      "ecosystem": "pip",
+      "name": "Jinja2"
+     },
+     "vulnerable_version_range": "< 2.10.1",
+     "first_patched_version": "2.10.1",
+     "vulnerable_functions": []
+    }
+   ],
+   "cvss": {
+    "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N",
+    "score": 8.6
+   },
+   "cwes": [
+    {
+     "cwe_id": "CWE-693",
+     "name": "Protection Mechanism Failure"
+    }
+   ],
+   "epss": {
+    "percentage": 0.03534,
+    "percentile": 0.88935
+   }
+  },
+  {
+   "ghsa_id": "GHSA-hj2j-77xm-mc5v",
+   "cve_id": "CVE-2016-10745",
+   "url": "https://api.github.com/advisories/GHSA-hj2j-77xm-mc5v",
+   "html_url": "https://github.com/advisories/GHSA-hj2j-77xm-mc5v",
+   "summary": "Jinja2 sandbox escape vulnerability",
+   "description": "In Pallets Jinja before 2.8.1, str.format allows a sandbox escape.",
+   "type": "reviewed",
+   "severity": "high",
+   "identifiers": [
+    {
+     "value": "GHSA-hj2j-77xm-mc5v",
+     "type": "GHSA"
+    },
+    {
+     "value": "CVE-2016-10745",
+     "type": "CVE"
+    }
+   ],
+   "references": [
+    "https://nvd.nist.gov/vuln/detail/CVE-2016-10745",
+    "https://github.com/pallets/jinja/commit/9b53045c34e61013dc8f09b7e52a555fa16bed16",
+    "https://access.redhat.com/errata/RHSA-2019:1022",
+    "https://access.redhat.com/errata/RHSA-2019:1237",
+    "https://access.redhat.com/errata/RHSA-2019:1260",
+    "https://access.redhat.com/errata/RHSA-2019:3964",
+    "https://access.redhat.com/errata/RHSA-2019:4062",
+    "https://github.com/advisories/GHSA-hj2j-77xm-mc5v",
+    "http://lists.opensuse.org/opensuse-security-announce/2019-05/msg00030.html",
+    "http://lists.opensuse.org/opensuse-security-announce/2019-06/msg00064.html",
+    "https://github.com/pypa/advisory-database/tree/main/vulns/jinja2/PYSEC-2019-220.yaml",
+    "https://palletsprojects.com/blog/jinja-281-released",
+    "https://usn.ubuntu.com/4011-1",
+    "https://usn.ubuntu.com/4011-2"
+   ],
+   "published_at": "2019-04-10T14:30:13Z",
+   "updated_at": "2024-09-24T20:51:40Z",
+   "github_reviewed_at": "2020-06-16T21:40:24Z",
+   "nvd_published_at": null,
+   "withdrawn_at": null,
+   "vulnerabilities": [
+    {
+     "package": {
+      "ecosystem": "pip",
+      "name": "Jinja2"
+     },
+     "vulnerable_version_range": "< 2.8.1",
+     "first_patched_version": "2.8.1",
+     "vulnerable_functions": []
+    }
+   ],
+   "cvss": {
+    "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N",
+    "score": 8.6
+   },
+   "cwes": [
+    {
+     "cwe_id": "CWE-134",
+     "name": "Use of Externally-Controlled Format String"
+    }
+   ],
+   "epss": {
+    "percentage": 0.0352,
+    "percentile": 0.88705
+   }
+  }
+ ],
+ "_note": "Responses recorded live on 2026-10-28 (OpenCitations /citations and /references of 10.1186/1756-8722-6-59, DataCite /dois search, GitHub /advisories?ecosystem=pip&affects=jinja2), trimmed to the fields the sources read; rows kept verbatim. Unpaywall and SEC EDGAR shapes are written in the tests from their documented format (no contact address was available for a live call)."
+}

@@ -6,8 +6,10 @@ import urllib.error, urllib.parse, urllib.request
 from sources._common import _mailto, jget, year_before_T
 from sources.arxiv import _arxiv_ok
 from sources.crossref import cr_item, crossref_batch, crossref_deposit
+from sources.datacite import datacite_read
 from sources.europepmc import EPMC, epmc_date, epmc_item, epmc_resolve
 from sources.openalex import _references_openalex, oa_item, oa_work, search_openalex
+from sources.opencitations import complement, oc_citing, oc_references
 
 
 def read_doi(ident, B):
@@ -24,15 +26,24 @@ def read_doi(ident, B):
     try: w = oa_work('doi:' + doi)
     except Exception:
         try: m = jget('https://api.crossref.org/works/' + urllib.parse.quote(doi) + _mailto('?'))['message']
-        except Exception: return {'refusal': 'not found'}
+        except Exception: return _datacite_or(doi, B, {'refusal': 'not found'})
         it = cr_item(m, B)
         if not it: return {'refusal': 'after T, forbidden or not found'}
         return dict(it, abstract=re.sub('<[^>]+>', ' ', m.get('abstract') or '(no abstract available)')[:6000])
     it = oa_item(w, B)
-    if not it or not crossref_deposit([it], B): return {'refusal': 'after T, forbidden or deposit not attested'}
+    if not it: return {'refusal': 'after T, forbidden or deposit not attested'}
+    if not crossref_deposit([it], B): return _datacite_or(doi, B, {'refusal': 'after T, forbidden or deposit not attested'})
     inv = w.get('abstract_inverted_index') or {}
     pos = sorted((p, word) for word, ps in inv.items() for p in ps)
     return dict(it, abstract=' '.join(m for _, m in pos)[:6000] or '(no abstract available)')
+
+
+def _datacite_or(doi, B, refusal):
+    """A DOI Crossref does not attest may be a DataCite DOI (dataset, software, arXiv, Zenodo): its DataCite record under the same barrier
+    (issued, created AND registered < T), else the original refusal."""
+    try: r = datacite_read(doi, B)
+    except Exception: r = None
+    return r if r else refusal
 
 
 def doi_of(ident, B):
@@ -57,7 +68,9 @@ def citing_doi(ident, n, B):
         ids = [c['id'] for c in cit if c.get('source') == 'MED' and str(c.get('pubYear') or '9999') <= str(B.T.year)]
         B.excluded += len(cit) - len(ids)
         out = epmc_date(ids, B)
-        if out or cit: return out[:n], f'{len(cit)} citing in Europe PMC (all dates), {len(out)} before T'
+        if out or cit:
+            more = complement(out[:n], n, oc_citing, _given_doi(ident), B)   # OpenCitations works not in Europe PMC, after them
+            return more, f'{len(cit)} citing in Europe PMC (all dates), {len(out)} before T' + _oc_note(more, out[:n])
     if r and not r[2]: return [], 'document after T or forbidden'
     doi = doi_of(ident, B)
     if doi:
@@ -90,7 +103,7 @@ def references_doi(ident, n, B):
             # without PMID: year strictly before the year of T (strict), forbidden titles filtered
             if not B.ok(x.get('doi'), year_before_T(x.get('pubYear'), B), title=x.get('title')): continue
             out.append({'id': f"doi:{x['doi']}" if x.get('doi') else 'no-id', 'title': x.get('title'), 'year': x.get('pubYear'), 'journal': x.get('journalAbbreviation'), 'first_author': (x.get('authorString') or '').split(',')[0]})
-        if out: return out, len(refs)
+        if out: return _oc_total(complement(out, n, oc_references, _given_doi(ident), B), out, len(refs))
     doi = doi_of(ident, B)
     if doi:
         try: m = jget('https://api.crossref.org/works/' + urllib.parse.quote(doi) + _mailto('?'))['message']
@@ -104,10 +117,25 @@ def references_doi(ident, n, B):
                 t = x.get('article-title') or x.get('unstructured') or x.get('volume-title')
                 if t and B.ok(None, year_before_T(x.get('year'), B), title=t):
                     out.append({'id': 'no-id', 'title': t[:300], 'year': x.get('year'), 'first_author': x.get('author')})
-            if out: return out, len(refs)
+            if out: return _oc_total(complement(out, n, oc_references, doi, B), out, len(refs))
     w = oa_work(ident)
     if not oa_item(w, B): return [], 0
-    return _references_openalex(w, n, B)
+    out, tot = _references_openalex(w, n, B)
+    return _oc_total(complement(out, n, oc_references, doi, B), out, tot)
+
+
+# ---- OpenCitations complement (sources/opencitations.py): existing items unchanged and first; the total keeps its form when nothing is added
+
+def _given_doi(ident):
+    return ident.strip()[4:] if ident.strip().lower().startswith('doi:') else None
+
+
+def _oc_note(more, out):
+    return f'; +{len(more) - len(out)} from OpenCitations (Crossref recheck)' if len(more) > len(out) else ''
+
+
+def _oc_total(more, out, total):
+    return (more, total) if len(more) == len(out) else (more, f'{total} (+{len(more) - len(out)} from OpenCitations, Crossref recheck)')
 
 
 # ---- related works (OpenAlex related_works of a work; same barrier as citing/references)
