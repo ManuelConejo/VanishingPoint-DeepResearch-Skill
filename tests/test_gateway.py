@@ -454,8 +454,8 @@ class LawEngines(unittest.TestCase):
 
     def test_law_plugin_wiring(self):
         s = gw.Gateway([P.parent / 'plugins' / 'law.md'], T=LT, run='t-law', state=pathlib.Path(self.tmp.name) / 's').sources()
-        self.assertEqual(s['engines'], ['eurlex', 'hal', 'justice-administrative', 'openalex', 'theses-fr'])
-        self.assertEqual(s['not_wired'], ['europarl', 'hudoc', 'isidore', 'judilibre'])
+        self.assertEqual(s['engines'], ['eurlex', 'hal', 'judilibre', 'justice-administrative', 'legifrance', 'openalex', 'theses-fr'])
+        self.assertEqual(s['not_wired'], ['europarl', 'hudoc', 'isidore'])
 
 
 def test_online():

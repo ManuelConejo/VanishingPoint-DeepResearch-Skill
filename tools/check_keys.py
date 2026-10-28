@@ -35,9 +35,9 @@ CATALOGUE = {
                             free='free, GitHub account, read-only token', url='https://github.com/settings/tokens'),
     'SWH_TOKEN': dict(source='software-heritage', engine='provenance', without='degraded', passed=True, reason='120 req/h instead of 1,200 (interval 6 s instead of 3 s)',
                       free='free, account', url='https://archive.softwareheritage.org/ (profile -> API token)'),
-    'PISTE_CLIENT_ID': dict(source='judilibre', engine=None, without='skipped', passed=False, reason='0 request, not_configured (token required by the service)',
+    'PISTE_CLIENT_ID': dict(source='judilibre', engine='judilibre', without='skipped', passed=True, reason='Judilibre and Legifrance: 0 request, not_configured (token required by the service)',
                             free='free, personal PISTE registration', url='https://piste.gouv.fr/', pair='PISTE_CLIENT_SECRET'),
-    'PISTE_CLIENT_SECRET': dict(source='judilibre', engine=None, without='skipped', passed=False, reason='0 request, not_configured (token required by the service)',
+    'PISTE_CLIENT_SECRET': dict(source='judilibre', engine='judilibre', without='skipped', passed=True, reason='Judilibre and Legifrance: 0 request, not_configured (token required by the service)',
                                 free='free, personal PISTE registration', url='https://piste.gouv.fr/', pair='PISTE_CLIENT_ID'),
     'FRED_API_KEY': dict(source='fred', engine=None, without='skipped', passed=False, reason='disabled, no call (the API returns 400 without a key)',
                          free='free, FRED account', url='https://fred.stlouisfed.org/docs/api/api_key.html'),
@@ -47,8 +47,8 @@ WIRED = set(gw.ENGINES) | set(gw.CODE_ENGINES.values())
 SUGGESTION = {'OPENALEX_KEY': ('OpenAlex', '~2 min', True), 'NCBI_API_KEY': ('PubMed with an NCBI key', '~5 min', True),
               'S2_API_KEY': ('Semantic Scholar', 'form, key sent by e-mail; data CC BY-NC, attribution', True),
               'OPENAIRE_TOKEN': ('OpenAIRE Graph', '~5 min', True), 'VP_GITHUB_TOKEN': ('GitHub search/code', '~2 min, read-only token', True),
-              'SWH_TOKEN': ('Software Heritage', '~2 min', True), 'PISTE_CLIENT_ID': ('Judilibre (French Court of Cassation)', '~5 min, then subscription to the API', True),
-              'PISTE_CLIENT_SECRET': ('Judilibre (French Court of Cassation)', '~5 min', True), 'FRED_API_KEY': ('FRED / ALFRED', '~2 min', True)}
+              'SWH_TOKEN': ('Software Heritage', '~2 min', True), 'PISTE_CLIENT_ID': ('Judilibre and Legifrance (PISTE)', '~5 min, then subscription to the APIs', True),
+              'PISTE_CLIENT_SECRET': ('Judilibre and Legifrance (PISTE)', '~5 min', True), 'FRED_API_KEY': ('FRED / ALFRED', '~2 min', True)}
 STOPWORDS = {'the', 'and', 'for', 'with', 'from', 'into', 'over', 'that', 'this', 'are', 'not', 'when', 'between', 'without', 'non', 'about', 'any', 'all'}
 NOTE_NOT_WIRED = 'engine not wired: the key has no effect until the engine is wired'
 NOTE_NOT_PASSED = 'declared, no effect until wired (the gateway does not pass it yet)'

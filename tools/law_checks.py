@@ -41,9 +41,10 @@ NULLS = ('', 'undefined', 'null', 'none_literal')                               
 LEGI_DEAD = ('MODIFIE_MORT_NE',)                                                  # never in force
 LEGI_STATES = ('VIGUEUR', 'ABROGE', 'MODIFIE', 'VIGUEUR_DIFF', 'ABROGE_DIFF', 'MODIFIE_MORT_NE', 'TRANSFERE')
 JA_COVERAGE = {'CE': '2021-09-30', 'CAA': '2022-03-31', 'TA': '2022-06-30'}       # law.md 4, same as the gateway
-LAW_PREFIX = ('celex', 'ecli', 'ja', 'hal', 'thesesfr')
+LAW_PREFIX = ('celex', 'ecli', 'ja', 'hal', 'thesesfr', 'judilibre', 'legi', 'jorf')
 FORMS = {'celex': r'[0-9CE]\d{4}[A-Z]{1,3}\d{1,5}[0-9A-Z()_.\-]*', 'ecli': r'ECLI:[A-Z]{2}:[A-Z0-9.]{1,7}:\d{4}:[A-Z0-9.]{1,25}',
-         'ja': r'[A-Z]{2,3}\d{0,3}/[A-Z]{2,5}_[A-Za-z0-9]+_\d{8}', 'hal': r'[a-z]+-\d+', 'thesesfr': r'[0-9]{4}[A-Z0-9]{4,12}'}
+         'ja': r'[A-Z]{2,3}\d{0,3}/[A-Z]{2,5}_[A-Za-z0-9]+_\d{8}', 'hal': r'[a-z]+-\d+', 'thesesfr': r'[0-9]{4}[A-Z0-9]{4,12}',
+         'judilibre': r'[A-Za-z0-9_-]{8,64}', 'legi': r'LEGI(ARTI|TEXT)\d{12}', 'jorf': r'JORFTEXT\d{12}'}   # PISTE: Judilibre id, LEGI article/text, JORF text
 UNRESOLVED = re.compile(r'^\s*(not found|malformed|expected form|not an administrative-court ECLI)', re.I)
 NEGATIVE = re.compile(r"\b(no|none|never|aucune?|jamais)\b[^.]{0,40}\b(decisions?|rulings?|judgments?|judgements?|cases?|arr[eê]ts?|d[eé]cisions?)\b", re.I)
 COMPLETE = re.compile(r'\b(all|every|complete|exhaustive|in total|a total of|the total|toutes?|tous|exhaustif|au total)\b', re.I)
@@ -121,8 +122,8 @@ def kind_of(a):
     """text | decision | doctrine | None, from the record (type, CELEX sector, tier)."""
     r = a['rec']; t = str(val(r, 'type') or '').lower(); c = celex_of(a)
     if r.get('tier') in SKIP_TIERS or t in ('thesis', 'doctrine', 'art', 'article', 'ouv', 'couv'): return 'doctrine'
-    if t == 'decision' or c[:1] == '6' or (a['ident'] or '').startswith(('ja:', 'ecli:')): return 'decision'
-    if t == 'text' or c[:1] in ('0', '3') or val(r, 'in_force_from') or val(r, 'valid_from') or val(r, 'legi_state'): return 'text'
+    if t == 'decision' or c[:1] == '6' or (a['ident'] or '').startswith(('ja:', 'ecli:', 'judilibre:')): return 'decision'
+    if t == 'text' or c[:1] in ('0', '3') or (a['ident'] or '').startswith(('legi:', 'jorf:')) or val(r, 'in_force_from') or val(r, 'valid_from') or val(r, 'legi_state'): return 'text'
     return None
 
 
