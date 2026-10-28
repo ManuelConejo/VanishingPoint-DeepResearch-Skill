@@ -1,0 +1,60 @@
+{
+"claims": [
+{
+"id": "A1",
+"status": "FOUND",
+"location": "abstract",
+"discrepancy": "",
+"fragments": []
+},
+{
+"id": "A2",
+"status": "FOUND",
+"location": "abstract",
+"discrepancy": "",
+"fragments": []
+},
+{
+"id": "A3",
+"status": "FOUND",
+"location": "abstract",
+"discrepancy": "",
+"fragments": []
+},
+{
+"id": "A4",
+"status": "DISTORTED",
+"location": "abstract",
+"discrepancy": "scope: card says 87 % of participants were community-dwelling; source says participants in most of the trials were community dwelling (87%), i.e. the 87% is a share of trials (not of participants); the adults aged >=18 criterion is an eligibility criterion",
+"fragments": []
+},
+{
+"id": "A9",
+"status": "FOUND",
+"location": "abstract",
+"discrepancy": "",
+"fragments": []
+},
+{
+"id": "A10",
+"status": "FOUND",
+"location": "abstract",
+"discrepancy": "",
+"fragments": []
+},
+{
+"id": "A14",
+"status": "FOUND",
+"location": "abstract",
+"discrepancy": "",
+"fragments": []
+},
+{
+"id": "A15",
+"status": "FOUND",
+"location": "abstract",
+"discrepancy": "",
+"fragments": []
+}
+]
+}

@@ -1,0 +1,70 @@
+{
+ "studies": [
+  {
+   "id": "pmid:42161415",
+   "title": "Calcium, vitamin D, or combined supplementation for fractures and falls (systematic review and meta-analysis)",
+   "year": "2026",
+   "confidence": 0.95,
+   "criteria": {
+    "population": "69 trials, 153,902 participants, adults aged 18 or over; participants in most of the trials (87 %) were community dwelling.",
+    "intervention_exposure": "Calcium, vitamin D, or both.",
+    "comparator": "not applicable",
+    "results": "Any fracture RR 1.00 (0.95 to 1.06) for vitamin D alone and 0.91 (0.84 to 0.99) with calcium, high certainty; little to no effect on falls.",
+    "study_design": "Systematic review and meta-analysis.",
+    "date_language_type": "2026, English, BMJ."
+   },
+   "basis": "abstract"
+  },
+  {
+   "id": "pmid:38698349",
+   "title": "Network meta-analysis of vitamin D, calcium or both for falls",
+   "year": "2024",
+   "confidence": 0.8,
+   "criteria": {
+    "population": "35 RCTs, n = 58,937.",
+    "intervention_exposure": "Vitamin D, calcium or both, by dose band.",
+    "comparator": "not applicable",
+    "results": "Falls RR 0.85 (0.74 to 0.95) at 800 to 1,000 IU/day, RR 0.78 for daily administration of 800 to 1,000 IU/day, RR 0.69 with 25(OH)D of 50 nmol/L or less; doses above 1,000 IU/day increased falls compared with 800 to 1,000 IU/day.",
+    "study_design": "Network meta-analysis.",
+    "date_language_type": "2024, English, BMC Geriatr."
+   },
+   "basis": "abstract"
+  },
+  {
+   "id": "pmid:29677309",
+   "title": "Vitamin D, calcium, or combined supplementation for the primary prevention of fractures in community-dwelling adults (USPSTF)",
+   "year": "2018",
+   "confidence": 0.74,
+   "criteria": {
+    "population": "Postmenopausal women; men and premenopausal women covered by an I statement.",
+    "intervention_exposure": "Vitamin D 400 IU or less plus calcium 1,000 mg or less.",
+    "comparator": "not applicable",
+    "results": "Grade D against low-dose use for primary fracture prevention; insufficient evidence for higher doses; increases kidney stones.",
+    "study_design": "Guideline recommendation statement.",
+    "date_language_type": "2018, English, JAMA."
+   },
+   "basis": "abstract"
+  },
+  {
+   "id": "pmid:38613445",
+   "title": "Vitamin D, omega-3 and exercise: bone outcomes (DO-HEALTH)",
+   "year": "2024",
+   "confidence": 0.3,
+   "criteria": {
+    "population": "DO-HEALTH participants.",
+    "intervention_exposure": "Vitamin D, omega-3 and exercise.",
+    "comparator": "not applicable",
+    "results": "Bone-density paper only; no fracture or falls outcome seen.",
+    "study_design": "Randomised trial (DO-HEALTH).",
+    "date_language_type": "2024, English, J Bone Miner Res."
+   },
+   "basis": "abstract"
+  }
+ ],
+ "saturation": "not reached; stopped at call ceiling reserving verification",
+ "calls_used": 54,
+ "verification": {
+  "entries_removed": 0,
+  "rule": "after verification: no removals; 3 DISTORTED (A4, A16, A27) corrected from the discrepancy, not re-verified; 32 FOUND; none unverified"
+ }
+}

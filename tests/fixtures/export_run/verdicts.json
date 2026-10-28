@@ -1,0 +1,88 @@
+{
+ "claims": [
+  {
+   "id": "A1",
+   "status": "FOUND",
+   "discrepancy": "",
+   "location": "abstract"
+  },
+  {
+   "id": "A2",
+   "status": "FOUND",
+   "discrepancy": "",
+   "location": "abstract"
+  },
+  {
+   "id": "A3",
+   "status": "FOUND",
+   "discrepancy": "",
+   "location": "abstract"
+  },
+  {
+   "id": "A4",
+   "status": "DISTORTED",
+   "discrepancy": "scope: card says 87 % of participants were community-dwelling; source says participants in most of the trials were community dwelling (87%), i.e. the 87% is a share of trials (not of participants); the adults aged >=18 criterion is an eligibility criterion",
+   "location": "abstract"
+  },
+  {
+   "id": "A14",
+   "status": "FOUND",
+   "discrepancy": "",
+   "location": "abstract"
+  },
+  {
+   "id": "A15",
+   "status": "FOUND",
+   "discrepancy": "",
+   "location": "abstract"
+  },
+  {
+   "id": "A16",
+   "status": "DISTORTED",
+   "discrepancy": "comparator/direction: card says doses above 1,000 IU/day increased falls (unqualified); source says high-dose vitamin D (>1000 IU/day) increased the risk of falls compared with 800-1000 IU/d of vitamin D, not versus placebo/no treatment",
+   "location": "abstract"
+  },
+  {
+   "id": "A21",
+   "status": "FOUND",
+   "discrepancy": "",
+   "location": "abstract"
+  },
+  {
+   "id": "A22",
+   "status": "FOUND",
+   "discrepancy": "",
+   "location": "abstract"
+  },
+  {
+   "id": "A23",
+   "status": "FOUND",
+   "discrepancy": "",
+   "location": "abstract"
+  },
+  {
+   "id": "A30",
+   "status": "FOUND",
+   "discrepancy": "",
+   "location": "abstract"
+  },
+  {
+   "id": "A32",
+   "status": "FOUND",
+   "discrepancy": "",
+   "location": "abstract"
+  },
+  {
+   "id": "A33",
+   "status": "FOUND",
+   "discrepancy": "",
+   "location": "abstract"
+  },
+  {
+   "id": "A35",
+   "status": "FOUND",
+   "discrepancy": "",
+   "location": "abstract"
+  }
+ ]
+}

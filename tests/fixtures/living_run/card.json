@@ -1,0 +1,133 @@
+{
+"card_id": "bio",
+"question": "In community-dwelling older adults, does vitamin D supplementation, with or without calcium, reduce falls or fractures, and how solid is the evidence?",
+"sources": {
+"S1": {
+"pmid": "42161415",
+"title": "Calcium, vitamin D, or combined supplementation for fractures and falls (systematic review and meta-analysis)"
+},
+"S2": {
+"pmid": "30293909",
+"title": "Vitamin D supplementation and musculoskeletal health, with trial sequential analysis"
+},
+"S3": {
+"pmid": "40943885",
+"title": "Vitamin D and falls in community-dwelling adults aged 65 or over (meta-analysis)"
+},
+"S4": {
+"pmid": "32492153",
+"title": "Vitamin D supplementation and falls in VITAL"
+},
+"S5": {
+"pmid": "35939577",
+"title": "Vitamin D supplementation and fractures in VITAL"
+},
+"S6": {
+"pmid": "29279934",
+"title": "Association of calcium and vitamin D supplementation with fracture in community-dwelling older adults"
+},
+"S7": {
+"pmid": "38698349",
+"title": "Network meta-analysis of vitamin D, calcium or both for falls"
+},
+"S8": {
+"pmid": "20460620",
+"title": "Annual high-dose oral vitamin D and falls and fractures in older women"
+},
+"S9": {
+"pmid": "33284677",
+"title": "STURDY: vitamin D dose and falls in older adults"
+},
+"S10": {
+"pmid": "29677309",
+"title": "Vitamin D, calcium, or combined supplementation for the primary prevention of fractures in community-dwelling adults (USPSTF)"
+},
+"S11": {
+"pmid": "38997531",
+"title": "Vitamin D and fractures in healthy elderly people"
+},
+"S12": {
+"pmid": "26510847",
+"title": "Calcium plus vitamin D supplementation and risk of fractures: meta-analysis"
+},
+"S13": {
+"pmid": "27604776",
+"title": "Hypercalcaemia, hypercalciuria and kidney stones with long-term vitamin D supplementation: meta-analysis"
+},
+"S14": {
+"pmid": "42886195",
+"title": "Vitamin D supplementation in community-dwelling adults"
+},
+"S15": {
+"pmid": "38613445",
+"title": "Vitamin D, omega-3 and exercise: bone outcomes (DO-HEALTH)"
+}
+},
+"claims": [
+{
+"id": "A1",
+"text": "A 2026 BMJ meta-analysis of 69 trials with 153,902 participants reports a relative risk for any fracture of 1.00 (0.95 to 1.06) for vitamin D alone, graded high certainty.",
+"source": {
+"key": "S1"
+},
+"location": "abstract"
+},
+{
+"id": "A2",
+"text": "The same 2026 BMJ meta-analysis reports a relative risk for any fracture of 0.91 (0.84 to 0.99) for vitamin D plus calcium, graded high certainty.",
+"source": {
+"key": "S1"
+},
+"location": "abstract"
+},
+{
+"id": "A3",
+"text": "The same 2026 BMJ meta-analysis reports little to no effect on falls across its 69 trials.",
+"source": {
+"key": "S1"
+},
+"location": "abstract"
+},
+{
+"id": "A4",
+"text": "In the 2026 BMJ meta-analysis, 87 % of participants were community-dwelling adults aged 18 or over.",
+"source": {
+"key": "S1"
+},
+"location": "abstract"
+},
+{
+"id": "A9",
+"text": "VITAL (n = 25,871, 2,000 IU/day vitamin D) found an odds ratio of 0.97 (0.90 to 1.05) for two or more falls.",
+"source": {
+"key": "S4"
+},
+"location": "abstract"
+},
+{
+"id": "A10",
+"text": "In VITAL, the falls result did not differ by baseline 25(OH)D below or above 50 nmol/L.",
+"source": {
+"key": "S4"
+},
+"location": "abstract"
+},
+{
+"id": "A14",
+"text": "A 2024 network meta-analysis of 35 RCTs (n = 58,937) reported falls RR 0.85 (0.74 to 0.95) at 800 to 1,000 IU/day of vitamin D.",
+"source": {
+"key": "S7"
+},
+"location": "abstract"
+},
+{
+"id": "A15",
+"text": "The same network meta-analysis reported falls RR 0.78 for daily dosing and RR 0.69 in people with 25(OH)D of 50 nmol/L or less.",
+"source": {
+"key": "S7"
+},
+"location": "abstract"
+}
+],
+"conclusion": "Vitamin D alone does not reduce fractures (high-certainty null, RR 1.00) or, on the best-pooled evidence, falls in community-dwelling older adults; vitamin D plus calcium gives a small fracture reduction (RR 0.91) of lower generality, one network meta-analysis dissents on falls, and high or intermittent high doses signal harm. The evidence is solid for no average effect but thin for deficient subgroups, and it rests on abstracts of a PubMed-centred sample."
+}
