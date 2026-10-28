@@ -80,6 +80,7 @@ or `.agents/skills/vanishingpoint/SKILL.md`), then the plugin it selects.
    receipts without URL nor key). The code plugin adds `capsule.md` (input) and `mechanisms.json` (output).
 5. Check before using the report: `python3 -I "$SKILL/tools/validate_card.py" <dir> --header` (12 numbered mechanical checks; empty output
    = valid). A report that keeps ABSENT or INVALID claims unhandled is not delivered as valid.
+6. Export: `python3 -I "$SKILL/tools/export_report.py" <dir> [--pdf]` writes `REPORT.html` (one self-contained page, prints to PDF from any browser) and, with `--pdf`, `REPORT.pdf` through WeasyPrint, Chromium, wkhtmltopdf or pandoc when one is installed (nothing is installed, no network).
 
 Manual gateway test (no agent, no key, needs network; run from anywhere, `SKILL` as above):
 
