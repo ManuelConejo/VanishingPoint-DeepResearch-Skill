@@ -212,8 +212,8 @@ def fs_key(c):
 
 
 def ident_of(desc):
-    """{doi|arxiv|pmid|pmcid|celex|ecli|ja|hal|thesesfr|nct|dblp|econbiz|osv|openreview|zenodo|biorxiv|medrxiv|hfmodel|hfdataset|rfc|pep|w3c|acl|pmlr|cvf} -> gateway identifier (pmcid is not read by the gateway: None)."""
-    for x in ('doi', 'arxiv', 'pmid', 'celex', 'ecli', 'ja', 'hal', 'thesesfr', 'nct', 'dblp', 'econbiz', 'osv', 'openreview', 'zenodo', 'biorxiv', 'medrxiv', 'hfmodel', 'hfdataset', 'rfc', 'pep', 'w3c', 'acl', 'pmlr', 'cvf'):
+    """{doi|arxiv|pmid|pmcid|celex|ecli|ja|hal|thesesfr|nct|dblp|econbiz|osv|openreview|zenodo|biorxiv|medrxiv|hfmodel|hfdataset|rfc|pep|w3c|acl|pmlr|cvf|judilibre|legi|jorf} -> gateway identifier (pmcid is not read by the gateway: None)."""
+    for x in ('doi', 'arxiv', 'pmid', 'celex', 'ecli', 'ja', 'hal', 'thesesfr', 'nct', 'dblp', 'econbiz', 'osv', 'openreview', 'zenodo', 'biorxiv', 'medrxiv', 'hfmodel', 'hfdataset', 'rfc', 'pep', 'w3c', 'acl', 'pmlr', 'cvf', 'judilibre', 'legi', 'jorf'):
         if desc.get(x): return f'{x}:{desc[x]}'
     return None
 
@@ -245,7 +245,7 @@ def load_sources(card, sources_dir=None, gateway=None, fulltext=False, out_dir=N
                 try: note = json.loads((d / 'meta.json').read_text()).get('reason') or ''
                 except (OSError, ValueError): pass
         if txt is None and gateway is not None:
-            ident = ident_of(desc) or (c if re.match(r'^(doi|arxiv|pmid|celex|ecli|ja|hal|thesesfr):', c) else None)   # law ids: gateway.read_law
+            ident = ident_of(desc) or (c if re.match(r'^(doi|arxiv|pmid|celex|ecli|ja|hal|thesesfr|judilibre|legi|jorf):', c) else None)   # law ids: gateway.read_law
             if ident:
                 rep = gateway.read(ident) or {}
                 d = pathlib.Path(out_dir) / fs_key(c) if out_dir else None

@@ -64,8 +64,8 @@ class Test(unittest.TestCase):
         self.assertIn('code', code['active']); self.assertIn('https://github.com/settings/tokens', code['skipped'][0]['url'])
         self.assertNotIn('github', code['not_wired']); self.assertEqual(code['served_by']['github'], 'code')   # served by the wired code engine
         law = next(r for r in rep['plugins'] if r['plugin'] == 'law')
-        self.assertEqual([i['variable'] for i in law['keyed_not_wired']], ['PISTE_CLIENT_ID + PISTE_CLIENT_SECRET'])
-        self.assertEqual(law['keyed_not_wired'][0]['note'], ck.NOTE_NOT_WIRED)
+        self.assertEqual([i['variable'] for i in law['skipped']], ['PISTE_CLIENT_ID + PISTE_CLIENT_SECRET'])      # judilibre wired (v0.4.7): skipped without the pair
+        self.assertTrue(law['skipped'][0]['passed_by_gateway']); self.assertNotIn('keyed_not_wired', law)
         bio = next(r for r in rep['plugins'] if r['plugin'] == 'biology')
         self.assertEqual({i['variable']: i.get('note') for i in bio['degraded']}, {'OPENALEX_KEY': None, 'NCBI_API_KEY': None})
         self.assertIn('VP_GITHUB_TOKEN', rep['missing_keys']); self.assertFalse(rep['ok']); self.assertEqual(rep['mode'], 'standard')
@@ -125,7 +125,7 @@ class Test(unittest.TestCase):
         self.assertEqual([x['source'] for x in s], ['PubMed with an NCBI key']); self.assertEqual(s[0]['variable'], 'NCBI_API_KEY')
         self.assertIn('free registration', s[0]['text'])
         # A declared key with no effect today (engine not wired, or key not passed) is never suggested, however well it matches.
-        self.assertEqual(ck.suggest(ck.report([law]), 'case law Court of Cassation commercial lease'), [])            # Judilibre: not wired
+        self.assertEqual([x['variable'] for x in ck.suggest(ck.report([law]), 'case law Court of Cassation commercial lease')], ['PISTE_CLIENT_ID + PISTE_CLIENT_SECRET'])   # Judilibre: wired v0.4.7
         self.assertEqual(ck.suggest(ck.report([csai]), 'citation graph and citing articles in recent AI'), [])       # Semantic Scholar: not wired
         self.assertEqual([x['variable'] for x in ck.suggest(ck.report([code]), 'provenance of many repositories in archives')], ['SWH_TOKEN'])   # SWH_TOKEN: sent since v0.3.1
         self.assertEqual(ck.suggest(ck.report([code]), 'licence of a specific repository file')[0]['variable'], 'VP_GITHUB_TOKEN')
@@ -137,7 +137,7 @@ class Test(unittest.TestCase):
         self.assertEqual(p.returncode, 0, p.stderr); self.assertIn('NCBI_API_KEY', p.stdout)
         p = subprocess.run([sys.executable, '-I', str(TOOLS / 'check_keys.py'), '--suggest', 'case law Court of Cassation commercial lease', '--plugin', str(law)],
                            capture_output=True, text=True, env={**os.environ, 'HOME': self.tmp.name}, timeout=60)
-        self.assertEqual((p.returncode, p.stdout), (0, ''), p.stderr)
+        self.assertEqual(p.returncode, 0, p.stderr); self.assertIn('PISTE_CLIENT_ID', p.stdout)
 
     def test_mode_standard_or_audit(self):
         self.assertEqual(ck.mode(), 'standard'); self.assertEqual(ck.mode_line(), 'Mode: standard')

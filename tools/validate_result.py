@@ -11,7 +11,7 @@ FORMS = {'pmid': r'\d+', 'doi': r'10\.\S+', 'arxiv': r'\d{4}\.\d{4,5}(v\d+)?|[a-
          'ja': r'[A-Z]{2,3}\d{0,3}/[A-Z]{2,5}_[A-Za-z0-9]+_\d{8}', 'hal': r'[a-z]+-\d+(v\d+)?', 'thesesfr': r'\d{4}[A-Z0-9]{4,12}', 'nct': r'NCT\d{8}',
          'dblp': r'[\w-]+(/[\w.:+-]+)+', 'econbiz': r'\d+', 'osv': r'[A-Za-z]+-[\w.:-]+', 'openreview': r'[\w-]{6,}', 'zenodo': r'\d+',
          'biorxiv': r'10\.\S+', 'medrxiv': r'10\.\S+', 'hfmodel': r'[\w.-]+(/[\w.-]+)?', 'hfdataset': r'[\w.-]+(/[\w.-]+)?', 'rfc': r'\d{1,5}', 'pep': r'\d{1,4}',
-         'w3c': r'[\w.-]+', 'acl': r'[A-Za-z0-9][\w.-]+', 'pmlr': r'v\d+/[\w.-]+', 'cvf': r'content[\w/.-]+_paper', 'local': r'\S+@[0-9a-f]{7,40}'}   # same kinds as validate_card.IDS (ids served by the gateway engines)
+         'w3c': r'[\w.-]+', 'acl': r'[A-Za-z0-9][\w.-]+', 'pmlr': r'v\d+/[\w.-]+', 'cvf': r'content[\w/.-]+_paper', 'judilibre': r'[A-Za-z0-9_-]{8,64}', 'legi': r'LEGI(ARTI|TEXT)\d{12}', 'jorf': r'JORFTEXT\d{12}', 'local': r'\S+@[0-9a-f]{7,40}'}   # same kinds as validate_card.IDS (ids served by the gateway engines)
 CODE = r'[^\s:@][^\s@]*@[0-9a-f]{7,40}'                                               # code: `<file path>@<SHA>` (SKILL.md section 0, identity of sources)
 ID = re.compile(r'^(%s|%s)$' % ('|'.join(f'{k}:(?:{v})' for k, v in FORMS.items()), CODE), re.I)
 MAX = 50

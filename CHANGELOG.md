@@ -332,3 +332,31 @@ Fix of a temporal leak: `tools/verifier/fetch_fulltext.py` (`verifier.py --fullt
 - `tools/config.json` `cs_engines` (pmlr_volumes, cvf_conferences, w3c_lookups, hf_commit_pages): gentleness bounds, named. Hosts stop at once on 403/404/429.
 - New id kinds `hfmodel`, `hfdataset`, `rfc`, `pep`, `w3c`, `acl`, `pmlr`, `cvf` in `validate_card.IDS`, `validate_result`, `verifier.ident_of`, `living_diff`, SKILL.md; `export_data` types `standard` and `paper` (conference paper), hfmodel = software, hfdataset = dataset.
 - Tests: `tests/test_engines_cs.py` (14, offline). Live probes 2026-10-28 at T 2026-10-26 and 2021-01-01, every engine plus one read each: 210 items, 0 date on/after T.
+
+## v0.4.7, 2026-10-28 - PISTE connector: Judilibre and Legifrance (not yet verified live)
+
+### Packaging changes (tested offline, not measured; no PISTE credentials at release)
+- Engines `judilibre` and `legifrance` (`tools/gateway.py`, PISTE block; `plugins/law.md` sections 5-6). Credentials: the pair
+  `PISTE_CLIENT_ID` + `PISTE_CLIENT_SECRET` (`key()`, KEYS.md). Without the pair: `{"status": "skipped", "reason": "not_configured"}`,
+  0 request. OAuth 2.0 client credentials (`POST https://oauth.piste.gouv.fr/api/oauth/token`, form body, `scope=openid`); token cached in
+  `<state>/piste-token.json` (0600) with its expiry, refreshed when fewer than 60 s remain or the credentials change. The pair goes only
+  to the OAuth host, the bearer only to `api.piste.gouv.fr`; HTTPS only, no redirect followed, nothing secret in URLs, receipts
+  (`requests.jsonl`: host, path hash, status, size, hash), journal or answers. Token 400/401 or API 401 after one fresh token ->
+  `key_invalid` (names only), engines skipped for the run; API 403 -> `not_subscribed`.
+- `search-judilibre "<q>" [--court cc|ca|tj|tcom] [--chamber civ1|soc|cr...] [--from] [--to]`: `GET /cassation/judilibre/v1.0/search`
+  (Judilibre OpenAPI v1.2.5), decision dates bounded to the eve of T on the provider side; barrier on `decision_date` (< T), ids, ECLI,
+  appeal numbers, title; editorial metadata masked when the decision was updated on/after T. `read judilibre:<id>`: `GET /decision`,
+  text head + operative part (zone `dispositif`, else the last "PAR CES MOTIFS"), links dated before T; `forward` dated before T with a
+  setting-aside solution -> `set_aside_by` (law_checks rule 4).
+- `search-legifrance "<q>" [--fund code|loda|jorf]`: `POST /dila/legifrance/lf-engine-app/search`, `CODE_DATE` + `LODA_DATE` with
+  `DATE_VERSION` = the eve of T (JORF: publication and signature dates < T); "article N" -> exact `NUM_ARTICLE`. `read legi:LEGIARTI...`
+  (`/consult/getArticle`, version in force on the eve of T among `articleVersions`, end exclusive), `read legi:LEGITEXT...`
+  (`/consult/legiPart`, date = eve of T), `read jorf:JORFTEXT...` (`/consult/jorf`). Records: `valid_from`, `valid_until` (exclusive;
+  an end on/after T masked), `legi_state` on the eve, `version`, `access: api`, tier `primary`, order `FR`.
+- `law_checks.py`: ids `judilibre:`, `legi:`, `jorf:` (forms, kinds); `in_force_at_date` uses the LEGI exclusive end. Prefixes added to
+  `validate_card.IDS`, `validate_result.FORMS`, `verifier.ident_of`, `export_data` (case / legislation). `check_keys.py`: PISTE pair
+  wired and passed (suggestible when the question matches). Gateway: engine filters through `FILTER_OPT`; CLI `--chamber`, `--fund`.
+- Tests: `tests/test_engines_piste.py` (12 offline tests: token shape, cache and expiry, no secret anywhere, redirect and host refusal,
+  skipped with 0 request, key_invalid on 401, not_subscribed on 403, barrier per engine, version at the eve of T with exclusive end,
+  operative part, law_checks on a Legifrance record); `test_check_keys.py`, `test_gateway.py`, `test_validate_result.py` updated for the
+  wiring. Live: only the key-less path was run (skipped, 0 request); the authenticated path awaits credentials.
