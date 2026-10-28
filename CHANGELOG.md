@@ -198,3 +198,19 @@ Everything in this release was either measured on our benches before being adopt
 - Tests: `tests/test_law_checks.py` (22 tests: the real examples of the plugin, run-directory mapping, command line, verifier record; 44 of 44 mutants caught, control passing). Live check without a model on 2026-10-28: 13 of 13 claims as expected on real Cellar and administrative-court records at two question dates.
 - Fix: `gateway.py sources` lists names served by a declared code engine under `served_by`, not `not_wired`.
 - Fix: `validate_card.py` and `verifier.py` accept every id an engine returns without DOI (`celex`, `ecli`, `ja`, `hal`, `thesesfr`, `nct`, `dblp`, `econbiz`, `osv`, `openreview`, `zenodo`) as a source identifier; before, a card citing only such ids failed check 2. Test added.
+
+## v0.3.3, 2026-10-28 - HTML and PDF export
+
+- New `tools/export_report.py <dir> [--pdf] [--out DIR]` (standard library, offline, installs nothing): `REPORT.md` ->
+  `REPORT.html`, one self-contained page (inline CSS, no script, no external resource, CSP `default-src 'none'`): header
+  from `card.json` / `run.json` / `verdicts.json` / `scope.md` (question, T, plugins, mode, verification counts, calls),
+  contents, each `[n]` linked to its bibliography entry with back-links, `doi:` / `pmid:` / `arxiv:` and URLs clickable,
+  print CSS (A4, page numbers, new page before Bibliography and Methodology Appendix, no break inside table rows).
+  All report text is HTML-escaped; links kept only for http(s), mailto and in-page anchors; images become their alt text.
+- `--pdf`: first converter found among WeasyPrint (module, then command; every URL fetch refused), Chromium/Chrome headless
+  (DNS blocked; `--no-sandbox` only on a retry inside a container, as root or when the sandbox cannot start), wkhtmltopdf,
+  pandoc with a local PDF engine. None: HTML kept, one line, exit 0.
+- SKILL.md section 8: run the export after validation and list the files in the final message; inventory updated. README: one line.
+- Tests: `tests/test_export_report.py` (escaping of `<script>`, `"><img onerror>`, `javascript:` links; header with and
+  without JSON; `--pdf` with no converter; real `%PDF` when a converter exists). Checked on two real reports with
+  WeasyPrint 68.1 and Chromium 150 (7 and 11 A4 pages).
