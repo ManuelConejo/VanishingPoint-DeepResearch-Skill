@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.2.0, measured on small benches (3 to 50 cases); see CHANGELOG.md.
+Status: v0.2.1, measured on small benches (3 to 50 cases); see CHANGELOG.md.
 
 ## Installation
 
@@ -33,7 +33,7 @@ the search model (`sonnet` by default; `VP_SEARCH_MODEL` or `tools/config.json` 
 Interactive session: open `claude` in the working directory and ask the question (the skill triggers on its description, or type `/vanishingpoint`). Non-interactive runs (`claude -p`): background sub-agents are killed after an idle delay, so searchers die and `result.json` is never written; launch for instance:
 
 ```
-CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 claude -p --model claude-opus-5-5 --max-budget-usd 8 \
+CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 claude -p --model opus --max-budget-usd 8 \
   --permission-mode dontAsk --allowedTools "Bash(python3 -I $SKILL/tools/*)" Read Write Agent Glob Grep Skill \
   "Use the vanishingpoint skill. T = 2026-10-27. <your question>. Work in the current directory."
 ```
@@ -76,7 +76,7 @@ or `.agents/skills/vanishingpoint/SKILL.md`), then the plugin it selects.
    tool that splits plans into tasks? Work in the current directory."
 4. The skill writes, in the working directory: `scope.md` (framing, angles, waves), `searches/<n>.md` (one per searcher,
    with receipts), `REPORT.md` (the report), `card.json` and `result.json` (machine annex), `verdicts.json` and
-   `sources/<key>.txt` (verification), `run.json` (header derived from the gateway journal), `state/` (gateway journal,
+   `sources/<key>/source.txt` (verification), `run.json` (header derived from the gateway journal), `state/` (gateway journal,
    receipts without URL nor key). The code plugin adds `capsule.md` (input) and `mechanisms.json` (output).
 5. Check before using the report: `python3 -I "$SKILL/tools/validate_card.py" <dir> --header` (12 numbered mechanical checks; empty output
    = valid). A report that keeps ABSENT or INVALID claims unhandled is not delivered as valid.
@@ -103,7 +103,7 @@ python3 -I "$SKILL/tools/gateway.py" --T 2026-10-26 --run try --state /tmp/vp-st
 |---|---|---|---|
 | standard (default) | nothing | the whole method; verification of what carries a decision, one pass | about 2-3 USD per academic question; about 7 USD per code study with the whole reading |
 | audit | `VP_MODE=audit`, or `~/.config/vp/mode` containing `audit`, or "audit mode" in the question | exhaustive card (every atomic claim), verification by batches at fresh context, corrections re-verified once | 6 to 7 times the standard mode (measured: -6.7 points of false claims) |
-| contradictor (code plugin) | `VP_CONTRADICTORS` or `~/.config/vp/contradictors` = `codex` (Codex CLI, on a Claude Code host), `claude` (`claude -p`, on a Codex host), `kimi` or `gemini` (OpenRouter, `OPENROUTER_API_KEY`, optional) | after the report, a model of another family tries to prove it wrong; what survives a mechanical check and a fresh-context reread is annotated or added by the orchestrator; the tool never edits the report | 0 USD for Codex on a subscription, about 0.26 USD per call through OpenRouter, + about 0.6 USD of rereads per report (measured on 6 code cases: Codex, Kimi and Gemini passed the criterion; `claude` as contradictor not measured) |
+| contradictor (code plugin) | `VP_CONTRADICTORS` or `~/.config/vp/contradictors` = one or more of `openai[:<model>]` (Codex CLI), `claude[:<model>]` (`claude -p`), `<provider>:<model>` (any OpenAI-compatible API of `tools/config.json`: `openrouter`, `gemini`, `openai-api`, `mistral`, `ollama`, or yours); no model name is fixed in the skill | after the report, a model of another family tries to prove it wrong; what survives a mechanical check and a fresh-context reread is annotated or added by the orchestrator; the tool never edits the report | 0 USD for the Codex CLI on a subscription, about 0.26 USD per call through an API, + about 0.6 USD of rereads per report (measured on 6 code cases with three models of 2026-10-27; other models, providers and `claude` as contradictor not measured) |
 
 `tools/check_keys.py` prints the active mode at the start of a run; the report's Methodology Appendix states it. The law
 plugin recommends audit mode for binding conclusions; it never switches it on by itself.
@@ -126,9 +126,9 @@ See `examples/capsule-template.md` (and its `.json` twin) for the shape of a con
 - Standard mode, code study with the whole reading before verdicts: about 7 USD (the whole reading alone: 0.9 to 2.6 USD,
   65-290 k input tokens, counted apart in `state/whole-reading/receipt.json`).
 - Audit mode: 6 to 7 times the standard mode.
-- Contradictor option (code plugin): 0 USD for Codex on a subscription (the natural contradictor on a Claude Code host), about
-  0.26 USD per call through OpenRouter (Kimi or Gemini), plus about 0.6 USD of fresh-context rereads per report
-  (`contradictor.json` carries the figures).
+- Contradictor option (code plugin): 0 USD for the Codex CLI on a subscription (the natural contradictor on a Claude Code host),
+  about 0.26 USD per call through an API (OpenRouter, 2026-10-27), plus about 0.6 USD of fresh-context rereads per report
+  (`contradictor.json` carries the figures, and says when a provider does not report its cost).
 - Codex CLI on a subscription: 0 USD per run on the metered side; the same number of gateway calls.
 
 ## Limits, measured honestly

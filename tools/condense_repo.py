@@ -27,7 +27,7 @@ LOCKFILES = {'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lock', 'bu
              'Gemfile.lock', 'composer.lock', 'Pipfile.lock', 'flake.lock'}
 
 def git(repo, *args):
-    p = subprocess.run(['git', '--git-dir', repo, *args], capture_output=True, timeout=300)
+    p = subprocess.run(['git', '-C', repo, *args], capture_output=True, timeout=300)   # bare repository or working copy, read-only commands only
     if p.returncode: raise SystemExit('git ' + ' '.join(args[:2]) + ': ' + p.stderr.decode('utf-8', 'replace')[:300])
     return p.stdout
 

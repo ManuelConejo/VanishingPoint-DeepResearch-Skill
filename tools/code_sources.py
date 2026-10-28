@@ -239,6 +239,7 @@ class PaperCode:
     def __init__(self, client): self.c = client
 
     def search(self, arxiv, limit=5):
+        arxiv = re.sub(r'(?i)^arxiv:\s*', '', str(arxiv).strip())          # the identity rule writes arxiv:<id>; the bare id is accepted too
         refuse(not re.fullmatch(r'\d{4}\.\d{4,5}(?:v\d+)?', arxiv), 'arxiv')
         arxiv = re.sub(r'v\d+$', '', arxiv)
         d = self.c.json('https://huggingface.co/api/papers/' + arxiv)

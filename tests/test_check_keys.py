@@ -153,18 +153,20 @@ class Test(unittest.TestCase):
         self.assertEqual(p.returncode, 0, p.stderr); self.assertTrue(p.stdout.rstrip().endswith('Mode: audit (set by VP_MODE|~/.config/vp/mode)'))
 
     def test_contradictors_line_names_only(self):
-        saved = {k: os.environ.get(k) for k in ('VP_CONTRADICTORS', 'OPENROUTER_API_KEY')}
+        saved = {k: os.environ.get(k) for k in ('VP_CONTRADICTORS', 'OPENROUTER_API_KEY', 'GEMINI_API_KEY', 'VP_CONTRADICTOR_PROVIDERS')}
         try:
-            os.environ.pop('VP_CONTRADICTORS', None); os.environ.pop('OPENROUTER_API_KEY', None)
-            self.assertEqual(ck.contradictors(), []); self.assertTrue(ck.contradictors_line().startswith('Contradictors: none ('))
+            for k in saved: os.environ.pop(k, None)
+            self.assertEqual(ck.contradictors(), []); self.assertTrue(ck.contradictors_line().startswith('Contradictors: none (')); self.assertIn('openrouter', ck.contradictors_line())
             t = ck.text(ck.report([self.plugins['code']])); self.assertLess(t.index('Contradictors: none'), t.index('Mode: standard')); self.assertTrue(t.endswith('Mode: standard'))
-            os.environ['VP_CONTRADICTORS'] = 'Kimi, codex'
-            self.assertEqual(ck.contradictors(), ['kimi', 'codex']); self.assertIn('Contradictors: kimi, codex (OPENROUTER_API_KEY absent', ck.contradictors_line())
-            os.environ['OPENROUTER_API_KEY'] = 'SECRET-OPENROUTER-VALUE'
-            line = ck.contradictors_line(); self.assertIn('(OPENROUTER_API_KEY present)', line); self.assertIn('Contradictors: kimi, codex', line); self.assertNotIn('SECRET-OPENROUTER', line)
-            os.environ['VP_CONTRADICTORS'] = 'codex'; self.assertEqual(ck.contradictors_line(), 'Contradictors: codex (set by VP_CONTRADICTORS|~/.config/vp/contradictors|tools/config.json)')
+            os.environ['VP_CONTRADICTORS'] = 'OpenRouter:Vendor/Model-1, openai, gemini:m'
+            self.assertEqual(ck.contradictors(), ['openrouter:vendor/model-1', 'openai', 'gemini:m'])
+            self.assertEqual(ck.contradictors_line(), 'Contradictors: openrouter:vendor/model-1 (OPENROUTER_API_KEY absent: skipped, credential_missing), openai, gemini:m (GEMINI_API_KEY absent: skipped, credential_missing) (set by VP_CONTRADICTORS|~/.config/vp/contradictors|tools/config.json)')
+            os.environ['OPENROUTER_API_KEY'] = 'SECRET-OPENROUTER-VALUE'; os.environ['GEMINI_API_KEY'] = 'SECRET-GEMINI-VALUE'
+            line = ck.contradictors_line(); self.assertIn('(OPENROUTER_API_KEY present)', line); self.assertIn('(GEMINI_API_KEY present)', line); self.assertNotIn('SECRET-', line)
+            os.environ['VP_CONTRADICTORS'] = 'nope:m, ollama:m'; self.assertEqual(ck.contradictors_line(), 'Contradictors: nope:m (unknown provider: skipped), ollama:m (set by VP_CONTRADICTORS|~/.config/vp/contradictors|tools/config.json)')
+            os.environ['VP_CONTRADICTOR_PROVIDERS'] = json.dumps({'nope': {'url': 'http://x', 'key': None}}); self.assertIn('nope', ck.providers()); self.assertNotIn('unknown provider', ck.contradictors_line())
             os.environ.pop('VP_CONTRADICTORS'); d = pathlib.Path.home() / '.config' / 'vp'; d.mkdir(parents=True, exist_ok=True)
-            (d / 'contradictors').write_text('gemini  # comment\nkimi\n'); self.assertEqual(ck.contradictors(), ['gemini', 'kimi']); (d / 'contradictors').unlink()
+            (d / 'contradictors').write_text('claude  # comment\nopenrouter:a/b\n'); self.assertEqual(ck.contradictors(), ['claude', 'openrouter:a/b']); (d / 'contradictors').unlink()
             self.assertEqual(ck.report([self.plugins['code']])['contradictors'], [])
         finally:
             for k, v in saved.items():

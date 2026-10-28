@@ -9,10 +9,13 @@
  },
  "note": "call_cap.default = safety cap on gateway calls when no plugin and no --cap gives one (measured on our benches: 60 calls). review_title_threshold = token overlap above which a title is treated as a forbidden review. code_intervals = minimum seconds between two calls to the same host for the code engines.",
  "verifier": {
-  "model": "claude-opus-5-5",
+  "model": {
+   "claude": "opus",
+   "openai": ""
+  },
   "max_chars_per_call": 200000,
   "timeout_s": 1200,
-  "note": "One call per card; above max_chars_per_call (characters of sources), one call per source. A threshold to measure, not a fixed reference value."
+  "note": "One call per card; above max_chars_per_call (characters of sources), one call per source. A threshold to measure, not a fixed reference value. model: per host profile; an alias (opus, sonnet) follows the vendor's latest model, '' = the host CLI's own default; measured on 2026-10-26 with claude-opus-5-5; VP_MODEL or --model override it."
  },
  "search_model": "sonnet",
  "host": "claude",
@@ -61,27 +64,39 @@
  },
  "contradictor": {
   "families": [],
-  "models": {
-   "codex": {
-    "via": "openai",
-    "model": "gpt-5.6-sol",
-    "measured": true
-   },
-   "claude": {
-    "via": "claude",
-    "model": "claude-sonnet-5-5",
-    "measured": false
-   },
-   "kimi": {
-    "via": "openrouter",
-    "model": "moonshotai/kimi-k3.1-pro",
-    "measured": true
+  "providers": {
+   "openrouter": {
+    "url": "https://openrouter.ai/api/v1/chat/completions",
+    "key": "OPENROUTER_API_KEY",
+    "extra": {
+     "reasoning": {
+      "effort": "low"
+     },
+     "usage": {
+      "include": true
+     }
+    }
    },
    "gemini": {
-    "via": "openrouter",
-    "model": "google/gemini-4-argon",
-    "measured": true
+    "url": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    "key": "GEMINI_API_KEY"
+   },
+   "openai-api": {
+    "url": "https://api.openai.com/v1/chat/completions",
+    "key": "OPENAI_API_KEY"
+   },
+   "mistral": {
+    "url": "https://api.mistral.ai/v1/chat/completions",
+    "key": "MISTRAL_API_KEY"
+   },
+   "ollama": {
+    "url": "http://localhost:11434/v1/chat/completions",
+    "key": null
    }
+  },
+  "request": {
+   "temperature": 0,
+   "max_tokens": 8000
   },
   "y_cap_chars": 220000,
   "max_usd": 4.0,
@@ -89,9 +104,9 @@
   "max_per_list": 3,
   "timeout_s": 900,
   "reread_model": {
-   "claude": "claude-sonnet-5-5",
-   "openai": "gpt-5.6-sol"
+   "claude": "",
+   "openai": ""
   },
-  "note": "Optional contradictor after the report (tools/contradictor.py). families: empty = option absent; set it here, or VP_CONTRADICTORS, or ~/.config/vp/contradictors. models: codex = the Codex CLI (openai host profile, 0 USD on a subscription), the natural other family on a Claude Code host; claude = `claude -p` (claude host profile), the other family on a Codex host, not measured; kimi and gemini = OpenRouter (OPENROUTER_API_KEY), optional. Measured on 6 code cases: codex, kimi and gemini passed the frozen criterion (gemini adds almost as many errors as it detects). y_cap_chars = the cut of Y used in the measure. max_usd = ceiling on the rereads (host model) per run; reread_model per host profile = the model that reread in the measure (claude) or the host's model (openai)."
+  "note": "Optional contradictor after the report (tools/contradictor.py). families: empty = option absent; set it here, or VP_CONTRADICTORS, or ~/.config/vp/contradictors. A family is <via>[:<model>]: openai[:<model>] = the Codex CLI (openai host profile), claude[:<model>] = claude -p (claude host profile), <provider>:<model> = an OpenAI-compatible chat-completions API named in providers (url, key = name of the key variable resolved as in KEYS.md or null for no key, extra = fields merged into the request body); add your own provider here or in VP_CONTRADICTOR_PROVIDERS (JSON). No model name is fixed in the code or here: the model id is given in the family (required for an API; for a CLI, empty = the CLI's own default model, so the choice follows the vendor); the models measured on 2026-10-27 are recorded in CHANGELOG.md and plugins/code.md. request = body fields of the measure (temperature 0, 8,000 output tokens). y_cap_chars = the cut of Y used in the measure. max_usd = ceiling on the match call and the rereads (host model) per run, checked before each call with reread_usd_per_call as the estimate; a CLI on a subscription (openai profile) reports 0, so the ceiling only bites on metered hosts; reread_model per host profile: empty = the host CLI's default model (--model / VP_MODEL override it)."
  }
 }

@@ -154,6 +154,33 @@ class Test(unittest.TestCase):
         text, m = V.model_call('p', self.tmp.name, 'm', host='openai')
         self.assertIsNone(text); self.assertIn('error', m)
 
+    def test_unsafe_card_id_and_identifier_keys_stay_inside_workdir(self):
+        victim = pathlib.Path(self.tmp.name) / 'victim'; victim.mkdir(); (victim / 'keep.txt').write_text('x')
+        self.assertEqual(V.fs_key('/abs/../../x'), '_abs_.._.._x'); self.assertEqual(V.fs_key('..'), 'source'); self.assertEqual(V.fs_key('doi:10.1/ab'), 'doi_10.1_ab')
+        card = {'card_id': str(victim), 'claims': [{'id': 'A1', 'text': 't', 'source': {'doi': '10.1038/abc'}}]}
+        src = {'doi:10.1038/abc': {'text': 'some text', 'origin': 'fulltext', 'note': '', 'desc': {}}}
+        work = pathlib.Path(self.tmp.name) / 'work'; work.mkdir()
+        texts, _ = V.prepare(work / V.fs_key(card['card_id']), card, src)
+        self.assertTrue((victim / 'keep.txt').exists())                                   # nothing outside the work directory is touched
+        f = json.loads((work / V.fs_key(card['card_id']) / 'card.json').read_text())
+        self.assertEqual(f['claims'][0]['source']['key'], 'doi_10.1038_abc'); self.assertIn('doi_10.1038_abc', f['sources'])
+        self.assertTrue((work / V.fs_key(card['card_id']) / 'sources' / 'doi_10.1038_abc' / 'source.txt').exists())
+        sd = pathlib.Path(self.tmp.name) / 'srcdir'; sd.mkdir(); (sd / 'S1.txt').write_text('flat layout')
+        (sd / 'S2').mkdir(); (sd / 'S2' / 'source.txt').write_text('nested layout')
+        out = V.load_sources({'claims': [{'id': 'a', 'source': {'key': 'S1'}}, {'id': 'b', 'source': {'key': 'S2'}}]}, sources_dir=sd)
+        self.assertEqual((out['S1']['text'], out['S2']['text']), ('flat layout', 'nested layout'))
+
+    def test_model_free_by_host(self):
+        saved = os.environ.pop('VP_MODEL', None)
+        try:
+            self.assertEqual(V.default_model('claude'), (V.CFG.get('model') or {}).get('claude', '') if isinstance(V.CFG.get('model'), dict) else V.CFG.get('model', ''))
+            self.assertEqual(V.default_model('openai'), (V.CFG.get('model') or {}).get('openai', '') if isinstance(V.CFG.get('model'), dict) else '')
+            self.assertEqual(V.strip_model(['codex', 'exec', '-m', '', '-']), ['codex', 'exec', '-']); self.assertEqual(V.strip_model(['c', '--model', 'x']), ['c', '--model', 'x'])
+            os.environ['VP_MODEL'] = 'chosen'; self.assertEqual(V.default_model('openai'), 'chosen')
+        finally:
+            if saved is None: os.environ.pop('VP_MODEL', None)
+            else: os.environ['VP_MODEL'] = saved
+
     def test_model_command_sources(self):
         self.assertEqual(V.host_name(None), os.environ.get('VP_HOST') or V.CONFIG.get('host') or 'claude')
         cmd = V.model_command('claude'); self.assertEqual(cmd[0], 'claude'); self.assertIn('{model}', cmd)

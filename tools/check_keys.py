@@ -85,12 +85,33 @@ def contradictors():
     return out
 
 
+def providers():
+    """OpenAI-compatible providers of the contradictor (names, url, key variable), config then VP_CONTRADICTOR_PROVIDERS (JSON)."""
+    try: out = {k.lower(): v for k, v in ((json.loads((P / 'config.json').read_text(encoding='utf-8')).get('contradictor') or {}).get('providers') or {}).items() if isinstance(v, dict)}
+    except (OSError, ValueError): out = {}
+    raw = os.environ.get('VP_CONTRADICTOR_PROVIDERS', '').strip()
+    if raw:
+        try: out.update({k.lower(): v for k, v in json.loads(raw).items() if isinstance(v, dict)})
+        except (ValueError, AttributeError): pass
+    return out
+
+
 def contradictors_line():
+    """Names only, and for each API provider whether its key variable is present; never a value."""
     fams = contradictors()
-    if not fams: return 'Contradictors: none (optional, code plugin: VP_CONTRADICTORS or ~/.config/vp/contradictors = codex (Codex CLI), claude (claude -p), kimi or gemini (OpenRouter, OPENROUTER_API_KEY); KEYS.md)'
-    needs_key = any(f in ('gemini', 'kimi') or f.startswith('openrouter:') for f in fams)
-    key = 'present' if gw.key('OPENROUTER_API_KEY') else 'absent: gemini/kimi will be skipped (credential_missing), KEYS.md'
-    return 'Contradictors: ' + ', '.join(fams) + (f' (OPENROUTER_API_KEY {key})' if needs_key else '') + ' (set by VP_CONTRADICTORS|~/.config/vp/contradictors|tools/config.json)'
+    if not fams:
+        return ('Contradictors: none (optional, code plugin: VP_CONTRADICTORS or ~/.config/vp/contradictors = openai[:<model>] (Codex CLI), claude[:<model>] (claude -p), '
+                '<provider>:<model> for an OpenAI-compatible API, providers: ' + ', '.join(sorted(providers())) + '; KEYS.md)')
+    provs = providers(); parts = []
+    for f in fams:
+        via = f.split(':', 1)[0]
+        if via in ('openai', 'claude'): parts.append(f); continue
+        prov = provs.get(via)
+        if not prov: parts.append(f + ' (unknown provider: skipped)'); continue
+        if ':' not in f or not f.split(':', 1)[1].strip(): parts.append(f + ' (model id required: <provider>:<model>; skipped)'); continue
+        kv = prov.get('key')
+        parts.append(f + (f" ({kv} {'present' if gw.key(kv) else 'absent: skipped, credential_missing'})" if kv else ''))
+    return 'Contradictors: ' + ', '.join(parts) + ' (set by VP_CONTRADICTORS|~/.config/vp/contradictors|tools/config.json)'
 
 
 def words(text):

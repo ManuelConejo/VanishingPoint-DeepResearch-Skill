@@ -39,7 +39,25 @@ except (OSError, ValueError):
 CFG = CONFIG.get('verifier', {})
 MAX_CHARS = int(CFG.get('max_chars_per_call', 200000))  # above: split per source (threshold to be measured, not a reference value)
 TIMEOUT = int(CFG.get('timeout_s', 1200))
-DEFAULT_MODEL = CFG.get('model', 'claude-opus-5-5')
+
+
+def default_model(host):
+    """Model of the verifier for a host profile: VP_MODEL, else tools/config.json verifier.model[host] (a string applies to the
+    claude profile only), else '' = the host CLI's own default. No model name is fixed in the code."""
+    if os.environ.get('VP_MODEL'): return os.environ['VP_MODEL']
+    m = CFG.get('model')
+    if isinstance(m, dict): return str(m.get(host) or '')
+    return str(m or '') if host == 'claude' else ''
+
+
+def strip_model(argv):
+    """Without a model name the host CLI decides: drop `--model ''` / `-m ''` left by the template."""
+    out, skip = [], False
+    for i, x in enumerate(argv):
+        if skip: skip = False; continue
+        if x in ('--model', '-m') and i + 1 < len(argv) and argv[i + 1] == '': skip = True; continue
+        out.append(x)
+    return out
 TOOLS_OK = 'Read Grep Glob'
 TOOLS_NO = 'Bash Write Edit NotebookEdit WebFetch WebSearch Task Agent'
 DEFAULT_MODEL_COMMAND = {
@@ -115,12 +133,13 @@ def _parse_codex(stdout):
     return text, {'cost_usd': 0, 'tokens_in': tin, 'tokens_out': tout, 'turns': turns or None}
 
 
-def model_call(prompt, workdir, model=DEFAULT_MODEL, host=None):
+def model_call(prompt, workdir, model=None, host=None):
     """One model call confined to workdir (read-only tools). claude profile: prompt after -p, tools restricted to Read/Grep/Glob;
     openai profile: prompt on stdin (codex `-`), --json event stream parsed. Returns (text, measure) or (None, {'error': ...})."""
     host = host_name(host)
     env = {k: v for k, v in os.environ.items() if k not in ('ANTHROPIC_API_KEY', 'CLAUDE_CODE_OAUTH_TOKEN')}
-    argv = [a.replace('{model}', model) for a in model_command(host)]
+    model = default_model(host) if model is None else model
+    argv = strip_model([a.replace('{model}', model) for a in model_command(host)])
     stdin = None
     if host == 'claude':
         if '-p' in argv: argv.insert(argv.index('-p') + 1, prompt)
@@ -146,6 +165,13 @@ def key_of(claim, card):
     return next((f'{x}:{s[x]}' for x in ('doi', 'arxiv', 'pmid', 'pmcid') if s.get(x)), None)
 
 
+def fs_key(c):
+    """File-system-safe name for a source key or a card id (a key may be an identifier such as doi:10.1/x, a card id comes from
+    a model-written card): never a separator, never '..', never empty."""
+    s = re.sub(r'[^\w.-]+', '_', str(c or '')).strip('.')
+    return s or 'source'
+
+
 def ident_of(desc):
     """{doi|arxiv|pmid|pmcid} -> gateway identifier (pmcid is not read by the gateway: None)."""
     for x in ('doi', 'arxiv', 'pmid'):
@@ -161,10 +187,11 @@ def load_sources(card, sources_dir=None, gateway=None, fulltext=False, out_dir=N
     for c in keys:
         desc = table.get(c) or {}
         txt = None; origin = 'missing'; note = ''
-        if sources_dir and (pathlib.Path(sources_dir) / c / 'source.txt').exists():
-            txt = (pathlib.Path(sources_dir) / c / 'source.txt').read_text(errors='replace'); origin = 'fulltext'
+        if sources_dir:                                      # sources/<key>/source.txt (layout written by --fulltext) or sources/<key>.txt
+            for f in (pathlib.Path(sources_dir) / fs_key(c) / 'source.txt', pathlib.Path(sources_dir) / (fs_key(c) + '.txt')):
+                if f.is_file(): txt = f.read_text(errors='replace'); origin = 'fulltext'; break
         if txt is None and fulltext and out_dir and any(desc.get(x) for x in ('arxiv', 'doi', 'pmcid')):
-            d = pathlib.Path(out_dir) / c; d.mkdir(parents=True, exist_ok=True)
+            d = pathlib.Path(out_dir) / fs_key(c); d.mkdir(parents=True, exist_ok=True)
             arg = next(f'--{x}' for x in ('arxiv', 'doi', 'pmcid') if desc.get(x))
             subprocess.run([sys.executable, '-I', str(ROLE_DIR / 'fetch_fulltext.py'), arg, desc[arg[2:]], '--out', str(d)], capture_output=True, timeout=600)
             if (d / 'source.txt').exists() and (d / 'source.txt').stat().st_size > 0:
@@ -187,14 +214,15 @@ def prepare(workdir, card, sources):
     if workdir.exists(): shutil.rmtree(workdir)                # throwaway working directory, created by this wrapper
     (workdir / 'sources').mkdir(parents=True)
     shutil.copy(ROLE_FILE, workdir / 'ROLE.md')
-    f = dict(card); f['sources'] = {c: {**(s.get('desc') or {}), 'note': s['note']} for c, s in sources.items() if s['origin'] != 'missing'}
-    f['claims'] = [a for a in card['claims'] if sources.get(key_of(a, card), {}).get('origin') != 'missing']
+    f = dict(card); f['sources'] = {fs_key(c): {**(s.get('desc') or {}), 'note': s['note']} for c, s in sources.items() if s['origin'] != 'missing'}
+    f['claims'] = [dict(a, source=dict(a.get('source') or {}, key=fs_key(key_of(a, card)))) for a in card['claims']
+                   if sources.get(key_of(a, card), {}).get('origin') != 'missing']   # the reader sees file-system-safe keys only
     (workdir / 'card.json').write_text(json.dumps(f, ensure_ascii=False, indent=1))
     texts = {}
     for c, s in sources.items():
         if s['origin'] == 'missing': continue
-        (workdir / 'sources' / c).mkdir()
-        (workdir / 'sources' / c / 'source.txt').write_text(s['text'])
+        (workdir / 'sources' / fs_key(c)).mkdir(exist_ok=True)
+        (workdir / 'sources' / fs_key(c) / 'source.txt').write_text(s['text'])
         texts[c] = norm(s['text'])
     return texts, any(s['origin'] == 'abstract' for s in sources.values())
 
@@ -247,10 +275,10 @@ def verify(card, sources, engine, work=None, mode='auto', max_chars=MAX_CHARS):
         for c in sorted(sources):
             sub = dict(card, claims=[a for a in card['claims'] if key_of(a, card) == c])
             if not sub['claims']: continue
-            v, m, r = _unit(sub, {c: sources[c]}, engine, work / f'{card["card_id"]}-{c}')
+            v, m, r = _unit(sub, {c: sources[c]}, engine, work / fs_key(f'{card["card_id"]}-{c}'))
             verdicts.update(v); measures += m; retries += r
     else:
-        verdicts, measures, r = _unit(card, sources, engine, work / card['card_id']); retries = int(r)
+        verdicts, measures, r = _unit(card, sources, engine, work / fs_key(card['card_id'])); retries = int(r)
     claims = []
     for a in card['claims']:
         c = key_of(a, card); s = sources.get(c, {})
@@ -281,7 +309,8 @@ def main():
     v.add_argument('--card', required=True); v.add_argument('--sources', default=None); v.add_argument('--out', required=True)
     v.add_argument('--T', default=None); v.add_argument('--plugin', action='append', default=[]); v.add_argument('--run', default='verify')
     v.add_argument('--state', default=None); v.add_argument('--fulltext', action='store_true')
-    v.add_argument('--model', default=DEFAULT_MODEL); v.add_argument('--host', choices=['claude', 'openai'], default=None)
+    v.add_argument('--model', default=None, help='default: VP_MODEL, else tools/config.json verifier.model[host], else the host CLI default')
+    v.add_argument('--host', choices=['claude', 'openai'], default=None)
     v.add_argument('--mode', choices=['auto', 'card', 'source'], default='auto'); v.add_argument('--work', default=None)
     v.add_argument('--filter', action='store_true', help='adds kept/removed according to the downstream rule')
     c = sub.add_parser('check'); c.add_argument('verdicts'); c.add_argument('sources_dir')

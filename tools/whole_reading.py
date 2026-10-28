@@ -33,7 +33,7 @@ CFG = json.loads((HERE / 'config.json').read_text())
 WR = CFG.get('whole_reading', {})
 Y_CAP = int(WR.get('y_cap_chars', 400000)); X_CAP = int(WR.get('x_cap_chars', 200000))
 MAX_USD = float(WR.get('max_usd', 2.5)); TIMEOUT = int(WR.get('timeout_s', 1500)); WAIT = 90
-REF = re.compile(r'(?<![\w/@])((?:[\w.-]+/)*[\w.-]+\.[A-Za-z0-9]{1,8}):(\d+)(?:\s*[-–]\s*(\d+))?@([0-9a-f]{7,40})')
+REF = re.compile(r'(?<![\w/@])((?:[\w.-]+/)*[\w-][\w.-]*):(\d+)(?:\s*[-–]\s*(\d+))?@([0-9a-f]{7,40})')  # extension optional (Makefile, bin/run)
 SHA_LINE = re.compile(r'\b(X2|X|Y)\s*[:=]\s*([^\s@,;]+)@([0-9a-f]{7,40})')
 T_LINE = re.compile(r'\bT\s*=\s*(\d{4}-\d{2}-\d{2}(?:T[0-9:]+Z?)?)')
 
@@ -42,9 +42,13 @@ def utc(): return dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds')
 
 
 def chown(p):
+    """Optional: tools/config.json "chown": [uid, gid] hands the run files to that user (a host that runs the tools as root for
+    another user); absent (the default) = nothing is changed."""
+    ids = CFG.get('chown')
+    if not (isinstance(ids, list) and len(ids) == 2): return
     for q in ([p, *p.rglob('*')] if p.is_dir() else [p]):
-        try: os.chown(q, 1000, 1000)
-        except (PermissionError, FileNotFoundError, OSError): pass
+        try: os.chown(q, int(ids[0]), int(ids[1]))
+        except (PermissionError, FileNotFoundError, OSError, ValueError): pass
 
 
 def git(repo, *args):
@@ -193,22 +197,37 @@ def x_list(a):
 
 def build_prompt(a, y, x):
     g = (HERE / 'prompts' / 'WHOLE-READING.md').read_text()
-    for k, v in {'{T}': a.T, '{REQUEST}': a.request, '{TARGET}': a.target, '{Y}': y.rstrip(), '{X}': x.rstrip()}.items(): g = g.replace(k, v)
-    assert '{Y}' not in g and '{X}' not in g and '{REQUEST}' not in g
-    return g
+    return fill(g, {'T': a.T, 'REQUEST': a.request, 'TARGET': a.target, 'Y': y.rstrip(), 'X': x.rstrip()})
+
+
+def fill(template, values):
+    """One pass over the template only: a literal {X} inside the report or the material is never substituted again."""
+    pat = re.compile(r'\{(' + '|'.join(re.escape(k) for k in values) + r')\}')
+    return pat.sub(lambda m: str(values[m.group(1)]), template)
 
 
 # ------------------------------------------------------------------ model call (host profiles)
 def host_name(a): return a.host or os.environ.get('VP_HOST') or CFG.get('host', 'claude')
 
 
-def model_name(a): return a.model or os.environ.get('VP_MODEL') or WR.get('model') or CFG.get('verifier', {}).get('model', 'claude-opus-5-5')
+def model_name(a):
+    """--model, else VP_MODEL, else config whole_reading.model then verifier.model (a {host: model} table, or a string for the
+    claude profile only), else '' = the host CLI's own default. No model name is fixed in the code."""
+    if a.model or os.environ.get('VP_MODEL'): return a.model or os.environ['VP_MODEL']
+    host = host_name(a)
+    for m in (WR.get('model'), CFG.get('verifier', {}).get('model')):
+        if isinstance(m, dict) and m.get(host): return str(m[host])
+        if isinstance(m, str) and m and host == 'claude': return m
+    return ''
 
 
 def command(host, model):
     env_cmd = os.environ.get('VP_MODEL_COMMAND_' + host.upper())
     base = json.loads(env_cmd) if env_cmd else CFG['model_command'][host]['command']
     argv = [str(x).replace('{model}', model) for x in base]
+    if not model:                                                   # the host CLI's own default model
+        argv = [x for i, x in enumerate(argv) if not (x in ('--model', '-m') and i + 1 < len(argv) and argv[i + 1] == '')]
+        argv = [x for i, x in enumerate(argv) if not (x == '' and i > 0 and argv[i - 1] in ('--model', '-m'))]
     if argv and not os.path.isabs(argv[0]) and not shutil.which(argv[0]):  # Codex's login shell may drop ~/.npm-global/bin from PATH
         home = pathlib.Path(os.environ.get('HOME') or '~').expanduser()
         for d in (home / '.npm-global' / 'bin', home / '.local' / 'bin', pathlib.Path('/usr/local/bin')):
@@ -267,7 +286,7 @@ def execute(run, host, model):
     shutil.rmtree(cwd, ignore_errors=True)
     txt, m = (parse_claude if host == 'claude' else parse_openai)(trace)
     info = json.loads((d / 'material-X.json').read_text()); yinfo = json.loads((d / 'material-Y.json').read_text())
-    header = (f"# searches/whole-reading.md - whole reading before verdicts (single reader, fresh context, no tool, one call, {model} via {host})\n\n"
+    header = (f"# searches/whole-reading.md - whole reading before verdicts (single reader, fresh context, no tool, one call, {model or 'host default model'} via {host})\n\n"
               f"Material: Y = {yinfo['source']} ({yinfo['chars']} characters, mechanical condensation at the SHA, cap {yinfo['cap']}); X = {len(info['included'])} whole files at the SHA of the capsule: "
               + ', '.join(f"{f['path']} ({f['lines']} l., {'/'.join(f['motives'])})" for f in info['included'])
               + (' ; not included: ' + ', '.join(f"{f['path']} [{f['reason']}]" for f in info['excluded']) if info['excluded'] else '')
