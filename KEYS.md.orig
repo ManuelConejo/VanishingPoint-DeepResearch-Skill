@@ -1,0 +1,63 @@
+# API keys of the VanishingPoint skill (new member page, 2026-10-26)
+
+Every key is **optional**: without a key, the source concerned is skipped or degraded **with a receipt**, never "nothing found" (SKILL.md "What we do not do"). No key value is ever displayed, journaled or written into a URL. To know what you are missing: `python3 -I tools/check_keys.py` (offline; prints, per plugin, the active, degraded and skipped sources with the link to obtain each key); `--announce` returns this text only on the first run and when the set changes (fingerprint of the names in `~/.config/vp/keys-state.json`); `--suggest "<angles>"` proposes (at most 2) a missing free source when the `useful_when:` line of its plugin overlaps the question.
+
+## How the skill reads a key (single rule, `tools/code_sources.py` `key(NAME)`, reused by the gateway and by the GitHub token)
+
+1. Environment variable `NAME` (exact name declared by the plugin); non-empty value -> taken (surrounding whitespace removed).
+2. Otherwise the file **`~/.config/vp/<name in lowercase>.key`**, exact name, "_key" included: `OPENALEX_KEY` -> `openalex_key.key`, `NCBI_API_KEY` -> `ncbi_api_key.key`, `VP_GITHUB_TOKEN` -> `vp_github_token.key`, `PISTE_CLIENT_ID` -> `piste_client_id.key`.
+
+An empty or unreadable file = absent; `None` = the source does without. Nothing is required, no value is displayed or journaled. There is no other lookup location: on a machine where keys were kept elsewhere, copy them to `~/.config/vp/`.
+
+The GitHub token (`read_token()`) follows this same rule; it is sent only as `Authorization: Bearer` to `api.github.com`, never on a redirect, and refused (never sent) if it is not printable ASCII of at least 8 characters (`credential_invalid`).
+
+Today only **`OPENALEX_KEY`** (added as `api_key=` to OpenAlex calls) and **`VP_GITHUB_TOKEN`** (GitHub code search) change a network call. `OPENROUTER_API_KEY` is read by `tools/contradictor.py` only (contradictor option, never by the gateway). The others are **declared, with no effect until wired**: `NCBI_API_KEY` and `SWH_TOKEN` (engine wired but key not yet passed through), `S2_API_KEY`, `OPENAIRE_TOKEN`, `FRED_API_KEY`, `PISTE_*` (engine not wired); `check_keys.py` says so on each line concerned.
+
+## Key table (declared in the ```sources blocks of the plugins, or "keyed" options of their text)
+
+| Variable (exact name) | Plugin(s) | What it opens | Free, conditions | Where to obtain it (checked 2026-10-26) | Delay | Installation |
+|---|---|---|---|---|---|---|
+| `OPENALEX_KEY` | biology, cs-ai, law, finance | OpenAlex: daily budget x10, 30 req/s instead of 10; without key, 429 possible -> Crossref fallback reported | Free, nominative account (e-mail) | https://openalex.org/signup then Settings -> API key (doc: https://help.openalex.org/how-to-use-the-api/rate-limits-and-authentication ; `openalex.org/settings/api` returns 403 to robots, open it in a browser) | Immediate (activation link by e-mail) | env `OPENALEX_KEY` or `~/.config/vp/openalex_key.key` |
+| `VP_GITHUB_TOKEN` | code | GitHub `search/code` and GraphQL (token required by GitHub); core 5,000 req/h instead of 60; without token: `{"status":"skipped","reason":"credential_missing"}`, Sourcegraph continues | Free, GitHub account; **read-only** (fine-grained, no write permission, public repositories) | https://github.com/settings/tokens (redirects to login) | Immediate | env `VP_GITHUB_TOKEN` or `~/.config/vp/vp_github_token.key` |
+| `OPENROUTER_API_KEY` | code (contradictor option, `tools/contradictor.py` only) | OpenRouter: the `kimi` and `gemini` contradictor families only; without key those families are skipped (`credential_missing`); the `codex` (Codex CLI) and `claude` (`claude -p`) families need no key | Paid per call (about 0.26 USD per contradictor call measured); account | https://openrouter.ai/settings/keys | Immediate | `~/.config/vp/openrouter_api_key.key` or the environment variable |
+| `NCBI_API_KEY` | biology | PubMed E-utilities: 10 req/s instead of 3 | Free, NCBI account | NCBI account -> Settings -> "API Key Management" (announcement: https://ncbiinsights.ncbi.nlm.nih.gov/2017/11/02/new-api-keys-for-the-e-utilities/ ; `account.ncbi.nlm.nih.gov` is behind reCAPTCHA for robots) | Immediate | env `NCBI_API_KEY` or `~/.config/vp/ncbi_api_key.key` -- declared, no effect until wired |
+| `S2_API_KEY` | cs-ai | Semantic Scholar: `/paper/search`, `/bulk` search, snippets (429 almost systematic without key); engine **not wired** | Free by form; 1 req/s at first; data CC BY-NC / ODC-BY, attribution, no redistribution | https://www.semanticscholar.org/product/api (form `#api-key-form`) | Key sent by e-mail, reviewed (delay not announced) | env `S2_API_KEY` or `~/.config/vp/s2_api_key.key` |
+| `OPENAIRE_TOKEN` | cs-ai | OpenAIRE Graph: 7,200 req/h instead of 60; engine **not wired** | Free, account; token valid 1 h (refresh token) | https://develop.openaire.eu/personal-info then https://develop.openaire.eu/personal-token | Immediate | env `OPENAIRE_TOKEN` or `~/.config/vp/openaire_token.key` |
+| `SWH_TOKEN` | code | Software Heritage: 1,200 req/h instead of 120 (observed: 10/min anonymous) | Free, account | https://archive.softwareheritage.org/ -> login, profile -> "API token" tab (**not verifiable**: the site returns "Access Denied" (Anubis) to robots; doc `docs.softwareheritage.org` likewise) | Immediate | env `SWH_TOKEN` or `~/.config/vp/swh_token.key` -- declared, no effect until wired |
+| `PISTE_CLIENT_ID` + `PISTE_CLIENT_SECRET` | law | Judilibre (French Court of Cassation); later the Legifrance API; without token: 0 requests, `not_configured`; engine **not wired** | Free, nominative PISTE registration (OAuth client credentials, token approx. 1 h) | https://piste.gouv.fr/ (**not verifiable**: 503 on 2026-10-26, already noted in `plugins/law.md`) | Account immediate; subscription per API, review possible | env `PISTE_CLIENT_ID` / `PISTE_CLIENT_SECRET` or `~/.config/vp/piste_client_id.key` / `piste_client_secret.key` |
+| `FRED_API_KEY` | finance | FRED / ALFRED (point-in-time series); without key: `disabled`, no call (the API returns 400); engine **not wired** | Free, FRED account, one key per application | https://fred.stlouisfed.org/docs/api/api_key.html -> https://fredaccount.stlouisfed.org/apikeys | Immediate | env `FRED_API_KEY` or `~/.config/vp/fred_api_key.key` |
+| `GITLAB_TOKEN` (undeclared option) | code | GitLab.com API (projects; blobs reserved to Premium); no code reads it | Free, account, Free tier | https://gitlab.com/-/user_settings/personal_access_tokens (doc: https://docs.gitlab.com/user/profile/personal_access_tokens/) | Immediate | No effect today; if wired: `~/.config/vp/gitlab_token.key` |
+| Banque de France Webstat (option, variable not named) | finance | Webstat: 10,000 calls/day, 401 without key | Account required; free status **not established** | https://webstat.banque-france.fr/ (developer portal `developer.webstat.banque-france.fr`: login reset, **not verifiable**) | Not established | No effect today |
+| StackExchange (option, variable not named) | code | 10,000 req/day instead of 300 (not established by reading) | Free, Stack Apps account | https://stackapps.com/apps/oauth/register (**not verifiable** from here: host blocked) | Immediate | No effect today |
+| NVD (option, variable not named) | code | NVD API 2.0: 50 req/30 s instead of 5 | Free, activation e-mail | https://nvd.nist.gov/developers/request-an-api-key (page answers, content in JS: form not read) | Activation link by e-mail | No effect today |
+| libraries.io (**ruled out**, `technical_block`) | code | -- (ecosyste.ms + deps.dev cover it) | Key mandatory, account | https://libraries.io/api (key on `/account`) | -- | Do not install |
+
+Other keyed options cited in the plugins, never wired nor named: BLS (500/day), BEA, FRASER, UK Companies House, Insee Sirene (finance); EUR-Lex SOAP (law); openFDA (biology); Ai2 Asta (cs-ai, non-commercial licence); IEEE Xplore, Springer (cs-ai, ruled out).
+
+## Without any key: what works (wired engines, from the ```sources blocks)
+
+- **biology**: `search-pubmed` (3 req/s), `search-europepmc`, `search-crossref`, `search-openalex` (shared budget, 429 -> Crossref fallback); `read`, `citing`, `references` (Europe PMC, OpenCitations, OpenAlex).
+- **cs-ai**: `search-openalex`, `search-crossref`, `search-arxiv`, `search-europepmc`; same chaining.
+- **code**: `search-code` (Sourcegraph only; GitHub `skipped`), `versions` (PyPI, npm, crates.io + deps.dev), `paper-code` (HF Papers, 500 req/5 min), `provenance` (Software Heritage anonymous, at least 6 s between calls); `code_capsule.py` on a local repository.
+- **law**: `search-openalex` only (EUR-Lex, HUDOC, French administrative justice, HAL... not wired); chaining through OpenAlex/Crossref.
+- **finance**: `search-openalex`, `search-crossref`, `search-europepmc`, `search-arxiv` (econ.*, q-fin.*); same chaining.
+
+Five-minute trial: `python3 -I tools/gateway.py --plugin plugins/cs-ai.md --T 2026-10-26 --run trial --state <state-dir> sources` then `... search-crossref "retrieval augmented generation" --n 5` (README "Running a question").
+
+## Local dependencies
+
+- **Python >= 3.11** (`tomllib` in `code_capsule.py`; tested on 3.12.3); Linux/macOS (`fcntl`). **No pip dependency** at runtime (standard library only, README rule); `pytest` serves only `tests/test_code_capsule.py`, the other tests are `unittest`.
+- **git** (>= 2.x, tested 2.43) for `tools/code_capsule.py` (`git -C ... ls-tree / show / grep` at a SHA, read-only).
+- **Claude Code CLI** (`claude -p`) or **Codex CLI** (`codex exec`) for `tools/verifier.py` and for the whole reading (`tools/whole_reading.py`): paid model calls, billed according to the host's current rules; not needed to search.
+- **Playwright** (stealth browser): planned for the `browser` mode (level 2 bis of ACCESS-POLICY.md), **not wired, not required** today.
+
+## What the report says about keys
+
+- `gateway.py ... sources` returns `keys_present`: the **names** of the variables found by `key()` (plus `GITHUB` if `read_token()` finds a token), never the values.
+- `search-code` returns `github: {"status":"skipped","reason":"credential_missing"}` without token; the receipts in `state/requests.jsonl` carry host, status and SHA-256 of the bytes, never the URL nor the token. Engines that are not wired are listed under `not_wired` and refused cleanly.
+- `state/journal.jsonl` -> `run.json` (`validate_card.py --header`) counts calls, errors and identifiers seen per command; it contains no key.
+- `REPORT.md` carries the **"Source coverage"** block in its Methodology Appendix (active / degraded / skipped, with reason and link to obtain the key), checked by `validate_card.py`; the plugins additionally require a receipt of the sources (`credential: absent`, `not_configured`, `rate_limited`, quotas reached) at the end of the report. The first message of a run announces the sources skipped for lack of a key on the first run or when the set changes (SKILL.md section 0, `--announce`); the final message and the Source coverage block carry, where relevant, the suggestion of a free source that would have served this question (SKILL.md section 2, `--suggest`, `useful_when:` lines of the plugins).
+
+## Identification contact (`VP_CONTACT`)
+
+Level 2 sources and some APIs (SEC) ask for a contact in the User-Agent header. Set `VP_CONTACT` (environment variable) to a team or project address, never a personal one. Without it, the skill identifies itself as "VanishingPoint/1 (research skill)" and skips the sources that require a contact, with a receipt.

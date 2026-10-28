@@ -3,7 +3,8 @@
 """Which keys are missing? Offline, standard library. Reads the plugins (```sources block, `keys:` line) and applies the REAL
 key resolution: `code_sources.key()` (environment variable NAME, then ~/.config/vp/<name in lower case>.key), including for the
 GitHub token (`read_token()`). Prints per plugin: active sources, degraded for lack of a key, skipped for lack of a key, not wired;
-with the exact variable name, free or not, and the URL to obtain it (KEYS.md). Never a key value. Ends with the mode line
+with the exact variable name, free or not, and the URL to obtain it (KEYS.md). Never a key value. Ends with the contradictor line
+("Contradictors: none (...)" or the configured families, names only, and whether OPENROUTER_API_KEY is present) and the mode line
 ("Mode: standard" or "Mode: audit (set by VP_MODE|~/.config/vp/mode)").
 Usage: check_keys.py [--plugin P.md ...] [--json] [--announce]   (without --plugin: every plugins/*.md except _TEMPLATE). Exit code: 0.
 --announce: prints the full report (links included) on the first run and each time the set of active sources or of present keys
@@ -11,7 +12,8 @@ changes for an examined plugin (key added, removed, expired); otherwise an empty
 a value) is kept in ~/.config/vp/keys-state.json, created when needed. The "Source coverage" block of the report is due at every run.
 --suggest "<angles>": lexically matches the angles of the question (SKILL.md section 2) with the `useful_when:` lines of the plugins (sources
 with a FREE key only, never paid nor under a restrictive licence) for the sources missing for lack of a key; at most 2 suggestions, else empty.
-Import: report(plugins) -> dict; text(rep) -> str; announce(rep) -> str; suggest(rep, angles) -> [dict]; mode() -> 'standard'|'audit'."""
+Import: report(plugins) -> dict; text(rep) -> str; announce(rep) -> str; suggest(rep, angles) -> [dict]; mode() -> 'standard'|'audit';
+contradictors() -> [family names]."""
 import argparse, json, os, pathlib, re, sys, unicodedata
 P = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(P)); import gateway as gw, code_sources as sc   # noqa: E702  (python3 -I does not add the script directory)
@@ -63,6 +65,32 @@ def mode():
 
 def mode_line():
     return 'Mode: standard' if mode() == 'standard' else 'Mode: audit (set by VP_MODE|~/.config/vp/mode)'
+
+
+def contradictors():
+    """Configured contradictor families (names only, same resolution as tools/contradictor.py): VP_CONTRADICTORS, else
+    ~/.config/vp/contradictors, else tools/config.json contradictor.families (empty by default = option absent)."""
+    raw = os.environ.get('VP_CONTRADICTORS', '')
+    if not raw.strip():
+        try: raw = (pathlib.Path.home() / '.config' / 'vp' / 'contradictors').read_text(encoding='utf-8')
+        except OSError: raw = ''
+    if not raw.strip():
+        try: raw = ','.join(str(x) for x in (json.loads((P / 'config.json').read_text(encoding='utf-8')).get('contradictor') or {}).get('families') or [])
+        except (OSError, ValueError): raw = ''
+    out = []
+    for line in raw.splitlines():
+        for n in re.split(r'[,\s]+', line.split('#', 1)[0].strip()):
+            n = n.strip().lower()
+            if n and n not in out: out.append(n)
+    return out
+
+
+def contradictors_line():
+    fams = contradictors()
+    if not fams: return 'Contradictors: none (optional, code plugin: VP_CONTRADICTORS or ~/.config/vp/contradictors = codex (Codex CLI), claude (claude -p), kimi or gemini (OpenRouter, OPENROUTER_API_KEY); KEYS.md)'
+    needs_key = any(f in ('gemini', 'kimi') or f.startswith('openrouter:') for f in fams)
+    key = 'present' if gw.key('OPENROUTER_API_KEY') else 'absent: gemini/kimi will be skipped (credential_missing), KEYS.md'
+    return 'Contradictors: ' + ', '.join(fams) + (f' (OPENROUTER_API_KEY {key})' if needs_key else '') + ' (set by VP_CONTRADICTORS|~/.config/vp/contradictors|tools/config.json)'
 
 
 def words(text):
@@ -137,7 +165,7 @@ def report(plugins=()):
     files = [pathlib.Path(p) for p in plugins] or sorted(p for p in (P.parent / 'plugins').glob('*.md') if not p.name.startswith('_'))
     rs = [plugin_report(p) for p in files]
     missing = sorted({i['variable'] for r in rs for i in r['skipped'] + r['degraded'] + r.get('keyed_not_wired', [])})
-    return {'plugins': rs, 'missing_keys': missing, 'ok': not any(r['skipped'] or r['degraded'] for r in rs), 'mode': mode()}
+    return {'plugins': rs, 'missing_keys': missing, 'ok': not any(r['skipped'] or r['degraded'] for r in rs), 'mode': mode(), 'contradictors': contradictors()}
 
 
 def text(rep):
@@ -155,6 +183,7 @@ def text(rep):
         out.append('  keys present   : ' + (', '.join(r['keys_present']) or 'none') + '; absent: ' + (', '.join(r['keys_absent']) or 'none'))
         if r.get('unknown_keys'): out.append('  keys outside the catalogue (KEYS.md to complete): ' + ', '.join(r['unknown_keys']))
     out.append('Missing keys: ' + (', '.join(rep['missing_keys']) or 'none') + '. How to obtain and install them: KEYS.md.')
+    out.append(contradictors_line())
     out.append(mode_line())
     return '\n'.join(out)
 
@@ -200,7 +229,7 @@ def main(argv=None):
         print(json.dumps({'suggestions': s}, ensure_ascii=False) if a.json else '\n'.join(x['text'] for x in s), end='\n' if s or a.json else '')
     elif a.announce:
         t = announce(rep)
-        print(json.dumps({'announce': t, 'changed': bool(t), 'mode': rep['mode']}, ensure_ascii=False) if a.json else t, end='' if not t and not a.json else '\n')
+        print(json.dumps({'announce': t, 'changed': bool(t), 'mode': rep['mode'], 'contradictors': rep['contradictors']}, ensure_ascii=False) if a.json else t, end='' if not t and not a.json else '\n')
     else: print(json.dumps(rep, ensure_ascii=False, indent=1) if a.json else text(rep))
     return 0
 

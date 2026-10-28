@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.1.1, measured on small benches (3 to 50 cases); see CHANGELOG.md.
+Status: v0.2.0, measured on small benches (3 to 50 cases); see CHANGELOG.md.
 
 ## Installation
 
@@ -103,7 +103,7 @@ python3 -I "$SKILL/tools/gateway.py" --T 2026-10-26 --run try --state /tmp/vp-st
 |---|---|---|---|
 | standard (default) | nothing | the whole method; verification of what carries a decision, one pass | about 2-3 USD per academic question; about 7 USD per code study with the whole reading |
 | audit | `VP_MODE=audit`, or `~/.config/vp/mode` containing `audit`, or "audit mode" in the question | exhaustive card (every atomic claim), verification by batches at fresh context, corrections re-verified once | 6 to 7 times the standard mode (measured: -6.7 points of false claims) |
-| contradictor (second model family) | not available | listed on the waiting list, not measured, not shipped | - |
+| contradictor (code plugin) | `VP_CONTRADICTORS` or `~/.config/vp/contradictors` = `codex` (Codex CLI, on a Claude Code host), `claude` (`claude -p`, on a Codex host), `kimi` or `gemini` (OpenRouter, `OPENROUTER_API_KEY`, optional) | after the report, a model of another family tries to prove it wrong; what survives a mechanical check and a fresh-context reread is annotated or added by the orchestrator; the tool never edits the report | 0 USD for Codex on a subscription, about 0.26 USD per call through OpenRouter, + about 0.6 USD of rereads per report (measured on 6 code cases: Codex, Kimi and Gemini passed the criterion; `claude` as contradictor not measured) |
 
 `tools/check_keys.py` prints the active mode at the start of a run; the report's Methodology Appendix states it. The law
 plugin recommends audit mode for binding conclusions; it never switches it on by itself.
@@ -126,6 +126,9 @@ See `examples/capsule-template.md` (and its `.json` twin) for the shape of a con
 - Standard mode, code study with the whole reading before verdicts: about 7 USD (the whole reading alone: 0.9 to 2.6 USD,
   65-290 k input tokens, counted apart in `state/whole-reading/receipt.json`).
 - Audit mode: 6 to 7 times the standard mode.
+- Contradictor option (code plugin): 0 USD for Codex on a subscription (the natural contradictor on a Claude Code host), about
+  0.26 USD per call through OpenRouter (Kimi or Gemini), plus about 0.6 USD of fresh-context rereads per report
+  (`contradictor.json` carries the figures).
 - Codex CLI on a subscription: 0 USD per run on the metered side; the same number of gateway calls.
 
 ## Limits, measured honestly
@@ -182,7 +185,7 @@ Run the tests as a normal user (not root): the code-capsule and whole-reading te
 SKILL.md            the engine (one file, read by the host)        plugins/     cs-ai, code, finance, biology, law, _TEMPLATE
 tools/gateway.py    date-bounded documentary access                tools/verifier.py (+ verifier/ROLE.md, citation_check.py, fetch_fulltext.py)
 tools/check_keys.py keys and mode                                   tools/validate_card.py, validate_result.py   mechanical checks
-tools/code_capsule.py, condense_repo.py, whole_reading.py           code plugin tools (capsule, Y condensation, whole reading)
+tools/code_capsule.py, condense_repo.py, whole_reading.py, contradictor.py   code plugin tools (capsule, Y condensation, whole reading, contradictor)
 tools/config.json   caps, models, host command profiles             tests/  examples/  KEYS.md  ACCESS-POLICY.md  CHANGELOG.md  LICENSE  NOTICE
 ```
 
