@@ -212,8 +212,8 @@ def fs_key(c):
 
 
 def ident_of(desc):
-    """{doi|arxiv|pmid|pmcid|celex|ecli|ja|hal|thesesfr|nct|dblp|econbiz|osv|openreview|zenodo|biorxiv|medrxiv} -> gateway identifier (pmcid is not read by the gateway: None)."""
-    for x in ('doi', 'arxiv', 'pmid', 'celex', 'ecli', 'ja', 'hal', 'thesesfr', 'nct', 'dblp', 'econbiz', 'osv', 'openreview', 'zenodo', 'biorxiv', 'medrxiv'):
+    """{doi|arxiv|pmid|pmcid|celex|ecli|ja|hal|thesesfr|nct|dblp|econbiz|osv|openreview|zenodo|biorxiv|medrxiv|hfmodel|hfdataset|rfc|pep|w3c|acl|pmlr|cvf} -> gateway identifier (pmcid is not read by the gateway: None)."""
+    for x in ('doi', 'arxiv', 'pmid', 'celex', 'ecli', 'ja', 'hal', 'thesesfr', 'nct', 'dblp', 'econbiz', 'osv', 'openreview', 'zenodo', 'biorxiv', 'medrxiv', 'hfmodel', 'hfdataset', 'rfc', 'pep', 'w3c', 'acl', 'pmlr', 'cvf'):
         if desc.get(x): return f'{x}:{desc[x]}'
     return None
 
