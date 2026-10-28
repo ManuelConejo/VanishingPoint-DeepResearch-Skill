@@ -18,7 +18,7 @@ disabled: <e3>=tos_forbidden, <e4>=technical_block   # optional: sources listed 
 Common date bound: provider-side filter at the day before T, then local re-check (every known date < T; a partial date counts as its upper bound). For each source, the seven fields below:
 
 1. **<Source name>** (<what it covers>) - `access: <api | page | browser | tos_forbidden | technical_block>`
-   - Access: `api` (level 1: documented API, used under its terms; robots.txt has no effect); `page` (level 2: public page, even under `Disallow`; 1 request / 2 s / host, declarative UA with contact, cache, stop on 429/403); `browser` (level 2b: public page behind a JS challenge, driven browser, same pacing); `tos_forbidden` (terms of service forbid automation or AI use: listed, disabled, exception only by a written decision of the owner); `technical_block` (restricted access: account, paywall, captcha, registered IP: listed, disabled, reason written). Reference: `ACCESS-POLICY.md`.
+   - Access: `api` (level 1: documented API, used under its terms; robots.txt has no effect); `page` (level 2: public page, even under `Disallow`; 1 request / 2 s / host, declarative UA with contact, cache, stop on 429/403); `browser` (reserved and unused: a page behind a JS challenge is reported `bot_challenge`, never worked around); `tos_forbidden` (terms of service forbid automation or AI use: listed, disabled, exception only by a written decision of the owner); `technical_block` (restricted access: account, paywall, captcha, registered IP: listed, disabled, reason written). Reference: `ACCESS-POLICY.md`.
    - Endpoint: `<URL or endpoint>`
    - Query: `<parameters, syntax, pagination, page size>`
    - Date bound: <yes: parameter and re-checked field / no / not established>

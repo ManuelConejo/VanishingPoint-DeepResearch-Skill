@@ -308,7 +308,7 @@ def coverage_of(anchors, claim):
 
 def r_coverage(claim, anchors):
     if not (claim.get('negative') or NEGATIVE.search(str(claim.get('text') or ''))): return None
-    if 'COE' in {val(a['rec'], 'order') for a in anchors} or claim.get('order') == 'COE' or claim.get('engine') == 'hudoc':
+    if 'COE' in {val(a['rec'], 'order') for a in anchors} or claim.get('order') == 'COE' or claim.get('engine') in ('hudoc', 'hudoc-feed'):
         return out('coverage', 'needs_confirmation', 'negative claim on the ECHR: HUDOC not served, absence not observable')
     rc = str(claim.get('receipt') or '')
     if not (re.search(r'\d{3,}', rc) or re.search(r'"[^"]{3,}"', rc)):

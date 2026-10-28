@@ -4,7 +4,7 @@ Read by the engine (SKILL.md). Four fixed sections. Sources, format and verifica
 
 ## Sources
 
-Block read by `tools/gateway.py` (format README.md); engines that are not wired are declared anyway and refused cleanly. Access marked according to `ACCESS-POLICY.md` (`api` level 1; `page` level 2, pacing 1 request / 2 s / host, declarative UA, cache, stop on 429/403; `browser` level 2b; `tos_forbidden`, `technical_block` level 3, listed and disabled). Probes dated 2026-10-26 unless stated.
+Block read by `tools/gateway.py` (format README.md); engines that are not wired are declared anyway and refused cleanly. Access marked according to `ACCESS-POLICY.md` (`api` level 1; `page` level 2, pacing 1 request / 2 s / host, declarative UA, cache, stop on 429/403; `browser` reserved and unused (no browser route); `tos_forbidden`, `technical_block` level 3, listed and disabled). Probes dated 2026-10-26 unless stated.
 ```sources
 engines: pubmed, europepmc, crossref, openalex, opencitations, gbif, ebi-search, unpaywall, clinicaltrials, doaj, biorxiv, medrxiv   # wired: pubmed, europepmc, crossref, openalex, clinicaltrials, biorxiv, medrxiv ; the others: not wired (unpaywall: already used downstream by tools/verifier/fetch_fulltext.py ; clinicaltrials: wired, option for a question on a specific trial or on publication bias ; biorxiv, medrxiv: wired, preprints dated per version, not peer reviewed ; doaj: option)
 cap: 60                                  # safety cap on calls
