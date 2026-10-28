@@ -15,13 +15,12 @@ import argparse, datetime as dt, getpass, json, os, pathlib, re, sys, tempfile, 
 P = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(P)); import check_keys as ck, code_sources as sc, gateway as gw   # noqa: E702  (python3 -I does not add the script directory)
 
-LABEL = {'OPENALEX_KEY': ['OpenAlex'], 'NCBI_API_KEY': ['PubMed (NCBI)'], 'VP_GITHUB_TOKEN': ['GitHub code search'], 'SWH_TOKEN': ['Software Heritage'],
-         'PISTE_CLIENT_ID': ['Judilibre', 'Légifrance'], 'FRED_API_KEY': ['FRED / ALFRED']}                     # sources checked live per key (others: not wired, no live check)
-PROMPT = {'PISTE_CLIENT_ID': 'PISTE Client ID', 'PISTE_CLIENT_SECRET': 'PISTE Client Secret'}
-HINT = {'PISTE_CLIENT_ID': 'create an application on piste.gouv.fr, subscribe it to the Judilibre and Légifrance APIs (production, accept their terms), '
-                           'then copy its Client ID and Client Secret (piste.gouv.fr > Applications)'}
-REFUSED = {'PISTE_CLIENT_ID': 'identifiers refused — check the Client ID and Client Secret (piste.gouv.fr > Applications)'}
-SUBSCRIBE = 'identifiers accepted but the application is not subscribed to this API (piste.gouv.fr > Applications > tick {})'
+KEYS = {v: k for _, k in ck._reg.key_specs() for v in k['vars']}            # variable -> key spec of its source (tools/sources/)
+LABEL = {k['vars'][0]: list(k['labels']) for k in KEYS.values() if k.get('labels')}   # sources checked live per key (others: not wired, no live check)
+PROMPT = {v: t for k in KEYS.values() for v, t in (k.get('prompt') or {}).items()}
+HINT = {k['vars'][0]: k['hint'] for k in KEYS.values() if k.get('hint')}
+REFUSED = {k['vars'][0]: k['refused'] for k in KEYS.values() if k.get('refused')}
+REFUSED_DEFAULT = 'key refused — check you copied it whole'
 
 
 def short(var):
@@ -105,14 +104,10 @@ def why(e):
     return (s if re.fullmatch(r'[\w:. -]{1,80}', s) and ('provider_error' in s or 'transport_error' in s or 'redirect' in s) else type(e).__name__) + ', try again later'
 
 
-def check_fetch(var, url):
-    """gateway.fetch path (api_key= parameter, rejected key retried once without it and named in keys-invalid.json)."""
-    gw.jget(url)
-    return 'refused' if var in sc.invalid_keys(gw.STATE) else 'ok'
-
-
 def check(e):
-    """[(label, ok, text)] for entry e, one minimal live request per source, in a temporary state dir (no cache, no stale token)."""
+    """[(label, ok, text)] for entry e, one minimal live request per source, in a temporary state dir (no cache, no stale token).
+    The request is the source's own `check` (key spec in tools/sources/): 'ok' | 'refused' | ('fail', text) | an exception, or one
+    such outcome per label ({label: outcome})."""
     var = e['vars'][0]
     if state(e) == 'absent':
         return [(l, False, f"not installed (run: python3 -I tools/setup_keys.py {e['name']})") for l in LABEL.get(var, [e.get('provider') or e['name']])]
@@ -120,36 +115,21 @@ def check(e):
     with tempfile.TemporaryDirectory(prefix='vp-setup-') as tmp:
         gw.STATE = pathlib.Path(tmp)
         if e.get('provider'): return [(e['provider'], *check_provider(e))]
-        if var == 'PISTE_CLIENT_ID': return check_piste()
-        label = LABEL[var][0]
-        try:
-            if var == 'OPENALEX_KEY': r = check_fetch(var, 'https://api.openalex.org/works?per_page=1&select=id&search=test' + gw.oa_key())
-            elif var == 'NCBI_API_KEY': r = check_fetch(var, 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax=1&term=test' + gw.ncbi_key())
-            elif var == 'VP_GITHUB_TOKEN':
-                try: r = sc.CodeSearch(sc.CodeClient(cache_dir=tmp)).search('test', provider='github', limit=1); r = 'ok' if isinstance(r, list) else 'refused'
-                except ValueError as x:
-                    if str(x) not in ('credential_invalid', 'provider_error:HTTP401', 'provider_error:HTTP403'): raise
-                    r = 'refused'
-            elif var == 'SWH_TOKEN':
-                sc.Provenance(sc.CodeClient(cache_dir=tmp)).origins('test', limit=1); r = 'refused' if var in sc.invalid_keys(tmp) else 'ok'
-            elif var == 'FRED_API_KEY':
-                x = gw.search_fred('unemployment', 1, gw.Barrier(dt.date.today()))[0]; r = 'refused' if isinstance(x, dict) and x.get('reason') == 'key_invalid' else 'ok'
-            else: return [(label, True, 'installed; no live check for this key')]
-        except Exception as x: return [(label, False, 'could not be checked: ' + why(x))]
-        return [(label, True, 'OK')] if r == 'ok' else [(label, False, 'key refused — check you copied it whole')]
+        spec = KEYS.get(var) or {}
+        labels = LABEL.get(var, [e['name']]); run = spec.get('check')
+        if run is None: return [(labels[0], True, 'installed; no live check for this key')]
+        try: r = run(tmp)
+        except Exception as x: return [(labels[0], False, 'could not be checked: ' + why(x))]
+        rows = r if isinstance(r, dict) else {labels[0]: r}
+        return [(label, *verdict(o, REFUSED.get(var, REFUSED_DEFAULT))) for label, o in rows.items()]
 
 
-def check_piste():
-    """The real PISTE engines: token by client credentials, then one search each (Judilibre GET /search, Legifrance POST /search, codes)."""
-    B, out = gw.Barrier(dt.date.today()), []
-    for label, run in (('Judilibre', lambda: gw.search_judilibre('contrat', 1, B)), ('Légifrance', lambda: gw.search_legifrance('contrat', 1, B, fund='code'))):
-        try: r, note = run()
-        except Exception as x: out.append((label, False, 'could not be checked: ' + why(x))); continue
-        if isinstance(r, list): out.append((label, True, 'OK')); continue
-        reason = r.get('reason')
-        out.append((label, False, REFUSED['PISTE_CLIENT_ID'] if reason in ('key_invalid', 'credential_invalid') else SUBSCRIBE.format(label) if reason == 'not_subscribed'
-                    else f'not checked ({reason})'))
-    return out
+def verdict(o, refused):
+    """(ok, text) of one live-check outcome."""
+    if isinstance(o, BaseException): return False, 'could not be checked: ' + why(o)
+    if o == 'ok': return True, 'OK'
+    if o == 'refused': return False, refused
+    return False, o[1] if isinstance(o, tuple) else f'not checked ({o})'
 
 
 def check_provider(e):

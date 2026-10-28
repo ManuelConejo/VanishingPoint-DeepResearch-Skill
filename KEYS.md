@@ -21,6 +21,9 @@ Today only **`OPENALEX_KEY`** (added as `api_key=` to OpenAlex calls), **`NCBI_A
 
 ## Key table (declared in the ```sources blocks of the plugins, or "keyed" options of their text)
 
+Adding a source with a key: its key spec lives in the source's own file (`tools/sources/<name>.py`, `key`); `check_keys.py` and `setup_keys.py` read it from there. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+
 | Variable (exact name) | Plugin(s) | What it opens | Free, conditions | Where to obtain it (checked 2026-10-26) | Delay | Installation |
 |---|---|---|---|---|---|---|
 | `OPENALEX_KEY` | biology, cs-ai, law, finance | OpenAlex: daily budget x10, 30 req/s instead of 10; without key, 429 possible -> Crossref fallback reported | Free, nominative account (e-mail) | https://openalex.org/signup then Settings -> API key (doc: https://help.openalex.org/how-to-use-the-api/rate-limits-and-authentication ; `openalex.org/settings/api` returns 403 to robots, open it in a browser) | Immediate (activation link by e-mail) | `python3 -I tools/setup_keys.py openalex`; manual: env `OPENALEX_KEY` or `~/.config/vp/openalex_key.key` |

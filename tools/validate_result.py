@@ -3,15 +3,12 @@
 """Shape check of result.json (the machine annex of a run).
 Usage: validate_result.py result.json   -> list of problems (empty = OK), exit code 1 if there are any. Offline, no dependency.
 Import: problems(dict) -> [str]; CRITERIA list."""
-import json, re, sys
+import json, pathlib, re, sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import sources as _reg   # noqa: E402  (source registry: identifier kinds and their forms)
 
 CRITERIA = ['population', 'intervention_exposure', 'comparator', 'results', 'study_design', 'date_language_type']
-FORMS = {'pmid': r'\d+', 'doi': r'10\.\S+', 'arxiv': r'\d{4}\.\d{4,5}(v\d+)?|[a-z-]+(\.[A-Z]{2})?/\d{7}(v\d+)?', 'pmcid': r'PMC\d+',
-         'celex': r'[0-9CE]\d{4}[A-Z]{1,3}\d{1,5}[0-9A-Z()_.\-]*', 'ecli': r'(ECLI:)?[A-Z]{2}:[A-Z0-9.]{1,7}:\d{4}:[A-Z0-9.]{1,25}',
-         'ja': r'[A-Z]{2,3}\d{0,3}/[A-Z]{2,5}_[A-Za-z0-9]+_\d{8}', 'hal': r'[a-z]+-\d+(v\d+)?', 'thesesfr': r'\d{4}[A-Z0-9]{4,12}', 'nct': r'NCT\d{8}',
-         'dblp': r'[\w-]+(/[\w.:+-]+)+', 'econbiz': r'\d+', 'osv': r'[A-Za-z]+-[\w.:-]+', 'openreview': r'[\w-]{6,}', 'zenodo': r'\d+',
-         'biorxiv': r'10\.\S+', 'medrxiv': r'10\.\S+', 'hfmodel': r'[\w.-]+(/[\w.-]+)?', 'hfdataset': r'[\w.-]+(/[\w.-]+)?', 'rfc': r'\d{1,5}', 'pep': r'\d{1,4}',
-         'w3c': r'[\w.-]+', 'acl': r'[A-Za-z0-9][\w.-]+', 'pmlr': r'v\d+/[\w.-]+', 'cvf': r'content[\w/.-]+_paper', 'judilibre': r'[A-Za-z0-9_-]{8,64}', 'legi': r'LEGI(ARTI|TEXT)\d{12}', 'jorf': r'JORFTEXT\d{12}', 'dbnomics': r'[\w.@+-]+/[\w.@+-]+/[\w.@+%:=-]+', 'fred': r'[A-Za-z0-9_.-]{1,40}', 'local': r'\S+@[0-9a-f]{7,40}'}   # same kinds as validate_card.IDS (ids served by the gateway engines)
+FORMS = {i['prefix']: i['form'] for i in _reg.IDS if i['form']}   # identifier kinds of the source declarations (tools/sources/; same kinds as validate_card.IDS)
 CODE = r'[^\s:@][^\s@]*@[0-9a-f]{7,40}'                                               # code: `<file path>@<SHA>` (SKILL.md section 0, identity of sources)
 ID = re.compile(r'^(%s|%s)$' % ('|'.join(f'{k}:(?:{v})' for k, v in FORMS.items()), CODE), re.I)
 MAX = 50
