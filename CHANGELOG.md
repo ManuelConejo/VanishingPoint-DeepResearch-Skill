@@ -429,3 +429,74 @@ one judge family for its error rate; legal texts stay the most expensive case (x
 
 ### Tests
 - New `tests/test_run_mechanics.py`, `tests/test_passages.py`, `tests/test_windows.py`; full offline suite green as uid 1000.
+
+## v0.5.2, 2026-10-28 - new law sources (HUDOC, European Parliament, Isidore), local documents, optional PRISMA / follow-ups / prior-art tools
+
+Code only, tested offline; the optional tools run from the command line (`finish_run.py --prisma --followups`, `--prior-art`); their SKILL.md sections wait for a duel.
+
+
+### Added
+- **`hudoc`** (`tools/sources/hudoc.py`, plugin `law`, `access: page`): case law of the European Court of Human Rights. `search-hudoc`
+  sends the words of the question, each one quoted (no operator reaches HUDOC's query syntax). It covers judgments and decisions in the
+  official languages (ENG, FRE) only, so later translations are left out. `kpdate` is bounded in the query to the eve of T. `read
+  hudoc:<itemid>` returns the record and the text of the Court, with the operative part ("FOR THESE REASONS, THE COURT" / "PAR CES
+  MOTIFS, LA COUR") appended after a marked elision. `read ecli:ECLI:CE:ECHR:...` is routed to HUDOC.
+  - Barrier: the decision date must be before T, and an undated record is refused. The importance level is masked.
+  - Pacing: 3 s, stop on 403/404/429.
+  - A bot challenge (403/429) returns the receipt `{status: blocked, reason: bot_challenge}` after one request. There is no workaround.
+    On 2026-10-28 HUDOC served `curl` but challenged Python's HTTP client from the test server.
+- **`europarl`** (`tools/sources/europarl.py`, plugin `law`, `access: api`): European Parliament Open Data API v2, keyless, CC BY 4.0.
+  `search-europarl` runs a full-text search of adopted texts, with the sitting date bounded to the eve of T. `read
+  europarl:<document id>` reads adopted texts (`TA-`), plenary documents (`A-`, `B-`, `RC-`) and other documents.
+  - Barrier: the document date must be before T. The text is served only from an XML or HTML file issued before T (files are often
+    re-issued months later). Forward links (`inverse_*`) are never served.
+  - Pacing: 2 s.
+- **`isidore`** (`tools/sources/isidore.py`, plugin `law`, `access: api`): Huma-Num Isidore, French-speaking humanities and social
+  sciences. `search-isidore` returns results in relevance order, and `read isidore:<Isidore URI>` returns the abstract. There is no
+  humanities plugin, so the source is wired in `law` (doctrine).
+  - Barrier: the provider has a year filter but no date range, so the barrier is local. The record date must be before T, and a year
+    alone must be strictly before the year of T. DOIs are rechecked on Crossref.
+  - Pacing: 15 s (robots.txt `Crawl-delay`).
+- **Example user source** `examples/user-sources/local_docs.py`: the user's own documents, opt-in. To use it, copy it to
+  `~/.config/vp/sources/` and set `VP_USER_SOURCES=1`. The folder comes from `VP_LOCAL_DOCS` or `~/.config/vp/local-docs.path`.
+  - It reads txt and md files, and pdf files only when `pdftotext` is installed.
+  - The date comes from the header (front matter or a `Date:` line), else from the file's modification date. An unreadable header date
+    is refused.
+  - It returns a `not_configured` receipt when no folder is set. Paths outside the folder and symbolic links are refused.
+- **Registry**: new access level `local` for sources that read local files and call no host (`hosts` must be empty). See
+  CONTRIBUTING.md section 5 and ACCESS-POLICY.md.
+- **Tests**: `tests/test_engines_law_extra.py` runs on answers recorded on 2026-10-28 (`tests/fixtures/law_extra_recorded.json`), and
+  `tests/test_user_source_local_docs.py` covers the example user source. Both check the barrier, identifiers, refusal after T, text
+  planted with instructions staying data, and the opt-in loading through the gateway.
+
+### Changed
+- `plugins/law.md`: `hudoc`, `europarl` and `isidore` are wired (state, endpoints and terms per section), and the browser fallback for
+  HUDOC is removed.
+- `ecli.py` routes ECHR ECLIs.
+- `KEYS.md` and the `gateway.py` help list the new engines.
+- `tests/test_gateway.py` and `tests/test_validate_result.py` cover the new engines and identifier kinds.
+
+
+Three optional functions, all off by default: each runs only on an explicit request of the user or a tool option. No model call and
+no gateway call is added; the engine, the verifier and the standard deliverables do not change. Tested offline, not measured as methods.
+
+### Packaging changes (tested, not measured)
+- "Prior art?" mode (`tools/prior_art.py`, `validate_card.py --prior-art`, `finish_run.py --prior-art`): the idea is cut into
+  essential elements (`prior_art.json`); the card holds one claim per (source, element) read as disclosed (`"element": "E<k>"`),
+  checked by the unchanged verifier. The answer is decided by code: **Exists** (one source dated before T discloses every
+  element, each claim FOUND), **Partially**, **Not found** (with what was searched: engines, queries, records identified,
+  distinct, read and removed by the date barrier; patents stated as not searched while no patent engine is wired), or
+  **Pending** without verification. DISTORTED, SOURCE-UNAVAILABLE and UNVERIFIED never count as disclosed; the answer says when
+  confirming the unverified ones would change it. `PRIOR-ART.md` carries a fingerprint of its inputs: a stale or hand-edited
+  answer is refused (checks PA1-PA4).
+- PRISMA 2020 flow diagram (`tools/prisma.py`, `finish_run.py --prisma`, `export_report.py --prisma`): `PRISMA.md`,
+  `PRISMA.svg` (plain SVG, escaped text, no script), `prisma.json`, counted from the gateway journal (search pool only),
+  the searchers' exclusion marks, `card.json` and `result.json`; a box the run did not record is printed "not recorded".
+- Follow-up questions (`tools/followups.py`, `finish_run.py --followups`, `export_report.py --followups`): 3 to 5 questions
+  from fixed templates filled with the claims not FOUND (including removals named in the run), the sources not read, the scope
+  angles without a cited source and the conflicts the verifier or the contradictor noted; fewer when fewer are derivable,
+  never invented. Written to `FOLLOWUPS.md` / `followups.json` and appended to `REPORT.html`.
+- `tools/config.json`: named parameters `prisma`, `followups`, `prior_art` (display and reading bounds, not measured values).
+- `validate_card.py`: the end-step fingerprints also cover `prior_art.json` and `PRIOR-ART.md` (absent in a standard run).
+- Tests: `tests/test_prior_art.py`, `tests/test_prisma.py`, `tests/test_followups.py`.
+

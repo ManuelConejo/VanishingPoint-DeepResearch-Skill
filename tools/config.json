@@ -148,5 +148,36 @@
   "max_chars": 300,
   "max_per_claim": 4,
   "note": "Cited passages (tools/passages.py, shown by export_report.py under each bibliography entry and written by export_data.py to PASSAGES.md / passages.json). max_chars = longest passage shown per fragment: 300 is the upper bound ROLE.md already sets on a verifier fragment, so a passage is widened to its whole sentence only when that sentence is no longer than what the verifier itself may quote (about 45-50 words, roughly ten seconds of reading); a longer fragment is cut at a word boundary and flagged. max_per_claim = passages shown per claim: 4 is the ROLE.md upper bound on fragments per verdict, so no machine-checked fragment is dropped. Both are reading bounds taken from the role contract, not measured optima."
+ },
+ "prisma": {
+  "reasons_max": 8,
+  "reason_chars": 80,
+  "mark_window": 40,
+  "svg": {
+   "box_w": 330,
+   "side_w": 300,
+   "line_h": 16,
+   "font_px": 12,
+   "pad": 10,
+   "gap": 26,
+   "chars_per_line": 46
+  },
+  "note": "Optional PRISMA 2020 flow diagram (tools/prisma.py; finish_run.py --prisma, export_report.py --prisma). reasons_max = exclusion reasons listed in the 'Reports excluded' box, the rest summed as 'other recorded reasons'; reason_chars = longest reason shown (cut at a word); mark_window = characters around an 'excluded' mark searched for words saying it is not a screening decision (post-T, gateway, '-leaning'...). svg = layout of the plain SVG (pixels; chars_per_line = wrap width of the main boxes). Display bounds, not measured values."
+ },
+ "followups": {
+  "min": 3,
+  "max": 5,
+  "claim_chars": 160,
+  "why_chars": 200,
+  "angle_chars": 120,
+  "note": "Optional follow-up questions (tools/followups.py; finish_run.py --followups, export_report.py --followups). min/max = questions sought (3 to 5, the user's request of 2026-10-28); fewer derivable = fewer written, never invented. claim_chars / why_chars / angle_chars = longest quotation of a claim, of a verifier discrepancy and of a scope angle inside a question (cut at a word). templates (optional object) overrides the fixed English templates by name (distorted, absent, unavailable_claim, unavailable_source, unread, angle, empty, conflict, contradictor). Display bounds, not measured values."
+ },
+ "prior_art": {
+  "elements_max": 8,
+  "closest": 3,
+  "queries_max": 100,
+  "claim_chars": 200,
+  "idea_chars": 90,
+  "note": "Optional 'Prior art?' mode (tools/prior_art.py; validate_card.py --prior-art; finish_run.py --prior-art). elements_max = most elements an idea is cut into (an idea needing more is a project, not a prior-art question); closest = closest sources listed; queries_max = queries listed in 'What was searched' (the rest counted, all in state/journal.jsonl); claim_chars / idea_chars = longest claim, fragment or idea quoted. Not measured: reading bounds of the answer."
  }
 }

@@ -1,0 +1,546 @@
+{
+ "_recorded": "2026-10-28, VanishingPoint probes (trimmed): HUDOC query/results, European Parliament /adopted-texts/{id} and /plenary-documents/{id}, Isidore /resource/search",
+ "hudoc_results": {
+  "resultcount": 340,
+  "results": [
+   {
+    "columns": {
+     "languageisocode": "ENG",
+     "appno": "35614/19;5885/20;6489/20;7540/20;10977/20;11422/20;14798/20;16554/20;16577/20;18001/20;40294/20",
+     "kpdate": "2023-12-05T00:00:00",
+     "importance": "3",
+     "respondent": "TUR",
+     "ecli": "ECLI:CE:ECHR:2023:1205JUD003561419",
+     "itemid": "001-229320",
+     "conclusion": "Remainder inadmissible (Art. 35) Admissibility criteria;(Art. 35-1) Exhaustion of domestic remedies;Violation of Article 3 - Prohibition of torture (Article 3 - Degrading treatment;Inhuman treatment) (Substantive aspect);No violation of Article 3 - Prohibition of torture (Article 3 - Degrading treatment;Inhuman treatment) (Substantive aspect);Violation of Article 8 - Right to respect for private and family life (Article 8-1 - Respect for family life);Pecuniary damage - claim dismissed (Article 41 - Pecuniary damage;Just satisfaction);Non-pecuniary damage - award (Article 41 - Non-pecuniary damage;Just satisfaction)",
+     "doctype": "HEJUD",
+     "docname": "CASE OF İLERDE AND OTHERS v. TÜRKİYE",
+     "rank": "5.1252174"
+    }
+   },
+   {
+    "columns": {
+     "itemid": "001-229159",
+     "docname": "CASE OF GEORGIAN MUSLIM RELATIONS AND OTHERS v. GEORGIA",
+     "ecli": "ECLI:CE:ECHR:2023:1130JUD002422519",
+     "appno": "24225/19",
+     "importance": "3",
+     "kpdate": "2023-11-30T00:00:00",
+     "conclusion": "Preliminary objection joined to merits and dismissed (Art. 34) Individual applications;(Art. 34) Victim;Violation of Article 14+8 - Prohibition of discrimination (Article 14 - Discrimination) (Article 8 - Right to respect for private and family life;Positive obligations;Article 8-1 - Respect for private life);Violation of Article 14+9 - Prohibition of discrimination (Article 14 - Discrimination) (Article 9-1 - Freedom of religion;Article 9 - Freedom of thought, conscience and religion);Violation of Article 1 of Protocol No. 1 - Protection of property (Article 1 para. 1 of Protocol No. 1 - Peaceful enjoyment of possessions);Non-pecuniary damage - award (Article 41 - Non-pecuniary damage;Just satisfaction)",
+     "doctype": "HEJUD",
+     "respondent": "GEO",
+     "languageisocode": "ENG",
+     "rank": "4.973529"
+    }
+   },
+   {
+    "columns": {
+     "kpdate": "2023-11-27T00:00:00",
+     "conclusion": "Preliminary objection allowed (Art. 35) Admissibility criteria;(Art. 35-1) Exhaustion of domestic remedies;Remainder inadmissible (Art. 35) Admissibility criteria;(Art. 35-1) Exhaustion of domestic remedies;(Art 35-1) Four-month period (former six-month)",
+     "respondent": "CHE",
+     "appno": "21881/20",
+     "itemid": "001-229376",
+     "importance": "1",
+     "ecli": "ECLI:CE:ECHR:2023:1127JUD002188120",
+     "docname": "CASE OF COMMUNAUTÉ GENEVOISE D'ACTION SYNDICALE (CGAS) v. SWITZERLAND",
+     "doctype": "HEJUD",
+     "languageisocode": "ENG",
+     "rank": "11.193103"
+    }
+   }
+  ]
+ },
+ "hudoc_body_head": "<style>\n.s800EAC49 { font-size:12pt }\n.s5E1364CA { margin-top:0pt; margin-bottom:12pt; text-align:center; page-break-inside:avoid; page-break-after:avoid; font-size:14pt }\n.sBB9EE52A { font-family:Arial }\n.s9296A950 { margin-top:36pt; margin-bottom:12pt; text-align:center; page-break-inside:avoid; page-break-after:avoid }\n.s29100277 { font-family:Arial; font-weight:bold }\n.s34DFC730 { margin-top:0pt; margin-bottom:0pt; text-align:center; page-break-inside:avoid; page-break-after:avoid }\n.sA36B60A1 { font-family:Arial; font-style:italic }\n.s57F1263A { margin-top:0pt; margin-bottom:24pt; text-align:center; page-break-inside:avoid; page-break-after:avoid }\n.s339D85E6 { margin-top:0pt; margin-bottom:14pt; text-align:center; page-break-inside:avoid; page-break-after:avoid }\n.s780F5245 { border:0.75pt solid #000000; clear:both }\n.s795B4A6B { margin-top:0pt; margin-bottom:0pt; text-align:justify; padding-top:1pt; padding-right:4pt; padding-left:4pt; font-size:11pt }\n.sA57875D8 { margin-top:0pt; margin-bottom:0pt; text-align:justify; padding-right:4pt; padding-left:4pt; font-size:11pt }\n.sEC28DD31 { margin-top:0pt; margin-bottom:0pt; text-align:justify; padding-right:4pt; padding-left:4pt }\n.s4009AD63 { margin-top:0pt; margin-bottom:0pt; text-indent:14.2pt; text-align:center; padding-right:4pt; padding-left:4pt; padding-bottom:1pt; font-size:8pt }\n.sA1D3DA2E { margin-top:0pt; margin-bottom:0pt; text-align:justify }\n.s59272B2C { margin-top:0pt; margin-bottom:6pt; text-align:center; pa",
+ "europarl_adopted_text": {
+  "id": "eli/dl/doc/TA-8-2018-0529",
+  "type": "Work",
+  "adopts": [
+   "eli/dl/doc/B-8-2018-0561"
+  ],
+  "parliamentary_term": "org/ep-8",
+  "document_date": "2018-12-13",
+  "is_about": [
+   "http://eurovoc.europa.eu/c_4cd4362b",
+   "http://eurovoc.europa.eu/5595",
+   "http://eurovoc.europa.eu/1524",
+   "http://eurovoc.europa.eu/5404",
+   "http://eurovoc.europa.eu/2828",
+   "http://eurovoc.europa.eu/5403",
+   "http://eurovoc.europa.eu/3011",
+   "http://eurovoc.europa.eu/440579"
+  ],
+  "is_realized_by": [
+   {
+    "id": "eli/dl/doc/TA-8-2018-0529/en",
+    "type": "Expression",
+    "is_embodied_by": [
+     {
+      "id": "eli/dl/doc/TA-8-2018-0529/en/xml",
+      "type": "Manifestation",
+      "is_exemplified_by": "distribution/reds_iPlTa_Itm/TA-8-2018-0529/TA-8-2018-0529-FNL_en.xml",
+      "media_type": "https://www.iana.org/assignments/media-types/application/xml",
+      "format": "http://publications.europa.eu/resource/authority/file-type/XML",
+      "issued": "2019-10-07T14:46:15+02:00",
+      "byteSize": "30360"
+     },
+     {
+      "id": "eli/dl/doc/TA-8-2018-0529/en/pdf",
+      "type": "Manifestation",
+      "is_exemplified_by": "distribution/reds_iPlTa_Itm/TA-8-2018-0529/TA-8-2018-0529-FNL_en.pdf",
+      "media_type": "https://www.iana.org/assignments/media-types/application/pdf",
+      "format": "http://publications.europa.eu/resource/authority/file-type/PDF",
+      "issued": "2019-07-17T17:05:39+02:00",
+      "byteSize": "153103"
+     },
+     {
+      "id": "eli/dl/doc/TA-8-2018-0529/en/docx",
+      "type": "Manifestation",
+      "is_exemplified_by": "distribution/reds_iPlTa_Itm/TA-8-2018-0529/TA-8-2018-0529-FNL_en.docx",
+      "media_type": "https://www.iana.org/assignments/media-types/application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "format": "http://publications.europa.eu/resource/authority/file-type/DOCX",
+      "issued": "2019-07-17T17:05:39+02:00",
+      "byteSize": "53417"
+     }
+    ],
+    "language": "http://publications.europa.eu/resource/authority/language/ENG",
+    "title": {
+     "en": "Adequacy of the protection of personal data afforded by Japan "
+    }
+   }
+  ],
+  "work_type": "def/ep-document-types/TEXT_ADOPTED",
+  "identifier": "TA-8-2018-0529",
+  "title_dcterms": {
+   "en": "Adequacy of the protection of personal data afforded by Japan "
+  },
+  "label": "T8-0529/2018",
+  "notation_publicRegister": "P8_TA(2018)0529",
+  "epNumber": "PE631.583",
+  "identifierYear": "2018",
+  "isAboutDirectoryCode": [
+   "http://publications.europa.eu/resource/authority/dir-eu-legal-act/132060",
+   "http://publications.europa.eu/resource/authority/dir-eu-legal-act/114060"
+  ],
+  "isAboutSubjectMatter": [
+   "http://publications.europa.eu/resource/authority/subject-matter/PDON",
+   "http://publications.europa.eu/resource/authority/subject-matter/EXT"
+  ],
+  "inverse_created_a_realization_of": [
+   "eli/dl/proc/2018-2979"
+  ],
+  "inverse_answers_to": [
+   "eli/dl/doc/SP-2019-355-TA-8-2018-0529"
+  ]
+ },
+ "europarl_plenary_document": {
+  "id": "eli/dl/doc/A-8-2016-0164",
+  "type": "Work",
+  "adopts": [
+   "eli/dl/doc/LIBE-PR-578698"
+  ],
+  "parliamentary_term": "org/ep-8",
+  "document_date": "2016-05-02",
+  "is_realized_by": [
+   {
+    "id": "eli/dl/doc/A-8-2016-0164/en",
+    "type": "Expression",
+    "is_embodied_by": [
+     {
+      "id": "eli/dl/doc/A-8-2016-0164/en/html",
+      "type": "Manifestation",
+      "is_exemplified_by": "distribution/reds_iPlRp/A-8-2016-0164/A-8-2016-0164_en.html",
+      "media_type": "https://www.iana.org/assignments/media-types/text/html",
+      "format": "http://publications.europa.eu/resource/authority/file-type/HTML"
+     },
+     {
+      "id": "eli/dl/doc/A-8-2016-0164/en/doc",
+      "type": "Manifestation",
+      "is_exemplified_by": "distribution/reds_iPlRp/A-8-2016-0164/A-8-2016-0164_en.doc",
+      "media_type": "https://www.iana.org/assignments/media-types/application/msword",
+      "format": "http://publications.europa.eu/resource/authority/file-type/DOC"
+     },
+     {
+      "id": "eli/dl/doc/A-8-2016-0164/en/pdf",
+      "type": "Manifestation",
+      "is_exemplified_by": "distribution/reds_iPlRp/A-8-2016-0164/A-8-2016-0164_en.pdf",
+      "media_type": "https://www.iana.org/assignments/media-types/application/pdf",
+      "format": "http://publications.europa.eu/resource/authority/file-type/PDF"
+     },
+     {
+      "id": "eli/dl/doc/A-8-2016-0164/en/xml",
+      "type": "Manifestation",
+      "is_exemplified_by": "distribution/reds_iPlRp/A-8-2016-0164/A-8-2016-0164_en.xml",
+      "media_type": "https://www.iana.org/assignments/media-types/application/xml",
+      "format": "http://publications.europa.eu/resource/authority/file-type/XML"
+     }
+    ],
+    "language": "http://publications.europa.eu/resource/authority/language/ENG",
+    "title": {
+     "en": "RECOMMENDATION FOR SECOND READING on the Council position at first reading with a view to the adoption of a regulation of the European Parliament and of the Council on the European Union Agency for Law Enforcement Cooperation (Europol) and replacing and repealing Council Decisions 2009/371/JHA, 2009/934/JHA, 2009/935/JHA, 2009/936/JHA and 2009/968/JHA"
+    },
+    "title_alternative": {
+     "en": "RECOMMENDATION FOR SECOND READING - on the Council position at first reading with a view to the adoption of a regulation of the European Parliament and of the Council on the European Union Agency for Law Enforcement Cooperation (Europol) and replacing and repealing Council Decisions 2009/371/JHA, 2009/934/JHA, 2009/935/JHA, 2009/936/JHA and 2009/968/JHA - (14957/2/2015 - C8-0130/2016 - 2013/0091(COD)) - Committee on Civil Liberties, Justice and Home Affairs - Rapporteur: Agustín Díaz de Mera García Consuegra"
+    }
+   }
+  ],
+  "work_type": "def/ep-document-types/REPORT_PLENARY",
+  "identifier": "A-8-2016-0164",
+  "title_dcterms": {
+   "en": "RECOMMENDATION FOR SECOND READING on the Council position at first reading with a view to the adoption of a regulation of the European Parliament and of the Council on the European Union Agency for Law Enforcement Cooperation (Europol) and replacing and repealing Council Decisions 2009/371/JHA, 2009/934/JHA, 2009/935/JHA, 2009/936/JHA and 2009/968/JHA"
+  },
+  "notation_publicRegister": "P8_A(2016)0164"
+ },
+ "europarl_search_meta": {
+  "total": 212
+ },
+ "isidore_replies": [
+  {
+   "@uri": "10670/1.3904e8dea2beef818dcfe30152cf9d7bde121ebc",
+   "isidore": {
+    "title": [
+     {
+      "@added": "true",
+      "@xml:lang": "en",
+      "$": "Contentieux climatiques"
+     },
+     {
+      "@added": "true",
+      "@xml:lang": "es",
+      "$": "Contentieux climatiques"
+     },
+     {
+      "@xml:lang": "fr",
+      "$": "Contentieux climatiques"
+     },
+     {
+      "@xml:lang": "fr",
+      "$": "Contentieux climatiques: Émergence et consolidation de nouvelles voies de recours pour lutter contre le changement climatique"
+     }
+    ],
+    "url": "https://hal.science/hal-04631948",
+    "enrichedCreators": {
+     "creator": {
+      "@origin": "Torre-Schaub, Marta",
+      "@normalizedAuthor": "Torre-Schaub, Marta",
+      "@idAuthor": "torre-schaub_marta",
+      "firstname": "Marta",
+      "lastname": "Torre-Schaub",
+      "title": [],
+      "sameAs": []
+     }
+    },
+    "date": {
+     "@origin": "2024-01-18",
+     "@startDate": "2024-01-18",
+     "@endDate": "2024-01-18",
+     "normalizedDate": "2024-01-18",
+     "century": "2000",
+     "decade": "2020",
+     "year": "2024"
+    },
+    "subjects": {
+     "subject": [
+      {
+       "@xml:lang": "fr",
+       "$": "Contentieux climatiques"
+      },
+      {
+       "@xml:lang": "fr",
+       "$": "Droit climatique"
+      },
+      {
+       "@xml:lang": "fr",
+       "$": "contentieux administratif"
+      },
+      {
+       "@xml:lang": "fr",
+       "$": "Contentieux judiciaire"
+      },
+      {
+       "@xml:lang": "fr",
+       "$": "Devoir de vigilance"
+      },
+      {
+       "@xml:lang": "fr",
+       "$": "RSE - Responsabilité sociétale des entreprises"
+      },
+      {
+       "@xml:lang": "fr",
+       "$": "environnement"
+      },
+      {
+       "@xml:lang": "fr",
+       "$": "Justice climatique"
+      },
+      "[SHS.DROIT]Humanities and Social Sciences/Law"
+     ]
+    },
+    "abstract": [
+     "International audience",
+     {
+      "@xml:lang": "fr",
+      "$": "Cette chronique vise à donner aux lecteurs une meilleure appréhension des évolutions contentieuses sur le changement climatique entre 2021 et aujourd’hui. L’essentiel de l’ampleur de ces contentieux, leurs objectifs mais également leur réel impact sont ici synthétisés. Les perspectives ouvertes par ces procès ainsi que les ‘voies mortes’ ou points de friction et blocage sont également évoqués."
+     }
+    ],
+    "types": {
+     "type": [
+      "info:eu-repo/semantics/article",
+      "Journal articles"
+     ]
+    },
+    "source": {
+     "@handle": "10670/2.c97krw",
+     "@action": "crawl",
+     "@frequency": "1",
+     "name": [
+      {
+       "@added": "true",
+       "@xml:lang": "en",
+       "$": "HAL SHS (Sciences de l’Homme et de la Société)"
+      },
+      {
+       "@added": "true",
+       "@xml:lang": "es",
+       "$": "HAL SHS (Sciences de l’Homme et de la Société)"
+      },
+      {
+       "@xml:lang": "fr",
+       "$": "HAL SHS (Sciences de l’Homme et de la Société)"
+      }
+     ],
+     "shortName": {
+      "@xml:lang": "fr",
+      "$": "HAL SHS"
+     },
+     "url": "https://shs.hal.science",
+     "scope": {
+      "@uri": "http://isidore.science/subject#publications",
+      "$": "Publications"
+     },
+     "type": "Archive ouverte"
+    },
+    "dc:language": "fr",
+    "dc:rights": "http://hal.archives-ouvertes.fr/licences/copyright/"
+   }
+  },
+  {
+   "@uri": "20.500.13089/16ds9",
+   "isidore": {
+    "title": [
+     {
+      "@added": "true",
+      "@xml:lang": "fr",
+      "$": "La place des fondements issus du droit des obligations dans le contentieux climatique français"
+     },
+     {
+      "@added": "true",
+      "@xml:lang": "en",
+      "$": "La place des fondements issus du droit des obligations dans le contentieux climatique français"
+     },
+     {
+      "@added": "true",
+      "@xml:lang": "es",
+      "$": "La place des fondements issus du droit des obligations dans le contentieux climatique français"
+     },
+     "La place des fondements issus du droit des obligations dans le contentieux climatique français"
+    ],
+    "url": "https://doi.org/10.4000/16ds9",
+    "enrichedCreators": {
+     "creator": {
+      "@origin": "Stevignon, Anne",
+      "@normalizedAuthor": "Stevignon, Anne",
+      "@idAuthor": "stevignon_anne",
+      "firstname": "Anne",
+      "lastname": "Stevignon",
+      "title": [],
+      "sameAs": []
+     }
+    },
+    "date": {
+     "@origin": "2026",
+     "@startDate": "2026-01-01",
+     "@endDate": "2026-12-31",
+     "normalizedDate": "2026-01-01",
+     "century": "2000",
+     "decade": "2020",
+     "year": "2026"
+    },
+    "relations": {
+     "url": [
+      "https://hdl.handle.net/20.500.13089/16dsu",
+      "https://doi.org/10.4000/16dsu"
+     ],
+     "relation": "info:eu-repo/semantics/altIdentifier/isbn/979-10-97578-41-1"
+    },
+    "abstract": [
+     {
+      "@xml:lang": "fr",
+      "$": "Cette contribution examine la place du droit des obligations dans le contentieux climatique français, qui est à première vue dominé par le recours à des fondements spéciaux, et montre que le droit civil y joue un rôle complémentaire. Au cœur de plusieurs recours, l’article 1252 du Code civil apparaît comme un levier innovant pour mener des actions préventives, de nature à permettre d’obtenir la prévention de dommages écologiques engendrés par les émissions de gaz à effet de serre. Un autre contentieux mobilise l’engagement unilatéral de volonté et le quasi-contrat pour obtenir la sanction du non-respect d’un engagement climatique. L’analyse met ainsi en évidence une adaptation du droit des obligations aux enjeux climatiques, susceptible de renforcer à terme le rôle de la responsabilité civile dans le contentieux climatique français."
+     },
+     {
+      "@xml:lang": "en",
+      "$": "This paper examines the role of the law of obligations in French climate litigation, which at first glance appears to be dominated by specific legal grounds, and shows that civil law nonetheless plays a complementary role. At the core of several cases, Article 1252 of the French Civil Code emerges as an innovative tool for preventive actions, making it possible to seek the prevention of environmental damage caused by greenhouse gas emissions. Another case relies on the unilateral commitments’ theory and quasi-contracts to sanction failures to comply with a climate commitment. The analysis thus highlights an adaptation of the law of obligations to climate challenges, which may ultimately strengthen the role of civil liability in French climate litigation."
+     }
+    ],
+    "types": {
+     "type": [
+      "chapter",
+      "info:eu-repo/semantics/bookPart"
+     ]
+    },
+    "source": {
+     "@handle": "10670/2.xd6j52",
+     "@action": "crawl",
+     "@frequency": "1",
+     "name": [
+      {
+       "@added": "true",
+       "@xml:lang": "es",
+       "$": "DICE Éditions"
+      },
+      {
+       "@xml:lang": "fr",
+       "$": "DICE Éditions"
+      },
+      {
+       "@xml:lang": "en",
+       "$": "DICE Éditions"
+      }
+     ],
+     "shortName": [
+      {
+       "@xml:lang": "fr",
+       "$": "dice"
+      },
+      {
+       "@xml:lang": "en",
+       "$": "dice"
+      }
+     ],
+     "url": "https://books.openedition.org/dice",
+     "scope": {
+      "@uri": "http://isidore.science/subject#publications",
+      "$": "Publications"
+     },
+     "type": "Book",
+     "uriPermanentPattern": "https://hdl.handle.net/(.+)"
+    },
+    "dc:language": "fr",
+    "dc:rights": [
+     "info:eu-repo/semantics/openAccess",
+     "https://creativecommons.org/licenses/by-nc-nd/4.0/"
+    ]
+   }
+  },
+  {
+   "@uri": "10670/1.c689c7e94665479f13d76432bbff040dfc516287",
+   "isidore": {
+    "title": [
+     {
+      "@added": "true",
+      "@xml:lang": "en",
+      "$": "Les convergences des actions climatiques contre l’État. Étude comparée du contentieux national"
+     },
+     {
+      "@added": "true",
+      "@xml:lang": "es",
+      "$": "Les convergences des actions climatiques contre l’État. Étude comparée du contentieux national"
+     },
+     {
+      "@xml:lang": "fr",
+      "$": "Les convergences des actions climatiques contre l’État. Étude comparée du contentieux national"
+     }
+    ],
+    "url": "https://hal.science/hal-02266603",
+    "enrichedCreators": {
+     "creator": {
+      "@origin": "Cournil, Christel",
+      "@normalizedAuthor": "Cournil, Christel",
+      "@idAuthor": "cournil_christel",
+      "firstname": "Christel",
+      "lastname": "Cournil",
+      "title": [],
+      "sameAs": []
+     }
+    },
+    "date": {
+     "@origin": "2017",
+     "@startDate": "2017-01-01",
+     "@endDate": "2017-12-31",
+     "normalizedDate": "2017-01-01",
+     "century": "2000",
+     "decade": "2010",
+     "year": "2017"
+    },
+    "subjects": {
+     "subject": [
+      {
+       "@xml:lang": "en",
+       "$": "climate change litigation"
+      },
+      "[SHS.DROIT]Humanities and Social Sciences/Law",
+      "[SDE.ES]Environmental Sciences/Environment and Society",
+      "[SHS.ENVIR]Humanities and Social Sciences/Environmental studies"
+     ]
+    },
+    "abstract": [
+     "International audience",
+     {
+      "@xml:lang": "en",
+      "$": "Summary Convergence of climate actions against the State. Comparative study of national litigation. Climate action against the State or public authorities is carried out, in recent years, in very different national legal systems. Their comparative study is rich in lessons. We will focus here exclusively on the common topics. It has been shown that for most climate demands carried by NGOs and citizens, there are significant difficulties in establishing the causal link between state policies and/or omissions and damage due to the negative impacts of climate change. This article aims to point out other similarities that go through this litigation still emerging. Two types of convergence will be developed with, on the one hand, the same climate 1 Ce texte a été écrit dans le cadre du Programme de recherche sur Les dynamiques du contentieux climatique, usages et mobilisations du droit face à la cause climatique, dirigé par M. Torre-Schaub. Ce projet est financé par le GIP justice. Tant les dynamiques du contentieux climatique que l'activisme des ONG et des juges y sont notamment étudiés."
+     },
+     {
+      "@xml:lang": "fr",
+      "$": "Des actions contentieuses climatiques contre l'État ou des autorités publiques sont menées depuis quelques années dans des systèmes juridiques nationaux très différents. Leur étude comparée est riche d'enseignements. Nous focaliserons exclusivement ici sur les points communs. Il a été déjà montré que la plupart des requêtes climatiques portées par les ONG et les citoyens ont des difficultés significatives à établir le lien de causalité entre les actions et/ou omissions étatiques et les dommages résultant des impacts négatifs des changements cli-matiques. Cet article a pour ambition de pointer d'autres similitudes ou tendances qui traversent ce contentieux encore naissant. Deux types de convergences sont développés avec, d'une part, les mêmes attentes sociétales de justice climatique des ONG et les citoyens et, d'autre part, avec les ressemblances des principaux arguments juridiques mobilisés contre l'État. Mots clefs : Changement climatique, contentieux climatique, ONG, État, autorités publiques, droits de l'Homme, vulnérable, obligation étatique. Summary Convergence of climate actions against the State. Comparative study of national litigation. Climate action against the State or public authorities is carried out, in recent years, in very different national legal systems."
+     }
+    ],
+    "types": {
+     "type": [
+      "info:eu-repo/semantics/article",
+      "Journal articles"
+     ]
+    },
+    "source": {
+     "@handle": "10670/2.c97krw",
+     "@action": "crawl",
+     "@frequency": "1",
+     "name": [
+      {
+       "@added": "true",
+       "@xml:lang": "en",
+       "$": "HAL SHS (Sciences de l’Homme et de la Société)"
+      },
+      {
+       "@added": "true",
+       "@xml:lang": "es",
+       "$": "HAL SHS (Sciences de l’Homme et de la Société)"
+      },
+      {
+       "@xml:lang": "fr",
+       "$": "HAL SHS (Sciences de l’Homme et de la Société)"
+      }
+     ],
+     "shortName": {
+      "@xml:lang": "fr",
+      "$": "HAL SHS"
+     },
+     "url": "https://shs.hal.science",
+     "scope": {
+      "@uri": "http://isidore.science/subject#publications",
+      "$": "Publications"
+     },
+     "type": "Archive ouverte"
+    },
+    "dc:language": "fr",
+    "dc:rights": [
+     "https://about.hal.science/hal-authorisation-v1/",
+     "info:eu-repo/semantics/OpenAccess"
+    ]
+   }
+  }
+ ],
+ "isidore_meta": {
+  "@items": "2950",
+  "@pageItems": "3"
+ }
+}

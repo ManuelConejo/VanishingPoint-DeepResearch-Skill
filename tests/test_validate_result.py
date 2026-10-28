@@ -41,7 +41,8 @@ class Test(unittest.TestCase):
                'hfdataset:rajpurkar/squad', 'rfc:8446', 'pep:484', 'w3c:webauthn-2', 'acl:2024.acl-long.1', 'pmlr:v202/aamand23a',
                'cvf:content/CVPR2024/html/Zeng_Unmixing_Diffusion_CVPR_2024_paper',
                'judilibre:5fca56cd0a790c1ec36ddc07', 'legi:LEGIARTI000006438819', 'jorf:JORFTEXT000032004939',
-               'dbnomics:ECB/ICP/M.U2.N.000000.4.ANR', 'fred:UNRATE']
+               'dbnomics:ECB/ICP/M.U2.N.000000.4.ANR', 'fred:UNRATE', 'hudoc:001-229320', 'europarl:TA-8-2018-0529',
+               'isidore:10670/1.3904e8dea2beef818dcfe30152cf9d7bde121ebc', 'isidore:20.500.13089/16ds9']
         kinds = {i.split(':', 1)[0] for i in ids if ':' in i} | {'code'}
         self.assertEqual(sorted(set(C.IDS) - kinds - {'pmid', 'doi', 'arxiv'}), [], 'a kind of validate_card.IDS without a test id')
         r = good(); r['studies'] = [dict(r['studies'][0], id=i, confidence=0.5) for i in ids]

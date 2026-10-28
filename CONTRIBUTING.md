@@ -50,7 +50,7 @@ Every source answers as if the question were asked on date **T**. Nothing dated 
 
 ## 3. Access policy
 
-Follow [ACCESS-POLICY.md](ACCESS-POLICY.md). `access` is `api` (a documented API), `page` (public pages, level 2) or `browser`.
+Follow [ACCESS-POLICY.md](ACCESS-POLICY.md). `access` is `api` (a documented API), `page` (public pages, level 2), `browser`, or `local` (the user's own files, no network).
 
 - A `page` source paces at **2 s or more** per host and stops at once on **403/429** (`hosts: {'h': {'interval': 2.0, 'stop': (403, 429)}}`).
 - `fetch` caches every answer, paces each host and identifies itself (`VP_CONTACT`).
@@ -90,6 +90,10 @@ Put the file in `~/.config/vp/sources/<name>.py` and import the helpers with `fr
 - On every run, the gateway prints on stderr the user sources it loaded, or the files it ignored because the flag is not set.
 - `gateway.py sources` lists them under `user_sources`.
 - A user source follows the same contract. It cannot replace a built-in name, engine or prefix.
+- A source that reads only local files declares `access: 'local'` and no host (`hosts: {}`): it makes no request.
+- Worked example: [`examples/user-sources/local_docs.py`](examples/user-sources/local_docs.py) (the user's own documents: txt, md, and pdf
+  when `pdftotext` is installed; date from the header or the file; skipped with a `not_configured` receipt until a folder is set).
+  Its offline test is `tests/test_user_source_local_docs.py`.
 
 ## 6. Tests
 
