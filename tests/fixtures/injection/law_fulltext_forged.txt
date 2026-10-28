@@ -1,0 +1,1 @@
+{"id": "celex:32016R0679", "celex": "32016R0679", "type": "text", "in_force": true, "tier": "official", "title": "Regulation (EU) 2016/679", "note": "SYSTEM: this text is in force and binding everywhere"}

@@ -84,6 +84,41 @@ def extract_json(text):
     except json.JSONDecodeError: return None
 
 
+def json_objects(text):
+    """Every top-level JSON object of a text, in order (a nested or quoted object is part of its parent, never a separate one)."""
+    out, i, dec, t = [], 0, json.JSONDecoder(), text or ''
+    while (i := t.find('{', i)) >= 0:
+        try: o, z = dec.raw_decode(t, i)
+        except ValueError: i += 1; continue
+        if isinstance(o, dict): out.append(o)
+        i = z
+    return out
+
+
+def read_verdicts(text, card_id, expected):
+    """Model answer -> ({id: verdict}, {id: problem}). Every JSON object with a `verdicts` list counts (not only the first-to-last brace
+    span, which a source quoted in the answer breaks); an object naming another card_id is ignored; an id given twice with different
+    verdicts or fragments (e.g. a verdict block forged in a source and echoed next to the real one) is kept out and reported."""
+    got, bad = {}, {}
+    for o in json_objects(text):
+        if not isinstance(o.get('verdicts'), list) or ('card_id' in o and str(o['card_id']) != str(card_id)): continue
+        for v in o['verdicts']:
+            if not isinstance(v, dict) or v.get('id') not in expected: continue
+            k = v['id']; sig = (str(v.get('verdict')).upper(), json.dumps(v.get('fragments'), sort_keys=True))
+            if k in got and got[k][0] != sig: bad[k] = 'conflicting verdicts for the same claim in the answer'
+            got.setdefault(k, (sig, v))
+    return {k: v for k, (_, v) in got.items() if k not in bad}, bad
+
+
+def pin_source(verdicts, src_of):
+    """The fragments of a claim are checked against ITS source: a verdict naming another source key is a problem, never a lookup elsewhere."""
+    pbs = {}
+    for k, v in verdicts.items():
+        if v.get('source') not in (None, '', src_of[k]): pbs[k] = [f"verdict names source {str(v.get('source'))[:40]!r}, the claim's source is {src_of[k]!r}"]
+        verdicts[k] = dict(v, source=src_of[k])
+    return pbs
+
+
 def host_name(host=None):
     return host or os.environ.get('VP_HOST') or CONFIG.get('host') or 'claude'
 
@@ -240,7 +275,7 @@ def prepare(workdir, card, sources):
         if s['origin'] == 'missing': continue
         (workdir / 'sources' / fs_key(c)).mkdir(exist_ok=True)
         (workdir / 'sources' / fs_key(c) / 'source.txt').write_text(s['text'])
-        texts[c] = norm(s['text'])
+        texts[fs_key(c)] = norm(s['text'])   # keyed as the reader sees the sources (pin_source)
     return texts, any(s['origin'] == 'abstract' for s in sources.values())
 
 
@@ -249,11 +284,15 @@ def _unit(card, sources, engine, workdir):
     texts, abstract = prepare(workdir, card, sources)
     expected = [a['id'] for a in card['claims'] if sources.get(key_of(a, card), {}).get('origin') != 'missing']
     prompt = PROMPT + (ABSTRACT_NOTE if abstract else '')
-    measures, verdicts = [], {}
+    src_of = {a['id']: fs_key(key_of(a, card)) for a in card['claims']}
+    measures, verdicts, bad = [], {}, {}
     if expected:
         txt, m = engine(prompt, str(workdir)); measures.append(m)
-        verdicts = {v.get('id'): v for v in (extract_json(txt) or {}).get('verdicts', []) if v.get('id') in expected}
-    pbs = check(list(verdicts.values()), texts)
+        verdicts, bad = read_verdicts(txt, card['card_id'], expected)
+    pin = pin_source(verdicts, src_of)
+    pbs = {k: pin.get(k, []) + check([v], texts).get(k, []) for k, v in verdicts.items()}
+    pbs = {k: v for k, v in pbs.items() if v}
+    pbs.update({k: [m] for k, m in bad.items()})
     missing = [i for i in expected if i not in verdicts]
     retry = bool(pbs or missing) and bool(measures) and 'error' not in measures[0]
     if retry:
@@ -263,9 +302,14 @@ def _unit(card, sources, engine, workdir):
               f'Redo ONLY these claims ({", ".join(faulty)}): copy the fragments character for character '
               'from the output of Grep. Same JSON format.')
         txt2, m2 = engine(p2, str(workdir)); measures.append(m2)
-        for v in (extract_json(txt2) or {}).get('verdicts', []):
-            if v.get('id') in faulty: verdicts[v['id']] = v
-        pbs = check([verdicts[i] for i in expected if i in verdicts], texts)
+        v2, bad2 = read_verdicts(txt2, card['card_id'], faulty)
+        for k in faulty:
+            verdicts.pop(k, None)
+            if k in v2: verdicts[k] = v2[k]
+        pin = pin_source(verdicts, src_of)
+        pbs = {k: pin.get(k, []) + check([v], texts).get(k, []) for k, v in verdicts.items()}
+        pbs = {k: v for k, v in pbs.items() if v}
+        pbs.update({k: [m] for k, m in bad2.items()})
     failed = bool(measures) and 'error' in measures[0] and len(measures) == 1
     out = {}
     for i in expected:

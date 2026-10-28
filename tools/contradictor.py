@@ -316,6 +316,12 @@ def build_prompt(a, report, y, x, xb, yb):
                       'REPORT': report.rstrip(), 'Y': y.rstrip(), 'X': x.rstrip()})
 
 
+def one_line(s):
+    """A model-written field (quotation, objection, claim, reference) on one line before it enters another prompt: a line break
+    could otherwise open a forged section ("# Extracts cited ...", "=== file ===", "### A7") in the reread or match prompt."""
+    return ' '.join(str(s).split())
+
+
 def as_list(v):
     """A list from the contradictor's JSON field: a dict or a string becomes a one-element list, anything else empty."""
     return v if isinstance(v, list) else [v] if isinstance(v, (dict, str)) and v else []
@@ -326,17 +332,17 @@ def analyse(name, j, report, xb, yb):
     els = []
     for i, f in enumerate(as_list(j.get('false_claims'))[:MAX_PER_LIST]):
         if not isinstance(f, dict): f = {'quote': str(f)}
-        quote = str(f.get('quote') or ''); ev = f.get('evidence') or []; why = str(f.get('why') or '')
+        quote = str(f.get('quote') or ''); ev = f.get('evidence') or []; why = one_line(f.get('why') or '')
         found, pos, method = find_quote(quote, report); refs = parse_refs(ev if isinstance(ev, list) else [str(ev)], xb, yb)
         refs_ok = bool(refs) and all(r['exists'] for r in refs)
         status = ('to reread' if found and refs_ok else 'false added: quotation not found in the report' if not found
                   else 'false added: no reference' if not refs else 'false added: reference missing from the material')
-        els.append(dict(kind='false', family=name, i=i + 1, quote=quote[:600], evidence=[str(e)[:200] for e in (ev if isinstance(ev, list) else [ev])], why=why[:800],
+        els.append(dict(kind='false', family=name, i=i + 1, quote=quote[:600], evidence=[one_line(e)[:200] for e in (ev if isinstance(ev, list) else [ev])], why=why[:800],
                         quote_found=found, quote_method=method, position=pos, refs=refs, status=status))
     for i, m in enumerate(as_list(j.get('missed'))[:MAX_PER_LIST]):
         if not isinstance(m, dict): m = {'claim': str(m)}
-        claim = str(m.get('claim') or ''); ry = m.get('refs_Y') or []; rx = m.get('refs_X') or []; why = str(m.get('why') or '')
-        ry = [str(v) for v in (ry if isinstance(ry, list) else [ry])]; rx = [str(v) for v in (rx if isinstance(rx, list) else [rx])]
+        claim = one_line(m.get('claim') or ''); ry = m.get('refs_Y') or []; rx = m.get('refs_X') or []; why = one_line(m.get('why') or '')
+        ry = [one_line(v) for v in (ry if isinstance(ry, list) else [ry])]; rx = [one_line(v) for v in (rx if isinstance(rx, list) else [rx])]
         refs = parse_refs(ry + rx, xb, yb)
         has_x = any(r['side'] == 'X' and r['exists'] for r in refs); has_y = any(r['side'] == 'Y' and r['exists'] for r in refs)
         ok = bool(refs) and all(r['exists'] for r in refs) and has_x and has_y
@@ -387,7 +393,7 @@ def reread(els, report, xb, yb, host, model, d, costs):
         n += 1; trace = d / f"reread-{n}-{e['kind']}-{fname(e['family'])}-{e['i']}.trace.jsonl"
         if e['kind'] == 'false':
             g = (HERE / 'prompts' / 'CONTRADICTOR-REREAD-FALSE.md').read_text()
-            p = W.fill(g, {'QUOTATION': e['quote'], 'CONTEXT': context(report, e['position']),
+            p = W.fill(g, {'QUOTATION': one_line(e['quote']), 'CONTEXT': context(report, e['position']),
                            'OBJECTION': e['why'] + '\nReferences: ' + ', '.join(e['evidence']), 'EXTRACTS': extracts(e['refs'], xb, yb)})
             txt, m = host_call(host, model, p, trace); costs['rereads'] += m.get('usd') or 0; up = (txt or '').upper()
             verdict = first_verdict(up, ('NOT CONTRADICTED', 'NOT-CONTRADICTED', 'CONTRADICTED')).replace('-', ' ')

@@ -82,6 +82,8 @@ or `.agents/skills/vanishingpoint/SKILL.md`), then the plugin it selects.
    = valid). A report that keeps ABSENT or INVALID claims unhandled is not delivered as valid.
 6. Export: `python3 -I "$SKILL/tools/export_report.py" <dir> [--pdf] [--open]` writes `REPORT.html` (one self-contained page, prints to PDF from any browser) and, with `--pdf`, `REPORT.pdf` through WeasyPrint, Chromium, wkhtmltopdf or pandoc when one is installed (nothing is installed, no network). Then `python3 -I "$SKILL/tools/export_data.py" <dir>` writes `studies.csv` (one row per study, criteria and verification counts) and `references.bib` / `.ris` / `.json` (CSL-JSON) for reference managers.
 
+All end steps in one command (available, not yet in the instructions: next duel): `python3 -I "$SKILL/tools/finish_run.py" <dir> [--T YYYY-MM-DD] [--plugin plugins/law.md] [--offline] [--rw-csv FILE]` runs `validate_card.py --header`, `validate_result.py`, the mechanical retraction check of the plugins (Crossref `updated-by` / `update-to`, Retraction Watch entries; `retractions.json`, `unknown` never turned into clean), `law_checks.py` for a law run, `export_report.py --pdf --open` and `export_data.py`; each step reports ok / problems / skipped and never stops the others; exit 0 only when validation passed; the produced paths are printed.
+
 Update of a previous run (living review): ask "update my review of <dir>"; the skill reruns the question at today's T in a new directory, then `python3 -I "$SKILL/tools/living_diff.py" <old dir> <new dir>` writes `UPDATE.md` and `update.json` (what changed since the old T); neither report is edited by the tool.
 
 Manual gateway test (no agent, no key, needs network; run from anywhere, `SKILL` as above):
@@ -188,6 +190,7 @@ Run the tests as a normal user (not root): the code-capsule and whole-reading te
 SKILL.md            the engine (one file, read by the host)        plugins/     cs-ai, code, finance, biology, law, _TEMPLATE
 tools/gateway.py    date-bounded documentary access                tools/verifier.py (+ verifier/ROLE.md, citation_check.py, fetch_fulltext.py)
 tools/check_keys.py keys and mode                                   tools/validate_card.py, validate_result.py   mechanical checks
+tools/finish_run.py all end steps in one command (checks, retractions, law checks, exports; not yet in SKILL.md)
 tools/code_capsule.py, condense_repo.py, whole_reading.py, contradictor.py   code plugin tools (capsule, Y condensation, whole reading, contradictor)
 tools/config.json   caps, models, host command profiles             tests/  examples/  KEYS.md  ACCESS-POLICY.md  CHANGELOG.md  LICENSE  NOTICE
 ```

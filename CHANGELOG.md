@@ -303,3 +303,22 @@ Fix of a temporal leak: `tools/verifier/fetch_fulltext.py` (`verifier.py --fullt
 - Live (copy, uid 1000): 1706.03762 at T 2017-06-15 -> v1 of 7 (LaTeX, "41.0" BLEU of v1); 10.1101/2020.03.22.002386 at T 2020-03-25 ->
   v2 (2020-03-23) of 3 named, no full text; no T -> REFUSED.
 - Tests: new `tests/test_fetch_fulltext.py` (7, offline, transport stubbed); 16 offline files green.
+
+## v0.4.5, 2026-10-28 - finish_run tool, injection hardening
+
+### Packaging changes (tested, not measured)
+- `tools/finish_run.py <dir> [--T] [--plugin] [--offline] [--rw-csv]`: every mechanical end step in one command, in order:
+  `validate_card.py --header`, `validate_result.py`, the mechanical retraction check of the plugins (now implemented: Crossref
+  `updated-by` / `update-to` and `filter=updates:`, Retraction Watch entries served by Crossref, optional RW CSV; states
+  retracted / concern / erratum / none / unknown, `unknown` never turned into `none`; polite HTTP through `gateway.fetch`, cache in
+  `<dir>/state/cache`; writes `retractions.json`), `law_checks.py` for a law run, `export_report.py --pdf --open`, `export_data.py`.
+  Each step ok / problems / skipped (why), none stops the others; exit 0 only when validation passed; produced paths printed.
+  Available, not yet in the instructions (next duel): SKILL.md section 8 is unchanged. Tried on copies of the two e2e runs of
+  2026-10-28 (cs-ai, law): validation passed, 6 and 4 DOIs checked (none flagged), exports written. Test: `tests/test_finish_run.py`.
+- Prompt-injection hardening (code only; audit with 5 planted sources, `tests/test_injection.py`, no model call):
+  verifier: fragments are checked against the claim's own source (a verdict naming another source no longer passes FOUND with that
+  source's text: INVALID); every top-level JSON object of the answer is read, an object of another `card_id` is ignored, an id given
+  twice with different verdicts (a forged block echoed from a source) is kept out and retried, never taken; source texts keyed as the
+  reader sees them (`doi:` keys no longer "unknown source key"). Contradictor: model-written fields enter the reread and match prompts
+  on one line (no forged "Extracts" or "List" section). law_checks: a fetched full text (`meta.json`) is never read as a gateway
+  record, nor a record whose id is not the card's identifier. Role and instruction wording unchanged (candidates for a duel).
