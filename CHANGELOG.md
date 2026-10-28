@@ -66,21 +66,54 @@ Everything in this release was either measured on our benches before being adopt
 
 ### Measured and adopted
 - Contradictor after the report (`tools/contradictor.py`, prompts `tools/prompts/CONTRADICTOR*.md`, SKILL.md "Contradictor",
-  plugins/code.md "Contradictor after the report"): optional, absent by default. A model of another family than the author (`codex` through the
-  Codex CLI on a Claude Code host, `claude` through `claude -p` on a Codex host, `kimi` or `gemini` through OpenRouter, optional) reads the report, Y and X without tools and claims at most 3 false statements
+  plugins/code.md "Contradictor after the report"): optional, absent by default. A model of another family than the author (`openai[:<model>]` = the
+  Codex CLI, `claude[:<model>]` = `claude -p`, `<provider>:<model>` = any OpenAI-compatible API named in `tools/config.json`:
+  openrouter, gemini, openai-api, mistral, ollama or one the user adds; no model name is fixed in the skill) reads the report, Y and X without tools and claims at most 3 false statements
   and 3 misses with references; mechanical check, exclusivity call, fresh-context rereads with the cited extracts only;
   `contradictor.json` is applied by the orchestrator (annotation "contradicted by <family>", added findings verified like any other).
   Measured on our benches on the 6 code reports of the whole-reading duel, frozen protocol and criterion: every family adoptable
-  (cases with a true detection 6/6 each; true detections against added errors: Gemini 14/11, Kimi 20/6, Codex 20/8); the measure
+  (cases with a true detection 6/6 each; true detections against added errors: Gemini 14/11, Kimi 20/6, Codex 20/8; models of that day:
+  `google/gemini-4-argon` and `moonshotai/kimi-k3.1-pro` through OpenRouter, `gpt-5.6-sol` through the Codex CLI); the measure
   cost 6.95 USD; in use about 0.26 USD per contradictor call and 0.6 USD of rereads per report.
 - Known limits, stated in the plugin: n = 1 per cell; one reread model for every family; 36 of 37 misses confirmed by that reread;
   exclusivity judged by two other families on our benches and by the host model in the product; the contradictor prompt is the
   measured text with English JSON keys, the reread and match prompts are English translations of the measured French texts
-  (same rules, same answers), not re-measured after translation; `claude` as contradictor (Codex host) and anything outside the code plugin not measured.
+  (same rules, same answers), not re-measured after translation; `claude` as contradictor, other models or providers, and anything outside the code plugin not measured.
 
 ### Packaging
-- `check_keys.py` prints the configured contradictor families (names only, and whether `OPENROUTER_API_KEY` is present) before the
-  mode line; `KEYS.md` documents `OPENROUTER_API_KEY`; `tools/config.json` gains a `contradictor` block (families, measured
-  models, caps, reread model per host profile).
+- `check_keys.py` prints the configured contradictor families (names only, and whether each provider's key variable is present)
+  before the mode line; `KEYS.md` documents the provider keys; `tools/config.json` gains a `contradictor` block (families,
+  providers = url + key variable name, request fields, caps, reread model per host profile, empty = the host CLI's default).
 - Tests: `tests/test_contradictor.py` (fake OpenRouter endpoint, fake Codex and claude executables: no network, no cost),
   `tests/test_check_keys.py` extended.
+
+## v0.2.1, 2026-10-28 - free models, generic providers, review fixes, test campaign
+
+### Models and providers left free
+- No model name is fixed in the code: a contradictor family is `openai[:<model>]` (Codex CLI), `claude[:<model>]` (`claude -p`) or
+  `<provider>:<model>` for any OpenAI-compatible chat-completions API listed in `tools/config.json` `contradictor.providers`
+  (openrouter, gemini, openai-api, mistral, ollama, or one the user adds there or in `VP_CONTRADICTOR_PROVIDERS`), each with its
+  own key variable. Without a model, a CLI uses its own default.
+- The verifier and the whole reading take their model per host profile (`verifier.model` = `{"claude": "opus", "openai": ""}`:
+  an alias that follows the vendor, or the CLI default); `VP_MODEL` / `--model` override it.
+
+### Fixed (fresh-eye code review, then tests)
+- `verifier.py`: a card id or a source key could escape the work directory (`rmtree` of a model-written path): file-system-safe
+  names; DOI keys no longer crash; `sources/<key>.txt` and `sources/<key>/source.txt` both read; a leftover account-name guard removed.
+- `contradictor.py`: the key is never sent on a redirect nor over plain http (localhost excepted); one-pass prompt filling (a literal
+  `{X}` in a report is no longer substituted); malformed JSON lists no longer crash a run; verdicts parsed as whole words; a blank
+  `~/.config/vp/contradictors` counts as absent; the match call counts against the ceiling.
+- `whole_reading.py`: one-pass prompt filling; no unconditional `chown` of the user's files (optional `chown` in config);
+  references without a file extension (`Makefile:12@sha`) are recognised.
+- `condense_repo.py` accepts a working copy as well as a bare repository; `code_capsule.py` sees single-quoted `__main__` guards;
+  `gateway.py`: an invalid GitHub token no longer crashes `sources`, a non-numeric reference year no longer fails `references`;
+  `paper-code` accepts `arxiv:<id>`; `check_keys.py` says when an API family lacks its model id.
+
+### Test campaign (2026-10-28)
+- 73 offline unit tests green; blank install; every wired source of every plugin on the live network (no year after T); temporal
+  barrier online: 20/20 forbidden reviews unfindable; capsule, condensation, whole reading (real, Codex CLI) and contradictor (real,
+  Codex contradictor + Claude rereads) on real repositories; one end-to-end Claude Code run (biology, validated, 32 FOUND / 3
+  DISTORTED, plugin biases named in the appendix).
+- Known limits found: OpenAlex may return fewer than `--n` under the strict date barrier; `provenance` reads only the latest
+  Software Heritage visit; the verifier under Codex needs Codex's sandbox (user namespaces) to read its files, otherwise every claim
+  stays UNVERIFIED (safe, flagged). Not changed: they touch measured components.

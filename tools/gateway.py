@@ -207,6 +207,13 @@ def oa_item(w, B):
 OASEL = 'id,doi,title,publication_date,publication_year,primary_location,type'
 
 
+def year_before_T(year, B):
+    """A reference known only by its year: kept when the year (first four digits) is strictly before the year of T, else '9999'
+    (refused). A missing or non-numeric year ('n.d.', '2020a' is read as 2020) never raises."""
+    m = re.match(r'\s*(\d{4})', str(year or ''))
+    return m.group(1) if m and int(m.group(1)) < B.T.year else '9999'
+
+
 def oa_key():
     k = key('OPENALEX_KEY')
     return '&api_key=' + urllib.parse.quote(k) if k else ''
@@ -407,7 +414,7 @@ def references(ident, n, B):
         for x in refs:
             if x.get('source') == 'MED' and x.get('id'): continue
             # without PMID: year strictly before the year of T (strict), forbidden titles filtered
-            if not B.ok(x.get('doi'), str(int(x.get('pubYear') or 9999)) if str(x.get('pubYear') or '9999') < str(B.T.year) else '9999', title=x.get('title')): continue
+            if not B.ok(x.get('doi'), year_before_T(x.get('pubYear'), B), title=x.get('title')): continue
             out.append({'id': f"doi:{x['doi']}" if x.get('doi') else 'no-id', 'title': x.get('title'), 'year': x.get('pubYear'), 'journal': x.get('journalAbbreviation'), 'first_author': (x.get('authorString') or '').split(',')[0]})
         if out: return out, len(refs)
     doi = doi_of(ident, B)
@@ -421,7 +428,7 @@ def references(ident, n, B):
             for x in refs:
                 if x.get('DOI'): continue
                 t = x.get('article-title') or x.get('unstructured') or x.get('volume-title')
-                if t and B.ok(None, x.get('year') if str(x.get('year') or '9999') < str(B.T.year) else '9999', title=t):
+                if t and B.ok(None, year_before_T(x.get('year'), B), title=t):
                     out.append({'id': 'no-id', 'title': t[:300], 'year': x.get('year'), 'first_author': x.get('author')})
             if out: return out, len(refs)
     w = oa_work(ident)
@@ -478,9 +485,14 @@ class Gateway:
     def sources(self):
         return {'T': self.B.T.isoformat(), 'bound': f'documents before {self.B.T}', 'since': self.B.since, 'cap': self.cap,
                 'engines': self.engines, 'not_wired': self.not_wired, 'code_engines': self.code_engines,
-                'keys_present': sorted({k for p in self.plugins for k in p['keys'] if key(k)} | ({'GITHUB'} if 'code' in self.code_engines and sc.read_token() else set())),
+                'keys_present': sorted({k for p in self.plugins for k in p['keys'] if key(k)} | self._github_state()),
                 'commands': ['search-' + m for m in self.engines] + ['read', 'citing', 'references'] + [c for c, m in CODE_ENGINES.items() if m in self.code_engines],
                 'plugins': [{'name': p['name'], 'file': p['file'], 'sources_block': p['declared']} for p in self.plugins]}
+
+    def _github_state(self):
+        if 'code' not in self.code_engines: return set()
+        try: return {'GITHUB'} if sc.read_token() else set()
+        except ValueError: return {'GITHUB: invalid (credential_invalid, KEYS.md)'}
 
     def _count(self):
         self.state.mkdir(parents=True, exist_ok=True)

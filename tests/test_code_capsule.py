@@ -15,7 +15,7 @@ EXEC = 'raise SystemExit("executed")\n'
 FILES_1 = {"pyproject.toml": '[project]\nname = "pkg"\nlicense = "MIT"\n[project.scripts]\npkg-cli = "pkg:main"\n',
            "pkg/__init__.py": "def main():\n    pass\n", "pkg/__main__.py": EXEC, "tests/test_x.py": "def test_x():\n    pass\n",
            "LICENSE": "MIT License\n\nCopyright (c) 2026\n", "contributions.jsonl": '{"id": "B-001", "status": "adopted"}\n{"id": "B-002", "x": [1, 2]}\n'}
-FILES_2 = {"evil.py": EXEC + '\nif __name__ == "__main__":\n    pass\n', "Makefile": "VAR := 1\n.PHONY: all\nall: build\n\tmake\n",
+FILES_2 = {"single.py": "if __name__ == '__main__':\n    pass\n", "evil.py": EXEC + '\nif __name__ == "__main__":\n    pass\n', "Makefile": "VAR := 1\n.PHONY: all\nall: build\n\tmake\n",
            "Dockerfile": 'FROM x\nENTRYPOINT ["x"]\n', "bin/run": "#!/bin/sh\necho\n"}
 OWNER = "TO BE FILLED BY THE OWNER"
 
@@ -113,7 +113,7 @@ def test_maps_modules_entry_points_tests_and_license(repo):
     assert doc["modules"] == {"list": [{"path": "pkg", "language": "python", "files": 2, "bytes": nbytes}], "total": 1, "truncated": False}
     got = {(p["type"], p["where"]) for p in doc["entry_points"]["list"]}
     assert got == {("pyproject.toml scripts", f"pyproject.toml:5@{s}"), ("__main__", f"pkg/__main__.py:1@{s}"), ("Makefile target", f"Makefile:3@{s}"),
-                   ("Dockerfile", f"Dockerfile:2@{s}"), ("bin shebang", f"bin/run:1@{s}"), ("__name__ guard", f"evil.py:3@{s}")}, got
+                   ("Dockerfile", f"Dockerfile:2@{s}"), ("bin shebang", f"bin/run:1@{s}"), ("__name__ guard", f"evil.py:3@{s}"), ("__name__ guard", f"single.py:1@{s}")}, got
     assert doc["tests"] == {"directories": [{"path": "tests", "test_files": 1}], "test_files": 1}
     assert doc["license"] == {"file": "LICENSE", "first_line": "MIT License", "spdx_guess": "MIT"}
     (r / "LICENSE").unlink()
@@ -161,7 +161,7 @@ def test_markdown_respects_max_bytes_and_json_stays_complete(repo):
     md = pathlib.Path(res["markdown"]).read_bytes()
     assert len(md) <= 2000 and "truncated" in md.decode() and res["markdown_bytes"] == len(md)
     assert (len(doc["modules"]["list"]), doc["modules"]["total"], doc["modules"]["truncated"]) == (200, 1001, True)
-    assert len(doc["registry"]["entries"]) == 2 and len(doc["entry_points"]["list"]) == 6
+    assert len(doc["registry"]["entries"]) == 2 and len(doc["entry_points"]["list"]) == 7   # 6 + the single-quoted guard of single.py
     assert run(big, "--max-bytes", "10")[1]["refusal"] == "bound_invalid" and run(big, "--max-modules", "-1")[1]["refusal"] == "bound_invalid"
     full = pathlib.Path(run(big)[1]["markdown"]).read_text()  # default bound: sections in the order of the template, map before entry points
     order = [full.index(h) for h in ("## To fill", "## Identity", "## License", "## Seam map", "| python | m0000 |", "## Entry points", "- __main__", "## Tests", "## Contribution registry", "## Meta")]

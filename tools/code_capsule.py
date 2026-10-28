@@ -100,7 +100,8 @@ def map_entry_points(repo, sha, blobs):
                 cite(path, i, "Dockerfile", ln)
             elif path.startswith("bin/") and i == 1 and ln.startswith("#!"):
                 cite(path, 1, "bin shebang", ln)
-    out = git(repo, "grep", "-n", "-z", "-I", "-F", "-e", 'if __name__ == "__main__"', sha, "--", "*.py", "bin/*", ok=(0, 1)).stdout
+    out = git(repo, "grep", "-n", "-z", "-I", "-F", "-e", 'if __name__ == "__main__"', "-e", "if __name__ == '__main__'",  # both quote styles
+              sha, "--", "*.py", "bin/*", ok=(0, 1)).stdout
     for hit in (h for h in out.split(b"\n") if h.count(b"\0") >= 2):
         where, line, text = hit.split(b"\0", 2)
         cite(where[41:].decode("utf-8", "replace"), int(line), "__name__ guard", text.decode("utf-8", "replace"))
