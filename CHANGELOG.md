@@ -282,3 +282,24 @@ Code only (no change to SKILL.md nor to the role and prompt files); found by the
     to search a decision by number or exact phrase; new `--court <CE|TA75|CAA69>` and `--from/--to YYYY-MM-DD` (window kept before T),
     journaled as `filters` (live: "déréférencement" 492 decisions, 21 with `--court CE`). `plugins/law.md`: factual lines for both.
 - Tests: test_verifier, test_validate_result, test_law_checks, test_gateway extended; 15 offline files green.
+
+## v0.4.4, 2026-10-28 - full text pinned before T
+
+Fix of a temporal leak: `tools/verifier/fetch_fulltext.py` (`verifier.py --fulltext`) read the latest arXiv / bioRxiv / medRxiv version.
+- Date rule of the gateway applied to full texts: nothing dated on or after T is read. `verifier.py` passes `--T`; no T -> no full text
+  (`REFUSED`, abstract only through the gateway), no request sent.
+- arXiv: version dates from OAI-PMH arXivRaw (`oaipmh.arxiv.org`, level 1); the last version submitted before T (a version on day T is
+  excluded, an explicit `vN` is a ceiling); LaTeX -> HTML -> PDF of that version only (`arxiv.org/{e-print,html,pdf}/<id>vN`).
+  `meta.json`: `version`, `version_date`, `versions_total`, `later_versions_masked`.
+- bioRxiv / medRxiv: the last version posted before T is named from `api.biorxiv.org`; its full text exists only on `www.biorxiv.org` /
+  `www.medrxiv.org` (robots.txt disallows AI crawlers, never called; the old code downloaded the latest PDF there) and the Europe PMC copy
+  has no version: `SOURCE-UNAVAILABLE` with that reason, no fallback to Europe PMC or Unpaywall; the verifier reads that version's
+  abstract through the gateway.
+- Europe PMC full text only when the article was first published before T (unknown date -> refused); Unpaywall: arXiv copies pinned as
+  above, PMC copies under the Europe PMC rule, publisher copies only when published before T, never an unpinned arXiv / bioRxiv URL.
+  Europe PMC and publisher texts carry a `warning`: the open-access text may be a later corrected version.
+- No version before T -> `REFUSED` with the reason, nothing downloaded. Cache keyed by identifier and T: a copy fetched for another T,
+  or before this rule, is deleted by the fetcher and never read back by `verifier.load_sources` (new `T` argument).
+- Live (copy, uid 1000): 1706.03762 at T 2017-06-15 -> v1 of 7 (LaTeX, "41.0" BLEU of v1); 10.1101/2020.03.22.002386 at T 2020-03-25 ->
+  v2 (2020-03-23) of 3 named, no full text; no T -> REFUSED.
+- Tests: new `tests/test_fetch_fulltext.py` (7, offline, transport stubbed); 16 offline files green.

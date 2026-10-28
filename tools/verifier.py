@@ -6,7 +6,7 @@ Role instructions and citation check live next to this file and are used in plac
   verifier/ROLE.md             role instructions, copied as is into the working directory of the call
   verifier/citation_check.py   mechanical check of the fragments (import)
   verifier/fetch_fulltext.py   open-access full text retrieval (--fulltext)
-Measured on our benches (n = 50 questions, downstream): -4.2 points of false claims (CI 97.5 [-7.1; -1.5]); hardened set: 81/81.
+Measured in the lab (n = 50 questions, downstream): -4.2 points of false claims (CI 97.5 [-7.1; -1.5]); hardened set: 81/81.
 
 Command line:
   verifier.py verify --card card.json --out verdicts.json [--sources DIR] [--T YYYY-MM-DD --plugin P.md ...] [--fulltext]
@@ -17,7 +17,8 @@ Import:
   res = verify(card, texts, engine=model_call)         # engine: callable(prompt, workdir) -> (json_text, measure)
 
 Card: card.json (claims[].source.key -> card.sources[key] = {doi|arxiv|pmid|pmcid, title}).
-Sources: DIR/<KEY>/source.txt (full text); otherwise, with --T, record + dated abstract through the gateway (a claim
+Sources: DIR/<KEY>/source.txt (full text; --fulltext needs --T and reads only the last version dated before T, see
+verifier/fetch_fulltext.py); otherwise, with --T, record + dated abstract through the gateway (a claim
 about a point the abstract does not cover is then ABSENT); otherwise SOURCE-UNAVAILABLE. Every gateway reading is saved under
 <--sources, else --work/sources, else the directory of --out/sources>/<KEY>/: record.json (the gateway answer, read by law_checks.py)
 and source.txt (the text the verifier received, for the fragment check); a source.txt next to a record.json is read back as
@@ -182,8 +183,10 @@ def ident_of(desc):
     return None
 
 
-def load_sources(card, sources_dir=None, gateway=None, fulltext=False, out_dir=None):
-    """-> {key: {'text': str, 'origin': 'fulltext|abstract|missing', 'note': str, 'desc': dict}} for each key cited by the card."""
+def load_sources(card, sources_dir=None, gateway=None, fulltext=False, out_dir=None, T=None):
+    """-> {key: {'text': str, 'origin': 'fulltext|abstract|missing', 'note': str, 'desc': dict}} for each key cited by the card.
+    Full text (--fulltext) only with T: fetch_fulltext.py reads the last version dated before T; a fetched copy whose meta.json carries
+    another T (or none) is never read back."""
     keys = sorted({c for c in (key_of(a, card) for a in card['claims']) if c})
     table = card.get('sources') or {}
     out = {}
@@ -192,16 +195,20 @@ def load_sources(card, sources_dir=None, gateway=None, fulltext=False, out_dir=N
         txt = None; origin = 'missing'; note = ''
         if sources_dir:                                      # sources/<key>/source.txt (layout written by --fulltext) or sources/<key>.txt
             for f in (pathlib.Path(sources_dir) / fs_key(c) / 'source.txt', pathlib.Path(sources_dir) / (fs_key(c) + '.txt')):
-                if f.is_file():
+                if f.is_file() and not _stale(f.parent / 'meta.json', T):
                     txt = f.read_text(errors='replace'); origin = 'fulltext'
                     if f.name == 'source.txt' and (f.parent / 'record.json').is_file(): origin = 'abstract'; note = '(record + abstract)'   # saved gateway reading
                     break
-        if txt is None and fulltext and out_dir and any(desc.get(x) for x in ('arxiv', 'doi', 'pmcid')):
+        if txt is None and fulltext and not T: note = 'full text refused: no T (abstract only)'
+        if txt is None and fulltext and T and out_dir and any(desc.get(x) for x in ('arxiv', 'doi', 'pmcid')):
             d = pathlib.Path(out_dir) / fs_key(c); d.mkdir(parents=True, exist_ok=True)
             arg = next(f'--{x}' for x in ('arxiv', 'doi', 'pmcid') if desc.get(x))
-            subprocess.run([sys.executable, '-I', str(ROLE_DIR / 'fetch_fulltext.py'), arg, desc[arg[2:]], '--out', str(d)], capture_output=True, timeout=600)
-            if (d / 'source.txt').exists() and (d / 'source.txt').stat().st_size > 0:
+            subprocess.run([sys.executable, '-I', str(ROLE_DIR / 'fetch_fulltext.py'), arg, desc[arg[2:]], '--T', str(T), '--out', str(d)], capture_output=True, timeout=600)
+            if (d / 'source.txt').exists() and (d / 'source.txt').stat().st_size > 0 and not _stale(d / 'meta.json', T):
                 txt = (d / 'source.txt').read_text(errors='replace'); origin = 'fulltext'
+            else:
+                try: note = json.loads((d / 'meta.json').read_text()).get('reason') or ''
+                except (OSError, ValueError): pass
         if txt is None and gateway is not None:
             ident = ident_of(desc) or (c if re.match(r'^(doi|arxiv|pmid|celex|ecli|ja|hal|thesesfr):', c) else None)   # law ids: gateway.read_law
             if ident:
@@ -323,6 +330,14 @@ def check_entries(doc):
     raise ValueError('verdicts file: neither "claims" (verify) nor "verdicts" list')
 
 
+def _stale(meta, T):
+    """A source.txt written by fetch_fulltext.py (meta.json next to it) for another T, or before the T rule: not to be read."""
+    if not meta.is_file(): return False
+    try: m = json.loads(meta.read_text())
+    except (OSError, ValueError): return True
+    return not (T and m.get('T') == T and m.get('T_rule'))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest='action', required=True)
@@ -346,7 +361,7 @@ def main():
     if a.T or a.plugin:
         sys.path.insert(0, str(HERE)); from gateway import Gateway
         gateway = Gateway(a.plugin, T=a.T, run=a.run, state=a.state)
-    sources = load_sources(card, a.sources, gateway, a.fulltext, out_dir=a.sources or (pathlib.Path(a.work) / 'sources' if a.work else pathlib.Path(a.out).resolve().parent / 'sources'))
+    sources = load_sources(card, a.sources, gateway, a.fulltext, T=a.T, out_dir=a.sources or (pathlib.Path(a.work) / 'sources' if a.work else pathlib.Path(a.out).resolve().parent / 'sources'))
     engine = lambda prompt, workdir: model_call(prompt, workdir, a.model, a.host)
     res = verify(card, sources, engine, a.work, a.mode)
     if a.filter: res['filter'] = filter_claims(res)
