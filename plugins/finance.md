@@ -4,7 +4,7 @@ Read by the engine (SKILL.md). Four fixed sections. Sources, format and verifica
 
 ## Sources
 
-Block read by `tools/gateway.py` (format README.md); engines that are not wired are declared anyway and refused cleanly. Access marked according to `ACCESS-POLICY.md` (`api` level 1; `page` level 2, pacing 1 request / 2 s / host, declarative UA, cache, stop on 429/403; `browser` level 2b; `tos_forbidden`, `technical_block` level 3, listed and disabled). Probes dated 2026-10-26 unless stated.
+Block read by `tools/gateway.py` (format README.md); engines that are not wired are declared anyway and refused cleanly. Access marked according to `ACCESS-POLICY.md` (`api` level 1; `page` level 2, pacing 1 request / 2 s / host, declarative UA, cache, stop on 429/403; `browser` reserved and unused (no browser route); `tos_forbidden`, `technical_block` level 3, listed and disabled). Probes dated 2026-10-26 unless stated.
 ```sources
 engines: econbiz, openalex, crossref, europepmc, arxiv, edgar, fred, dbnomics, ecb, eurostat, worldbank, worldbank-wds, imf, oecd, bis, insee-bdm   # wired: econbiz, openalex, crossref, europepmc, arxiv (econ.*, q-fin.*), dbnomics, fred (FRED_API_KEY) ; the others: not wired (ecb...insee-bdm: shared SDMX adapter planned; reachable today through dbnomics)
 cap: 60                                  # safety cap on calls

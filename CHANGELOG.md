@@ -599,3 +599,28 @@ HOME and no pytest.
 ### Documentation
 - New `USAGE.md`: first research in five minutes, reading the result, disciplines, optional modes, keys, costs and limits, tools by hand, troubleshooting, adding a source; linked from the README.
 - `examples/report-cs-ai/README.md`: only figures that can be checked in its files; says that `sources/` is not shipped and what that changes.
+
+## v0.5.6, 2026-10-28 - no circumvention, stated plainly; ECHR search through the HUDOC RSS feed
+
+### Access policy
+- ACCESS-POLICY.md: the planned "level 2 bis" (driven browser for pages behind a technical challenge) is removed. A page behind a JavaScript challenge or robot filtering is not served: the gateway stops after one request and returns `{status: blocked, reason: bot_challenge}`. Level 3 now names solving or bypassing a bot challenge and disguising the client as a browser or a human. Neutral note on machine-readable text-and-data-mining opt-outs in the EU. KEYS.md: the planned stealth browser line is removed; plugins: `access: browser` is reserved and unused.
+
+### ECHR
+- New engine `hudoc-feed` (`tools/sources/hudoc_feed.py`, plugin `law`, keyless, level 2 `page`): searches ECHR judgments and
+  decisions through the RSS feed of a HUDOC search, a feature documented in the HUDOC manual (Annex 7, "create an RSS feed for the
+  criteria used in your search"). Same query as `hudoc` (question words quoted and joined with AND, collection ECHR, languages ENG/FRE,
+  doctypes HEJUD/HFJUD/HEDEC/HFDEC), same host and pacing (3 s, stop at once on 403/404/429), same declarative user agent.
+- Barrier: `kpdate` bounded to [start, eve of T] in the feed query; `pubDate` (= decision date) rechecked locally, strictly before T;
+  no date -> refused; forbidden identifiers (itemid, application numbers) and titles refused and counted. The feed gives no ECLI,
+  respondent, conclusion, language, importance level or total count: none is served. An empty formation label (seen on Grand
+  Chamber decisions) is kept as "judgment or decision"; any other kind is refused.
+- Items are `hudoc:<itemid>` and are read by the `hudoc` source (record and text), which may still answer `bot_challenge`.
+- A 403/429, or an HTML page instead of RSS, is a receipt `{status: blocked, reason: bot_challenge}` after one request; no other
+  client, no browser, no workaround. A feed declaring a DTD or entities is refused whole (no entity expansion).
+- `law_checks` coverage rule: a negative claim from `hudoc-feed` stays `needs_confirmation`, as for `hudoc` (the feed gives no total).
+- Docs: `plugins/law.md` (sources block, section 3), `KEYS.md`, `tools/gateway.py` usage text.
+- Tests: `tests/test_engines_hudoc_feed.py` (6, offline, recorded answer `tests/fixtures/hudoc_feed_recorded.xml`); `test_gateway.py`
+  law wiring list. Full offline suite green as uid 1000. Live 2026-10-28 (2 requests): "KlimaSeniorinnen Switzerland" at T 2024-04-09
+  -> 0 rows (judgment of 2024-04-09 excluded by the provider-side bound); at T 2024-04-10 -> 4 rows served (KlimaSeniorinnen ENG and
+  FRE, Careme and Duarte Agostinho decisions), all dated 2024-04-09. The same day, the HUDOC JSON back end used by `hudoc` had
+  answered Python's client with a Cloudflare 403 (probe recorded in `plugins/law.md`); the feed answered 200 to that client.

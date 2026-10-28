@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.5.5, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.5.6, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -178,7 +178,7 @@ the shape of a context capsule.
    most of that cost.
 4. On code, no variant beat a plain model on the "what would Y bring to X" task on our benches; the code plugin is kept for
    its capsule, its seams and the whole reading, not as a better finder.
-5. Sources without an API (level 2 pages, browser-driven pages) are declared in the plugins but not wired in the gateway;
+5. Sources without an API (level 2 pages) are declared in the plugins but not wired in the gateway;
    many "not wired" engines are listed as such in the `sources` output.
 
 The figures above come from small benches (3 to 50 cases each) run by the authors; the benches, protocols and raw
