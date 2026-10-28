@@ -55,6 +55,18 @@ NS = {'a': 'http://www.w3.org/2005/Atom', 'x': 'http://arxiv.org/schemas/atom', 
 key = sc.key   # single key rule (code_sources.key, KEYS.md): env NAME, then ~/.config/vp/<name lowercase>.key
 
 
+def ncbi_key():
+    """NCBI_API_KEY as an E-utilities `api_key=` parameter (10 req/s instead of 3); '' without a key."""
+    k = key('NCBI_API_KEY')
+    return '&api_key=' + urllib.parse.quote(k) if k else ''
+
+
+def interval(host):
+    """Seconds between two calls to a host; E-utilities allow 10 req/s with a key (0.11 s) instead of 3 (0.45 s)."""
+    if host == 'eutils.ncbi.nlm.nih.gov' and key('NCBI_API_KEY'): return 0.11
+    return INTERVAL.get(host, 0.3)
+
+
 def fetch(url):
     host = urllib.parse.urlparse(url).netloc
     cache = STATE / 'cache' / hashlib.sha256(url.encode()).hexdigest()
@@ -66,7 +78,7 @@ def fetch(url):
         with open(lock, 'a+') as f:
             fcntl.flock(f, fcntl.LOCK_EX)
             f.seek(0); last = float(f.read() or 0)
-            wait = last + INTERVAL.get(host, 0.3) - time.time()
+            wait = last + interval(host) - time.time()
             if wait > 0: time.sleep(wait)
             f.seek(0); f.truncate(); f.write(str(time.time()))
         try:
@@ -147,7 +159,7 @@ class Barrier:
 
 def pubmed_summ(ids, B):
     if not ids: return []
-    s = jget('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id=' + ','.join(ids))['result']
+    s = jget('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id=' + ','.join(ids) + ncbi_key())['result']
     out = []
     for i in ids:
         r = s.get(i, {})
@@ -162,7 +174,7 @@ def pubmed_summ(ids, B):
 
 def search_pubmed(q, n, B):
     url = (f'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&sort=relevance&datetype=edat&mindate={B.start:%Y/%m/%d}'
-           f'&maxdate={B.eve:%Y/%m/%d}&retmax={n}&term=' + urllib.parse.quote(q))
+           f'&maxdate={B.eve:%Y/%m/%d}&retmax={n}&term=' + urllib.parse.quote(q) + ncbi_key())
     r = jget(url)['esearchresult']
     return pubmed_summ(r.get('idlist', []), B), int(r.get('count', 0))
 
@@ -305,7 +317,7 @@ def read(ident, B):
         pmid = ident.split(':')[-1]
         meta = pubmed_summ([pmid], B)
         if not meta: return {'refusal': 'after T, forbidden or not found'}
-        x = fetch(f'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id={pmid}&rettype=abstract&retmode=text').decode('utf-8', 'replace')
+        x = fetch(f'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id={pmid}&rettype=abstract&retmode=text' + ncbi_key()).decode('utf-8', 'replace')
         return dict(meta[0], abstract=x[:6000])
     doi = ident[4:] if ident.lower().startswith('doi:') else ident
     r = jget('https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&resultType=core&pageSize=1&query=' + urllib.parse.quote(f'DOI:"{doi}"'))

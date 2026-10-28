@@ -8,7 +8,7 @@ Block read by `tools/gateway.py` (format README.md); engines that are not wired 
 ```sources
 engines: pubmed, europepmc, crossref, openalex, opencitations, gbif, ebi-search, unpaywall, clinicaltrials, doaj   # wired: pubmed, europepmc, crossref, openalex ; the others: not wired (unpaywall: already used downstream by tools/verifier/fetch_fulltext.py ; clinicaltrials: option, question on a specific trial ; doaj: option)
 cap: 60                                  # safety cap on calls
-keys: OPENALEX_KEY, NCBI_API_KEY         # optional, never required ; resolution KEYS.md (env NAME, ~/.config/vp/<name>.key) ; NCBI_API_KEY: declared, no effect until wired (10 req/s instead of 3)
+keys: OPENALEX_KEY, NCBI_API_KEY         # optional, never required ; resolution KEYS.md (env NAME, ~/.config/vp/<name>.key) ; NCBI_API_KEY: 10 req/s instead of 3
 useful_when: pubmed=large PubMed searches, systematic review, meta-analysis, many clinical trials ; openalex=broad searches outside MEDLINE, citation chaining, grey literature   # free-key sources ; read by tools/check_keys.py --suggest
 access: pubmed=api, europepmc=api, crossref=api, openalex=api, opencitations=api, gbif=api, ebi-search=api, unpaywall=api, clinicaltrials=api, doaj=api   # ACCESS-POLICY.md
 disabled: cochrane=browser, lilacs-scielo=browser, semantic-scholar=api, who-ictrp=technical_block, bhl=technical_block   # listed, not called ; reason under "Set aside"
@@ -20,7 +20,7 @@ Date bound: provider filter at the day before T, then local re-check: **every** 
    - Endpoints: `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&sort=relevance&datetype=edat&mindate=1800/01/01&maxdate=<day before T, YYYY/MM/DD>&retmax=<n <= 50>&term=<query>`; `esummary.fcgi?db=pubmed&retmode=json&id=`; `efetch.fcgi?db=pubmed&id=&rettype=abstract&retmode=text`.
    - Query: PubMed syntax (MeSH, `[tiab]` fields, booleans); deep boolean enumeration then screening gave +13.79 points of total recall (measured on our benches); pagination at 200 records then cheap sorting.
    - Date bound: yes (`edat`), then re-check: Entrez date AND electronic publication date (or sort date) < T.
-   - Key: OPTIONAL (`NCBI_API_KEY`, free NCBI account; **declared, no effect until wired**: the gateway does not add it to eutils requests yet): official limit **3 req/s without key, 10 req/s with key** (ncbiinsights 2017). Rate: 0.45 s gateway.
+   - Key: OPTIONAL (`NCBI_API_KEY`, free NCBI account; sent as `api_key=` on every eutils request): official limit **3 req/s without key, 10 req/s with key** (ncbiinsights 2017). Rate: 0.45 s gateway, 0.11 s with the key.
 
 2. **Europe PMC** (free full text, citing, references, bioRxiv **and medRxiv** preprints) - `access: api`
    - Endpoints: `https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&resultType=lite|core&pageSize=<up to 100>&query=`; `/{src}/{id}/citations?format=json&pageSize=1000`; `/{src}/{id}/references?...`; `nextPageUrl` to paginate.
