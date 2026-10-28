@@ -3,7 +3,11 @@
 """Context capsule of a local git repository X pinned at one commit SHA (plugins/code.md). Reads the tree at that
 SHA only (git ls-tree / show / grep on the commit, never the working copy) and never imports or executes any code of X: every
 parser is lexical (regex, tomllib, json). Writes <dir>/capsule-<X>@<sha12>.md (bounded) and .json (complete up to element caps);
-intention, refusals and target seam are left to the owner. Exit: 0 written; 2 refused ({"refusal", "detail"} on stdout); 3 git failed."""
+intention, refusals and target seam are left to the owner. With --auto (plugins/code.md, "Capsule built from the request"), X is the given
+path or its nearest parent holding .git, the SHA defaults to HEAD (frozen), the intention is the request itself ("inferred from the request"),
+1 to 3 seams are proposed from the module map ("proposed, not reviewed"), refusals stay empty ("none recorded: implicit authorisation"), Y is
+the first GitHub URL of the request (or --y) at --y-sha or at HEAD of the bare repository --y-repo; outputs are <dir>/capsule.md and .json.
+Exit: 0 written; 2 refused ({"refusal", "detail"} on stdout; --auto without a local git repository: "capsule_missing"); 3 git failed."""
 import argparse
 import datetime as dt
 import hashlib
@@ -25,6 +29,15 @@ MAKE_TARGET_RE = re.compile(r"^([A-Za-z0-9_][\w./%-]*)\s*:(?!=)")
 LICENSE_KEY_RE = re.compile(r"^\[project\][ \t]*\n(?:[ \t]*[^\[\s][^\n]*\n|[ \t]*\n)*?[ \t]*license\s*=\s*(.+?)[ \t]*$", re.M)  # fallback, truncated pyproject: [project] only
 SPDX_HINTS = (("GNU AFFERO", "AGPL-3.0"), ("GNU LESSER", "LGPL"), ("GNU GENERAL PUBLIC", "GPL"), ("APACHE", "Apache-2.0"), ("MOZILLA PUBLIC", "MPL-2.0"),
               ("PERMISSION IS HEREBY GRANTED", "MIT"), ("MIT", "MIT"), ("REDISTRIBUTION AND USE IN SOURCE AND BINARY FORMS", "BSD"), ("BSD", "BSD"), ("ISC", "ISC"))
+
+AUTO_INTENT, AUTO_SEAM, AUTO_REFUSALS = "inferred from the request", "proposed, not reviewed", "none recorded: implicit authorisation"
+AUTO_BUILT = "engine (--auto), from the request; not reviewed by the owner"
+MAX_SEAMS, MAX_QUESTION_CHARS = 3, 2000
+GITHUB_RE = re.compile(r"(?:https?://)?(?:www\.)?github\.com/([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))/([A-Za-z0-9_.-]{1,100})", re.I)
+SOURCE_EXT = (".py", ".js", ".mjs", ".ts", ".go", ".rs", ".rb", ".java", ".c", ".h", ".cpp", ".cs", ".php", ".sh")
+NOT_SEAM_PARTS = {"test", "tests", "testing", "docs", "doc", "examples", "example", "benchmarks", "bench", "vendor", "third_party", "node_modules", ".github"}
+STOPWORDS = set("the and for with that this from into does what which interesting interest contribution contributions project repo repository "
+                "current directory could would should about have has are was were can our your mine github com https http www bring take borrow".split())
 
 class Refusal(Exception):
     def __init__(self, code, rc=2, **detail):
@@ -155,6 +168,97 @@ def read_registry(repo, sha, blobs, arg):  # lines copied verbatim, parsed only 
     kept = [ln for _, ln in lines[:MAX_REGISTRY_LINES]]
     return {"source": source, "lines_total": len(lines), "truncated": len(lines) > len(kept), "entries": entries[:len(kept)]}, kept
 
+def find_repo(path_arg):  # --auto: the given path, or its nearest parent holding a .git entry (a path check, no subprocess)
+    try:
+        start = pathlib.Path(path_arg).resolve(strict=True)
+    except OSError:
+        start = None
+    for d in ([start, *start.parents] if start and start.is_dir() else []):
+        if (d / ".git").exists():
+            return str(d)
+    raise Refusal("capsule_missing", detail="no local git repository for X: give the path of your project (a git repository with at least one commit), "
+                  "or ask from inside it; nothing was collected", repo=path_arg)
+
+def head_sha(repo, what="X"):  # HEAD frozen at the request: the commit, never the working copy
+    p = git(repo, "rev-parse", "--verify", "--quiet", "HEAD^{commit}", ok=(0, 1, 128))
+    sha = p.stdout.decode().strip()
+    if p.returncode or not SHA_RE.match(sha):
+        raise Refusal("capsule_missing" if what == "X" else "y_sha_unresolved", detail=f"{what}: no commit at HEAD (an empty repository cannot be pinned)", repo=str(repo))
+    return sha
+
+def parse_y(question, y_arg):  # "owner/repo" from --y, else the first GitHub URL of the request; None = need only
+    m = GITHUB_RE.search(y_arg or question or "")
+    if y_arg and not m:
+        raise Refusal("y_not_github", detail="--y must be a GitHub repository URL (https://github.com/<owner>/<repo>)", y=y_arg)
+    return m and f"{m.group(1)}/{re.sub(r'(?i)[.]git$', '', m.group(2)).rstrip('.')}"
+
+def resolve_y(y, y_sha, y_repo):  # Y@SHA: the SHA given (read by the engine through the gateway) or HEAD of the bare repository supplied by the host
+    if not y:
+        return None
+    if y_sha:
+        if not SHA_RE.match(y_sha):
+            raise Refusal("sha_format", detail="--y-sha must be exactly 40 lowercase hex characters", sha=y_sha)
+        return {"repo": f"github.com/{y}", "sha": y_sha, "sha_source": "given by the engine (gateway reading)", "licence": "to read"}
+    if y_repo:
+        if not pathlib.Path(y_repo).is_dir():
+            raise Refusal("y_repo_missing", detail="--y-repo is not a directory", y_repo=y_repo)
+        return {"repo": f"github.com/{y}", "sha": head_sha(y_repo, "Y"), "sha_source": f"HEAD of the default branch in the bare repository supplied by the host ({y_repo})",
+                "licence": "to read"}
+    return {"repo": f"github.com/{y}", "sha": None, "sha_source": "to resolve: HEAD of the default branch at the request date, through the gateway", "licence": "to read"}
+
+def question_words(question):
+    return {w for w in re.findall(r"[a-z][a-z0-9]{2,}", GITHUB_RE.sub(" ", (question or "").lower())) if w not in STOPWORDS}
+
+DEF_RE = r"^(def |class |async def |function |export function |export class |func |pub fn |fn )"  # first top-level definition: the line cited for a file seam
+
+def propose_seams(repo, doc, blobs, sha, question):  # 1 to 3 seams from the module map: a hint for the engine, never a reading of X
+    words, s12, eps = question_words(question), sha[:12], doc["entry_points"]["list"]
+    def usable(path):
+        return not (set(path.lower().split("/")) & NOT_SEAM_PARTS)
+    def score(path):
+        return len(words & set(re.split(r"[/_.-]+", path.lower())))
+    mods = sorted((m for m in doc["modules"]["list"] if usable(m["path"])), key=lambda m: (-score(m["path"]), -m["bytes"], m["path"]))
+    files = [(p, size) for p, size in blobs if p.endswith(SOURCE_EXT) and usable(p)]
+    picks = []  # (path, line or None, why); per module: its entry point, else its largest source file; then the next largest files of the ranked modules
+    for m in mods:
+        prefix = "" if m["path"] == "." else m["path"] + "/"
+        ep = next((e for e in eps if prefix and e["where"].startswith(prefix) and usable(e["where"].split(":")[0])), None)
+        mine = sorted(((-sz, p) for p, sz in files if p.startswith(prefix) and "/" not in p[len(prefix):]), key=lambda t: (-score(t[1]), t))
+        tag = f"module {m['path']} ({m['language']}, {m['files']} files, {m['bytes']} bytes)"
+        if ep:
+            path, line = ep["where"].split("@")[0].rsplit(":", 1)
+            picks.append((path, int(line), f"{tag}; entry point: {ep['type']}"))
+        picks += [(p, None, f"{tag}; source file of {-sz} bytes") for sz, p in mine]
+    if not mods:  # no module marker: entry points, then the largest source files of the tree
+        for e in eps:
+            if usable(e["where"].split(":")[0]):
+                path, line = e["where"].split("@")[0].rsplit(":", 1)
+                picks.append((path, int(line), f"entry point: {e['type']}"))
+        picks += [(p, None, f"source file of {sz} bytes; no module marker in X") for p, sz in sorted(files, key=lambda t: (-score(t[0]), -t[1], t[0]))]
+    chosen, seen = [], set()
+    for path, line, why in picks:
+        if path not in seen and len(chosen) < MAX_SEAMS:
+            seen.add(path)
+            chosen.append([path, line, why])
+    need = [c[0] for c in chosen if c[1] is None]
+    hits = git(repo, "--literal-pathspecs", "grep", "-n", "-z", "-I", "-E", "-e", DEF_RE, sha, "--", *need, ok=(0, 1)).stdout if need else b""
+    first = {}
+    for hit in (h for h in hits.split(b"\n") if h.count(b"\0") >= 2):
+        where, line, _ = hit.split(b"\0", 2)
+        first.setdefault(where[41:].decode("utf-8", "replace"), int(line))
+    return [{"where": f"{path}:{line or first.get(path, 1)}@{s12}", "why": why + ("" if line or path not in first else "; first top-level definition"), "status": AUTO_SEAM}
+            for path, line, why in chosen]
+
+def auto_fields(repo, doc, blobs, sha, question, y, request_date):
+    q = " ".join((question or "").split())[:MAX_QUESTION_CHARS]
+    if not q:
+        raise Refusal("question_missing", detail="--auto needs --question: the request, word for word")
+    doc.update({"target_seam": propose_seams(repo, doc, blobs, sha, q), "target_seam_status": AUTO_SEAM, "intention": q, "intention_status": AUTO_INTENT,
+                "refusals": [], "refusals_status": AUTO_REFUSALS, "reviewed_by_owner": "no", "built_by": AUTO_BUILT,
+                "request_date": request_date or dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
+                "mode": "Y given" if y else "need only", "Y": y or "none (need only)"})
+    return doc
+
 def build(repo_arg, sha, registry, max_modules, max_bytes=65536):
     if max_modules < 0 or max_bytes < 256:
         raise Refusal("bound_invalid", detail="--max-modules >= 0 and --max-bytes >= 256 required", max_modules=max_modules, max_bytes=max_bytes)
@@ -170,6 +274,16 @@ def build(repo_arg, sha, registry, max_modules, max_bytes=65536):
 
 def render_markdown(doc, raw_lines, max_bytes):
     ident, lic, mods, pe, reg = doc["identity"], doc["license"], doc["modules"], doc["entry_points"], doc["registry"]
+    if doc.get("built_by") == AUTO_BUILT:
+        y = doc["Y"]
+        y_line = (f"- Y: {y['repo']}@{y['sha'] or 'unresolved'} ({y['sha_source']}), licence read: {y['licence']}" if isinstance(y, dict) else f"- Y: {y}")
+        seams = [f"  - {s['where']} - {s['why']}" for s in doc["target_seam"]] or ["  - none proposed (no module, entry point or source file found at this SHA)"]
+        own = [f"# Context capsule: {pathlib.Path(ident['repo']).name}@{ident['sha'][:12]}", "", "## Built from the request (capsule not reviewed)", "",
+               f"- reviewed_by_owner: no (built by {AUTO_BUILT}; the report is labelled \"capsule not reviewed\")",
+               f"- X: {pathlib.Path(ident['repo']).name}@{ident['sha']} (HEAD frozen at the request; uncommitted changes are not part of X)",
+               f"- request_date: {doc['request_date']} (= T)", f"- target_seam: ({AUTO_SEAM}; from the module map, 1 to 3)", *seams,
+               f"- intention: \"{doc['intention']}\" ({AUTO_INTENT})", f"- refusals: {AUTO_REFUSALS}", f"- mode: {doc['mode']}", y_line, "",
+               "Review by the owner: plugins/code.md, section Context capsule (5 points); a reviewed capsule replaces this one.", ""]
     head = [f"# Context capsule: {pathlib.Path(ident['repo']).name}@{ident['sha'][:12]}", "", "## To fill before use", "",
             f"- target_seam: {doc['target_seam']}  (1 to 3 seams, path:line@SHA on the X side, what happens there today)",
             f"- intention: {doc['intention']}  (measurable: throughput, invariant, guarantee, cost)",
@@ -180,6 +294,8 @@ def render_markdown(doc, raw_lines, max_bytes):
             f"- files: {ident['files']}; bytes: {ident['bytes']}", "", "## License", "", "- LICENSE MISSING: read before any borrowing" if not lic else
             f"- {lic['file']}: \"{lic['first_line']}\", guessed SPDX: {lic['spdx_guess'] or 'unknown'} (to read before any borrowing)", "",
             f"## Seam map ({mods['total']} modules{'; list truncated' if mods['truncated'] else ''})", "", "| language | module | files | bytes |", "|---|---|---|---|"]
+    if doc.get("built_by") == AUTO_BUILT:
+        head = own + head[head.index("## Identity"):]
     mod_lines = [f"| {m['language']} | {m['path']} | {m['files']} | {m['bytes']} |" for m in mods["list"]]
     pe_lines = [f"- {p['type']}: `{p['where']}`: `{p['text']}`" for p in pe["list"]]
     mid = [""] + [f"Limit: {lim}" for lim in pe["limits"]] + ["", "## Tests", ""]
@@ -203,20 +319,39 @@ def render_markdown(doc, raw_lines, max_bytes):
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Context capsule of a local git repository X at a 40-hex SHA (read-only, nothing of X is executed). --registry: a path "
                                  "inside X at the SHA, else a file (default: contributions.jsonl at the SHA). --out: output directory (default .). --max-bytes bounds the Markdown only.")
-    for flag, kw in (("--repo", {"required": True}), ("--sha", {"required": True}), ("--registry", {}), ("--out", {"default": "."}),
-                     ("--max-bytes", {"type": int, "default": 65536}), ("--max-modules", {"type": int, "default": 200})):
+    for flag, kw in (("--repo", {"required": True}), ("--sha", {}), ("--registry", {}), ("--out", {"default": "."}),
+                     ("--max-bytes", {"type": int, "default": 65536}), ("--max-modules", {"type": int, "default": 200}),
+                     ("--auto", {"action": "store_true", "help": "build the capsule from the request (--question): X = --repo or its nearest parent with .git, SHA = HEAD"}),
+                     ("--question", {"help": "the request, word for word (--auto)"}), ("--y", {"help": "GitHub URL of Y (--auto; default: first GitHub URL of --question)"}),
+                     ("--y-sha", {"help": "40-hex SHA of Y read by the engine (--auto)"}), ("--y-repo", {"help": "bare repository of Y supplied by the host: Y@SHA = its HEAD (--auto)"}),
+                     ("--request-date", {"help": "ISO date of the request = T (--auto; default: now, UTC)"})):
         ap.add_argument(flag, **kw)
     a = ap.parse_args(argv)
+    if not a.auto and not a.sha:
+        ap.error("--sha is required (or --auto, which freezes HEAD)")
     try:
+        if a.auto:
+            a.repo = find_repo(a.repo)
+            a.sha = head_sha(a.repo) if a.sha in (None, "HEAD") else a.sha
+            y = resolve_y(parse_y(a.question, a.y), a.y_sha, a.y_repo)
         doc, raw_lines = build(a.repo, a.sha, a.registry, a.max_modules, a.max_bytes)
+        if a.auto:
+            if (pathlib.Path(a.out) / "capsule.md").exists() or (pathlib.Path(a.out) / "capsule.json").exists():
+                raise Refusal("capsule_exists", detail="a capsule is already in the working directory: it is used as is, never overwritten", out=a.out)
+            auto_fields(pathlib.Path(a.repo), doc, read_tree(pathlib.Path(a.repo), a.sha)[1], a.sha, a.question, y, a.request_date)
     except Refusal as r:
         print(json.dumps({"refusal": r.code, **r.detail}, ensure_ascii=False, sort_keys=True))
         return r.rc
     pathlib.Path(a.out).mkdir(parents=True, exist_ok=True)
-    stem = str(pathlib.Path(a.out) / f"capsule-{pathlib.Path(doc['identity']['repo']).name}@{a.sha[:12]}")  # no with_suffix: X may contain dots
+    stem = str(pathlib.Path(a.out) / ("capsule" if a.auto else f"capsule-{pathlib.Path(doc['identity']['repo']).name}@{a.sha[:12]}"))  # no with_suffix: X may contain dots
     pathlib.Path(stem + ".md").write_text(md := render_markdown(doc, raw_lines, a.max_bytes), encoding="utf-8")
     pathlib.Path(stem + ".json").write_text(json.dumps(doc, ensure_ascii=False, sort_keys=True, indent=1) + "\n", encoding="utf-8")
-    print(json.dumps({"markdown": stem + ".md", "json": stem + ".json", "markdown_bytes": len(md.encode())}))
+    res = {"markdown": stem + ".md", "json": stem + ".json", "markdown_bytes": len(md.encode())}
+    if a.auto:
+        res.update({"X": f"{doc['identity']['repo']}@{a.sha}", "seams_proposed": len(doc["target_seam"]), "mode": doc["mode"], "label": "capsule not reviewed",
+                    "Y": f"{y['repo']}@{y['sha'] or 'unresolved'}" if y else None,
+                    "question_to_owner": "Anything in X that must not be touched (core, files, licences, dependencies)? Interactive session only; no answer = continue."})
+    print(json.dumps(res, ensure_ascii=False))
     return 0
 
 if __name__ == "__main__":

@@ -686,3 +686,18 @@ Five sources that the plugins already declared as `not_wired` are now served by 
   `/vanishingpoint:vanishingpoint`). The repository stays usable as a plain skill directory.
 - Tests: `test_setup_keys.py` (contact listed, form refused, 0600 file, live check OK / refused, invalid state, removal),
   `test_check_keys.py` (contact announced once, invalid, present without display).
+
+## v0.5.9, 2026-10-29 - code plugin: capsule built from the request
+
+- A plain-language request ("is https://github.com/<owner>/<repo> interesting as a contribution to my project?") no longer stops on `capsule missing`. When the working directory holds no capsule, the engine builds one before any collection and goes on (`plugins/code.md`, "Capsule built from the request").
+- `tools/code_capsule.py --auto --repo <X> --question "<request>" [--y-repo <bare Y> | --y-sha <40 hex>] [--request-date <T>] --out <run dir>` writes `capsule.md` and `capsule.json`:
+  - X is the given path, or its nearest parent holding `.git` (a path check, no subprocess). X@SHA is HEAD, frozen when the tool runs; `--sha` may be omitted or set to `HEAD`.
+  - Y is the first GitHub URL of the request (or `--y`). Y@SHA is HEAD of the bare repository supplied by the host, or the SHA the engine read through the gateway. Without either, it is written as `unresolved`, never invented. A request without a URL gives mode `need only`.
+  - `intention` is the request word for word, marked `inferred from the request`.
+  - `target_seam` holds 1 to 3 seams taken from the module map, marked `proposed, not reviewed`. Each seam is the module's entry point or else its largest source files, cited at their first top-level definition. Tests, docs, examples and vendored code are excluded. Modules named in the request rank first.
+  - `refusals` is left empty and marked `none recorded: implicit authorisation`; `reviewed_by_owner: no`.
+  - An existing capsule is never overwritten (`capsule_exists`).
+  - Everything is still read at the SHA (`git ls-tree / show / grep`), and nothing of X or Y is executed or imported.
+- In an interactive session the engine may ask ONE short question ("anything that must not be touched?") and copies the answer into `refusals`. With no answer it continues at once. The report keeps the label `capsule not reviewed`.
+- `capsule missing` remains only when X cannot be found: no local git repository, or a repository without a commit. The tool then returns `{"refusal": "capsule_missing"}` with one sentence telling the user what to provide. The owner path (`--repo --sha`, fields `TO BE FILLED BY THE OWNER`) is unchanged.
+- Tests: `tests/test_code_capsule.py` has 4 new tests (14 in all). They cover the marked capsule from the request, HEAD freezing from a subdirectory, Y at HEAD of a bare repository, need-only mode, `unresolved` Y, `capsule_missing` with its message, no overwrite, and seams that follow the module map and skip tests. They also check that `whole_reading.seam_block` reads the proposed seams. The full offline suite is green as uid 1000.
