@@ -28,6 +28,7 @@ UA = 'VanishingPoint/1 (research skill)'   # replaced below once key() is define
 SWH = 'https://archive.softwareheritage.org/'
 ORIGIN = r'https://[A-Za-z0-9.-]+(?::\d+)?/\S*'   # an origin for Software Heritage: HTTPS, a plain host (no userinfo), a path
 SWHID = r'swh:1:(cnt|dir|rev|rel|snp):[a-f0-9]{40}'
+CODE_FILE = r'(https://[A-Za-z0-9.-]+(?::\d+)?/[^\s#]*)#([^\s@#]+)@([a-f0-9]{40})'   # code-file <origin>#<path>@<40-hex SHA> (verifier)
 
 
 def refuse(condition, code):
@@ -329,6 +330,28 @@ class Provenance:
         refuse(entry.get('type') != 'file' or not re.fullmatch('[a-f0-9]{40}', target or ''), 'not_file')
         return dict(origin=origin, swhid='swh:1:cnt:' + target, revision_swhid='swh:1:rev:' + sha, directory_swhid='swh:1:dir:' + rev['directory'],
                     date_visited=None, permanent_url=f'{SWH}swh:1:cnt:{target};origin={quote(origin, safe="")};anchor=swh:1:rev:{sha};path=/{quote(path, safe="/")}')
+
+    def file_text(self, arg):
+        """code-file <origin>#<path>@<40-hex SHA> -> the whole file at that revision (raw content of the archive, same client, same pacing,
+        same size bound MAX_BYTES), dated by the commit (committer date, else author date) so that the gateway's date barrier applies.
+        Read by tools/verifier.py when no local git directory holds the SHA (plugins/code.md, verification rule 1)."""
+        m = re.fullmatch(CODE_FILE, arg or '')
+        refuse(not m, 'reference')
+        origin, path, sha = m.groups()
+        rev = self._json(SWH + 'api/1/revision/' + sha + '/')
+        f = self.file(origin, sha, path)
+        target = f['swhid'].rsplit(':', 1)[1]
+        url, tok = SWH + 'api/1/content/sha1_git:' + target + '/raw/', swh_token(self.c.cache_dir)
+        data = None
+        if tok:
+            try: data = self.c.get(url, tok, cred='SWH_TOKEN')
+            except ValueError as e:
+                if str(e) not in ('provider_error:HTTP401', 'provider_error:HTTP403'): raise
+                mark_invalid(self.c.cache_dir, 'SWH_TOKEN')
+        if data is None: data = self.c.get(url)
+        refuse(b'\0' in data, 'binary')
+        return dict(f, id=f'{path}@{sha}', path=path, sha=sha, date=rev.get('committer_date') or rev.get('date'), bytes=len(data),
+                    sha256=hashlib.sha256(data).hexdigest(), text=data.decode('utf-8', 'replace'))
 
 
 
