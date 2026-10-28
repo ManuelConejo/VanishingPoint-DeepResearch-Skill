@@ -532,3 +532,16 @@ not measured as methods.
 
 ### Not yet in SKILL.md
 - Both tools run from the command line; the optional SKILL.md sections that let the assistant use them wait for a duel.
+
+## v0.5.4, 2026-10-28 - "Prior art?" mode and PRISMA / follow-up questions usable by the assistant
+
+- SKILL.md: two optional sections, never by default: "Prior-art mode" (the assistant cuts the idea into elements and the code
+  decides Exists / Partially / Not found, `finish_run.py --prior-art`) and "PRISMA flow diagram and follow-up questions"
+  (`finish_run.py --prisma --followups` when the user asks); the tool inventory of section 1 names the three tools.
+- Measured before adoption (protocol frozen by sha256, 8.20 USD-equivalent, n = 1 per mode): a standard run with the new sections
+  stays compliant, triggers no optional mode and costs 0.81x the same case before; a prior-art request on LoRA (T = 2022-01-01)
+  passes its checks with LoRA (arXiv:2106.09685) first, answer "Partially" where "Exists" was expected (one claim carried a
+  GPT-3-specific figure, which the mode rightly refuses to correct); a PRISMA + follow-ups request is compliant, its boxes match
+  the gateway journal (248 identified, 61 duplicates, 14 included) and its five questions are traceable. One grader bug, found after
+  the run and declared (records without identifier counted as duplicates), was corrected in writing, the frozen script unchanged.
+- "Quote-first writing" and "Contradiction hunt" stay command-line tools; their sections wait for a measure.
