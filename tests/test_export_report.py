@@ -4,7 +4,7 @@
 self-contained HTML page; hostile text (<script>, "><img onerror>, javascript: link, raw HTML) comes out escaped or neutralised; the
 header takes card/run/verdicts fields when present and is absent otherwise; --pdf without any converter (empty PATH, module blocked)
 keeps the HTML, exits 0 and says so; with a converter present in the test environment, a real PDF starting with %PDF."""
-import contextlib, io, json, os, pathlib, re, sys, tempfile, unittest
+import contextlib, importlib, io, json, os, pathlib, re, sys, tempfile, unittest
 from unittest import mock
 P = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(P.parent / 'tools')); import export_report as E   # noqa: E702
@@ -172,6 +172,21 @@ class Export(unittest.TestCase):
         self.assertEqual(rc, 0); pdf = d / 'REPORT.pdf'
         if not pdf.exists(): self.skipTest('converter present but failed here: ' + msg.splitlines()[-1])
         self.assertEqual(pdf.read_bytes()[:4], b'%PDF')
+
+    def test_open_only_with_a_screen(self):
+        """--open: nothing is launched without a desktop (no DISPLAY on Linux); with one, the viewer gets the produced file."""
+        saved = {k: os.environ.pop(k, None) for k in ('DISPLAY', 'WAYLAND_DISPLAY')}
+        try:
+            if sys.platform.startswith('linux'): self.assertIsNone(E.can_open())
+            calls = []; real = E.subprocess.Popen
+            E.can_open = (lambda: ['viewer']); E.subprocess.Popen = lambda cmd, **k: calls.append(cmd)
+            try: self.assertTrue(E.open_file('/x/REPORT.pdf'))
+            finally: E.subprocess.Popen = real
+            self.assertEqual(calls, [['viewer', '/x/REPORT.pdf']])
+        finally:
+            importlib.reload(E)
+            for k, v in saved.items():
+                if v is not None: os.environ[k] = v
 
 
 if __name__ == '__main__':

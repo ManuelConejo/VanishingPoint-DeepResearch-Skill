@@ -214,3 +214,9 @@ Everything in this release was either measured on our benches before being adopt
 - Tests: `tests/test_export_report.py` (escaping of `<script>`, `"><img onerror>`, `javascript:` links; header with and
   without JSON; `--pdf` with no converter; real `%PDF` when a converter exists). Checked on two real reports with
   WeasyPrint 68.1 and Chromium 150 (7 and 11 A4 pages).
+
+## v0.3.4, 2026-10-28 - open the report
+
+- `export_report.py --open` shows the PDF (else the HTML) with the desktop viewer (`open` on macOS, `xdg-open` with a display on
+  Linux, `start` on Windows) and does nothing on a server or in a container (one line says so). SKILL.md runs export with
+  `--pdf --open`. Test added.
