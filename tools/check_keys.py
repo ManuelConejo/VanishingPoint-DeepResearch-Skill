@@ -33,7 +33,7 @@ CATALOGUE = {
     'VP_GITHUB_TOKEN': dict(source='github (GitHub side of search-code)', engine='code', without='skipped', passed=True,
                             reason='search/code and GraphQL require a token: {"status":"skipped","reason":"credential_missing"}; Sourcegraph continues',
                             free='free, GitHub account, read-only token', url='https://github.com/settings/tokens'),
-    'SWH_TOKEN': dict(source='software-heritage', engine='provenance', without='degraded', passed=False, reason='120 req/h instead of 1,200',
+    'SWH_TOKEN': dict(source='software-heritage', engine='provenance', without='degraded', passed=True, reason='120 req/h instead of 1,200 (interval 6 s instead of 3 s)',
                       free='free, account', url='https://archive.softwareheritage.org/ (profile -> API token)'),
     'PISTE_CLIENT_ID': dict(source='judilibre', engine=None, without='skipped', passed=False, reason='0 request, not_configured (token required by the service)',
                             free='free, personal PISTE registration', url='https://piste.gouv.fr/', pair='PISTE_CLIENT_SECRET'),
@@ -158,13 +158,21 @@ def present(name):
     return bool(gw.key(name))
 
 
+def served(name, declared):
+    """The wired code engine that serves a declared source name (gateway.SERVED_BY: github -> code, hf-papers -> paper-code...) when that
+    engine is declared too; otherwise None (the name stays "not wired")."""
+    e = getattr(gw, 'SERVED_BY', {}).get(name)
+    return e if e in WIRED and e in declared else None
+
+
 def plugin_report(path):
     d = gw.read_plugin(path)
     declared = list(d['engines']) + list(d['code_engines'])
     state = {k: present(k) for k in d['keys']}
     r = {'plugin': d['name'], 'file': d['file'], 'sources_block': d['declared'], 'keys_declared': list(d['keys']),
          'keys_present': sorted(k for k, v in state.items() if v is True), 'keys_absent': sorted(k for k, v in state.items() if v is not True),
-         'active': [m for m in declared if m in WIRED], 'degraded': [], 'skipped': [], 'not_wired': [m for m in declared if m not in WIRED]}
+         'active': [m for m in declared if m in WIRED], 'degraded': [], 'skipped': [], 'not_wired': [m for m in declared if m not in WIRED and served(m, declared) is None],
+         'served_by': {m: served(m, declared) for m in declared if m not in WIRED and served(m, declared)}}
     for k in d['keys']:
         c = CATALOGUE.get(k)
         if c is None:
@@ -202,6 +210,7 @@ def text(rep):
         out.append('  skipped        : ' + ('\n                   '.join(line(i) for i in r['skipped']) or 'none (for lack of a key)'))
         if r.get('keyed_not_wired'):
             out.append('  keyed, not wired : ' + '\n                   '.join(line(i) for i in r['keyed_not_wired']))
+        if r.get('served_by'): out.append('  served by      : ' + ', '.join(f'{m} (via {e})' for m, e in r['served_by'].items()))
         out.append('  not wired      : ' + (', '.join(r['not_wired']) or 'none'))
         out.append('  keys present   : ' + (', '.join(r['keys_present']) or 'none') + '; absent: ' + (', '.join(r['keys_absent']) or 'none'))
         if r.get('unknown_keys'): out.append('  keys outside the catalogue (KEYS.md to complete): ' + ', '.join(r['unknown_keys']))

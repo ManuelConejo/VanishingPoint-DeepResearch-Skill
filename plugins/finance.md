@@ -6,7 +6,7 @@ Read by the engine (SKILL.md). Four fixed sections. Sources, format and verifica
 
 Block read by `tools/gateway.py` (format README.md); engines that are not wired are declared anyway and refused cleanly. Access marked according to `ACCESS-POLICY.md` (`api` level 1; `page` level 2, pacing 1 request / 2 s / host, declarative UA, cache, stop on 429/403; `browser` level 2b; `tos_forbidden`, `technical_block` level 3, listed and disabled). Probes dated 2026-10-26 unless stated.
 ```sources
-engines: econbiz, openalex, crossref, europepmc, arxiv, edgar, fred, dbnomics, ecb, eurostat, worldbank, worldbank-wds, imf, oecd, bis, insee-bdm   # wired: openalex, crossref, europepmc, arxiv (econ.*, q-fin.*) ; the others: not wired (dbnomics...insee-bdm: shared SDMX adapter planned)
+engines: econbiz, openalex, crossref, europepmc, arxiv, edgar, fred, dbnomics, ecb, eurostat, worldbank, worldbank-wds, imf, oecd, bis, insee-bdm   # wired: econbiz, openalex, crossref, europepmc, arxiv (econ.*, q-fin.*) ; the others: not wired (dbnomics...insee-bdm: shared SDMX adapter planned)
 cap: 60                                  # safety cap on calls
 keys: OPENALEX_KEY, FRED_API_KEY         # optional ; FRED without key = disabled, no call
 useful_when: fred=US macroeconomic series, rates, inflation, GDP, unemployment, point-in-time values, data revisions, ALFRED ; openalex=broad searches, working papers, citation chaining   # free-key sources ; read by tools/check_keys.py --suggest
@@ -19,8 +19,9 @@ Date bound: the day before T on the provider side, then local re-check of every 
 1. **EconBiz** (ZBW: articles, working papers, books; the key-less route, because RePEc/IDEAS and SSRN have no public search API) - `access: api`
    - Endpoint: `https://api.econbiz.de/v1/search` (JSON `hits.hits[*]`, total `hits.total`).
    - Query: `q=<text>` with `AND/OR/NOT`, quoted phrases, fields `title:`, `subject:`, `person:`; STW vocabulary (economics thesaurus) and JEL codes as subjects; pagination `from=`, `size=` (100 per page, 300 max).
-   - Date bound: no established provider filter; local re-check on `date[0]`.
-   - Key: none. Rate: published limit not established; 1 s local. Measured: 30 records with a full receipt in a real trial without key.
+   - Date bound: provider side `q=(<q>) AND econbiz_created:[* TO <day before T>T23:59:59Z] AND date_sort:[* TO <year of the day before T>]` (Solr fields, probed 2026-10-28); local re-check: the date of the work (free text: "6 May 2026", "27. April 2017", "1st quarter 2026", "[2015]", intervals -> latest date; a year alone passes only if strictly before the year of T) AND the indexing date `econbiz_created` < T; a DOI (from `identifier_url`) is rechecked on Crossref (deposit AND publication < T, strict).
+   - Key: none. Terms (api.econbiz.de/doc, read 2026-10-28): free, "be polite", no large-scale copy, no AI clause. Rate: published limit none ("subject to change"); 1 s local. Measured: 30 records with a full receipt in a real trial without key.
+   - State (2026-10-28): wired, `search-econbiz "<q>"` (items `doi:` or `econbiz:<record id>`, date, date_indexed, series) and `read econbiz:<record id>` (`/v1/record/<id>`; abstract when present, else subjects). Live probe: "inflation expectations" 4/10 kept at T 2026-10-26 (year-only 2026 records refused), 13/20 at T 2019-06-01, 0 date after T.
 
 2. **OpenAlex, field 20 "Economics, Econometrics and Finance"** - `access: api`
    - Endpoint: `https://api.openalex.org/works`; resolution `/works/doi:<DOI>`.

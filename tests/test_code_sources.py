@@ -123,7 +123,7 @@ class CodeSources(unittest.TestCase):
             self.client().get('https://pypi.org/pypi/p/1.2/json')
         self.assertEqual(str(cm.exception), 'offline')
         self.assertEqual(sc.HOSTS, {'api.github.com', 'sourcegraph.com', 'api.deps.dev', 'pypi.org', 'registry.npmjs.org', 'crates.io',
-                                    'huggingface.co', 'archive.softwareheritage.org'})
+                                    'huggingface.co', 'archive.softwareheritage.org', 'api.osv.dev'})
 
     def test_client_refuses_redirects(self):
         c = sc.CodeClient(cache_dir=self.d / 'state')

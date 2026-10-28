@@ -5,9 +5,11 @@
  "review_title_threshold": 0.8,
  "code_intervals": {
   "api.github.com": 6.1,
+  "archive.softwareheritage.org": 6.0,
+  "archive.softwareheritage.org+token": 3.0,
   "default": 2.0
  },
- "note": "call_cap.default = safety cap on gateway calls when no plugin and no --cap gives one (measured on our benches: 60 calls). review_title_threshold = token overlap above which a title is treated as a forbidden review. code_intervals = minimum seconds between two calls to the same host for the code engines.",
+ "note": "call_cap.default = safety cap on gateway calls when no plugin and no --cap gives one (measured on our benches: 60 calls). review_title_threshold = token overlap above which a title is treated as a forbidden review. code_intervals = minimum seconds between two calls to the same host for the code engines; <host>+token = the interval when a credential is sent (Software Heritage: 120 req/h documented and about 10/min observed anonymous -> 6 s; 1,200 req/h with SWH_TOKEN -> 3 s).",
  "verifier": {
   "model": {
    "claude": "opus",

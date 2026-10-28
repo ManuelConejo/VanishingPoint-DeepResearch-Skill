@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 """Non-retrievability test of gateway.py (19 admissible date-barrier cases from tests/fixtures/bench_cases.json)
-+ arXiv, plugin `sources` block, undeclared engines, cap. Everything offline (fetch replaced).
++ arXiv, law engines (eurlex, justice-administrative, hal, theses-fr), plugin `sources` block, undeclared engines, cap. Everything offline (fetch replaced).
 Online (--online): the exact title of each review searched on the 4 engines + read of its DOI; the review must stay unfindable.
 Run: python3 -I tests/test_gateway.py
 """
-import datetime as dt, json, os, pathlib, re, sys, tempfile, unittest, urllib.parse
+import datetime as dt, json, os, pathlib, re, sys, tempfile, unittest, urllib.error, urllib.parse
 P = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(P.parent / 'tools')); import gateway as gw
 
@@ -222,6 +222,207 @@ class Offline(unittest.TestCase):
         self.assertEqual(every['engines'], sorted(gw.ENGINES)); self.assertEqual(every['cap'], 60)
         template = plugins_dir / '_TEMPLATE.md'
         if template.exists(): self.assertTrue(gw.read_plugin(template)['declared'])   # the template has a block, with engines to fill in
+
+
+# ---------------------------------------------------------------- law engines (eurlex, justice-administrative, hal, theses-fr)
+
+LT = dt.date(2024, 3, 15); LV, LF = '2024-03-14', '2024-03-16'
+LAW_FORBID_T = 'Forbidden landmark ruling on data retention and privacy'
+# (key, title, date, expected_visible): before T, after T, day T, partial date at the year of T, forbidden id, forbidden title, no date
+LAW_DOCS = [('old', 'Old relevant act', LV, True), ('after', 'After T', LF, False), ('dayT', 'Day T', LT.isoformat(), False),
+            ('partial', 'Partial', str(LT.year), False), ('forbid', 'Neutral title', LV, False), ('ftitle', LAW_FORBID_T, LV, False),
+            ('nodate', 'No date', None, False)]
+CELEX = {'old': '32020R0001', 'after': '32024R0002', 'dayT': '32024R0003', 'partial': '62024CJ0004', 'forbid': '62020CJ0005', 'ftitle': '62020CJ0006',
+         'nodate': '62020CJ0007', 'ag': '62020CC0008'}
+
+
+def law_barrier():   # forbidden identifiers share the DOI list; the administrative decisions have no title: forbidden by id instead
+    return gw.Barrier(LT, forbidden_dois=['10.1/forbid', CELEX['forbid'], 'ECLI:FR:CECHR:2024:000004.20240314', 'ja:CE/DCE_000005_20240314', '2020PA010004'],
+                      forbidden_titles=[LAW_FORBID_T])
+
+
+def cellar_fetch(urls, lmd='2020-01-01', void_date='2025-01-01'):
+    def fetch(url, headers=None):
+        urls.append(urllib.parse.unquote_plus(url))
+        if 'resource/celex/' in url: return b'<html><head><title>x</title></head><body><p>OFFICIAL TEXT</p></body></html>'
+        q = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)['query'][0]
+        rows = []
+        if 'bif:contains' in q:
+            part = '^[03]' if '"^[03]"' in q else '^6'
+            for k, t, d, _ in LAW_DOCS + [('ag', 'AG opinion', LV, False)]:
+                c = CELEX[k]
+                if re.match(part, c): rows.append({'celex': {'value': c}, 'date': {'value': d or LV}, 'title': {'value': t}, 'lang': {'value': gw.EU_LANG + 'ENG'}})
+        elif 'VALUES ?celex' in q:
+            for k, t, d, _ in LAW_DOCS:
+                c = CELEX[k]
+                if f'"{c}"' not in q: continue
+                b = lambda kk, v, dd=None: dict({'celex': {'value': c}, 'k': {'value': kk}, 'v': {'value': v}}, **({'d': {'value': dd}} if dd else {}))
+                if d: rows.append(b('date', d))
+                rows += [b('eif', '2020-02-01'), b('eif', '2026-01-01'), b('eov', '2021-01-01'), b('flag', '0'), b('lmd', lmd), b('ecli', 'ECLI:EU:C:2020:1'),
+                         b('void_pr', '62019CJ0099', '2021-01-01'), b('void', '62025CJ0100', void_date)]
+        elif 'expression_title' in q:
+            c = re.search(r'"([0-9A-Z]+)"\^\^xsd:string', q).group(1); k = next(k for k, v in CELEX.items() if v == c)
+            rows = [{'title': {'value': next((t for kk, t, _, _ in LAW_DOCS if kk == k), 'x')}, 'lang': {'value': gw.EU_LANG + 'ENG'}}]
+        return json.dumps({'results': {'bindings': rows}}).encode()
+    return fetch
+
+
+def ja_src(k, d, last=None):
+    i = [x[0] for x in LAW_DOCS].index(k) if k in [x[0] for x in LAW_DOCS] else 9
+    s = {'Identification': f'DCE_00000{i}_20240314.xml', 'Code_Juridiction': 'CE', 'Nom_Juridiction': "Conseil d'Etat", 'Numero_Dossier': f'00000{i}',
+         'Numero_ECLI': f'ECLI:FR:CECHR:2024:00000{i}.20240314' if k != 'old' else 'undefined', 'Type_Decision': 'Décision', 'paragraph': 'Vu la procédure$$$TEXT'}
+    if d: s['Date_Lecture'] = d
+    s['lastModified'] = last or d or LV
+    return {'_id': s['Identification'] + '_CE', '_source': s}
+
+
+def ja_fetch(urls):
+    hits = [ja_src(k, d) for k, _, d, _ in LAW_DOCS] + [ja_src('late', LV, LF)]          # decided before T, uploaded after T: refused
+    def fetch(url, headers=None):
+        u = urllib.parse.unquote(url); urls.append(u)
+        if '/elastic/decisions/' in u:
+            ident = u.rsplit('/', 1)[-1]; hs = [h for h in hits if h['_source']['Identification'] == ident + '.xml']
+        elif '/Simple_Search/' in u:
+            num = u.split('/Simple_Search/openData/')[1].split('/')[0]; hs = [h for h in hits if h['_source']['Numero_Dossier'] == num]
+        else: hs = hits
+        return json.dumps({'decisions': {'body': {'hits': {'total': {'value': 242320}, 'hits': hs}}}}).encode()
+    return fetch
+
+
+def hal_fetch(urls):
+    def doc(k, t, d):
+        x = {'halId_s': f'hal-0000000{[y[0] for y in LAW_DOCS].index(k)}', 'title_s': [t], 'authFullName_s': ['A. Author'], 'docType_s': 'ART', 'abstract_s': ['ABSTRACT']}
+        if d: x.update(producedDate_s=d, submittedDate_s=d + ' 10:00:00' if len(d) == 10 else d)
+        if k == 'forbid': x['doiId_s'] = '10.1/forbid'
+        return x
+    docs = [doc(k, t, d) for k, t, d, _ in LAW_DOCS] + [dict(doc('old', 'Late deposit', '2023-01-01'), halId_s='hal-00000099', submittedDate_s=LF + ' 09:00:00')]
+    def fetch(url, headers=None):
+        u = urllib.parse.unquote_plus(url); urls.append(u)
+        if 'halId_s:' in u:
+            h = u.split('halId_s:')[1].split('&')[0]; ds = [d for d in docs if d['halId_s'] == h]
+        else: ds = docs
+        return json.dumps({'response': {'numFound': len(ds), 'docs': ds}}).encode()
+    return fetch
+
+
+def theses_fetch(urls):
+    def th(k, t, d):
+        x = {'id': f'2020PA01000{[y[0] for y in LAW_DOCS].index(k)}', 'titrePrincipal': t, 'auteurs': [{'nom': 'Author', 'prenom': 'A.'}], 'status': 'soutenue',
+             'discipline': 'Droit public', 'resumes': {'fr': 'RESUME'}}
+        x['nnt'] = x['id']
+        if d: x['dateSoutenance'] = '/'.join(reversed(d.split('-'))) if len(d) == 10 else d
+        else: x['status'] = 'enCours'
+        return x
+    ts = [th(k, t, d) for k, t, d, _ in LAW_DOCS]
+    def fetch(url, headers=None):
+        u = urllib.parse.unquote_plus(url); urls.append(u)
+        if '/these/' in u: return json.dumps(next(t for t in ts if t['nnt'] == u.rsplit('/', 1)[-1])).encode()
+        return json.dumps({'totalHits': len(ts), 'theses': ts}).encode()
+    return fetch
+
+
+class LawEngines(unittest.TestCase):
+    """Each law engine: only the record dated before T is served (after T, day T, partial date at the year of T, forbidden id or title,
+    no date: refused); provider-side filter on the eve of T in the URL; no key nor e-mail literal in any URL; read under the same barrier."""
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(); gw.STATE = pathlib.Path(self.tmp.name); self.fetch0 = gw.fetch
+        self.contact = os.environ.get('VP_CONTACT'); os.environ['VP_CONTACT'] = 'someone@example.org'   # must never reach a URL
+
+    def tearDown(self):
+        gw.fetch = self.fetch0; self.tmp.cleanup()
+        if self.contact is None: os.environ.pop('VP_CONTACT', None)
+        else: os.environ['VP_CONTACT'] = self.contact
+
+    def clean(self, urls):
+        self.assertTrue(urls)
+        for u in urls: self.assertFalse('@' in u or re.search(r'api_key|apikey|token|key=', u, re.I), u)
+
+    def test_eurlex(self):
+        urls = []; gw.fetch = cellar_fetch(urls); B = law_barrier()
+        out, tot = gw.search_eurlex('data retention privacy', 20, B)
+        self.assertEqual([o['id'] for o in out], ['celex:' + CELEX['old']]); self.assertIn('bounded', tot)
+        self.assertGreaterEqual(B.excluded, 5)
+        o = out[0]
+        self.assertEqual((o['tier'], o['order'], o['type'], o['date']), ('primary', 'EU', 'text', LV))
+        # notice unchanged since before T (lmd 2020): validity served as recorded; voiding ruling dated after T never served
+        self.assertEqual((o['in_force_from'], o['applies_from'], o['in_force_to'], o['in_force']), ('2020-02-01', '2026-01-01', '2021-01-01', '0'))
+        self.assertEqual(o['declared_void_by'], [{'celex': '62019CJ0099', 'date': '2021-01-01', 'by_preliminary_ruling': True}])
+        search = [u for u in urls if 'bif:contains' in u]
+        self.assertEqual(len(search), 2)
+        for u in search:
+            self.assertIn(f'?date <= "{B.eve}"^^xsd:date', u); self.assertIn('(CC|[CTF]A)', u); self.assertIn('_RES', u)
+        self.clean(urls)
+        # notice modified on/after T: post-T validity masked (dates >= T, current flag, end of validity when a voiding ruling is dated >= T)
+        urls.clear(); gw.fetch = cellar_fetch(urls, lmd='2025-06-01T10:00:00+01:00'); B = law_barrier()
+        o = gw.search_eurlex('data retention', 20, B)[0][0]
+        self.assertEqual((o['in_force_from'], o['applies_from'], o['in_force_to'], o['in_force']), ('2020-02-01', None, None, None))
+        self.assertIn('masked', o['validity'])
+        gw.fetch = cellar_fetch(urls, lmd='2025-06-01', void_date='2023-01-01'); B = law_barrier()
+        o = gw.search_eurlex('data retention', 20, B)[0][0]
+        self.assertEqual(o['in_force_to'], '2021-01-01'); self.assertEqual(len(o['declared_void_by']), 2)
+        # read: same barrier; Advocate General opinion refused; text from Cellar content negotiation
+        urls.clear(); gw.fetch = cellar_fetch(urls); B = law_barrier()
+        r = gw.read('celex:' + CELEX['old'], B); self.assertEqual(r['abstract'], 'OFFICIAL TEXT'); self.assertEqual(r['id'], 'celex:' + CELEX['old'])
+        for k in ('after', 'dayT', 'partial', 'forbid', 'ftitle', 'nodate'):
+            self.assertIn('refusal', gw.read('celex:' + CELEX[k], B), k)
+        self.assertIn('Advocate General', gw.read('celex:' + CELEX['ag'], B)['refusal'])
+        self.clean(urls)
+        self.assertEqual(gw.citing('celex:' + CELEX['old'], 5, B)[0], []); self.assertEqual(gw.references('celex:' + CELEX['old'], 5, B)[0], [])
+
+    def test_eurlex_provider_error(self):
+        def boom(url, headers=None): raise urllib.error.HTTPError(url, 500, 'VECSL internal error', {}, None)
+        gw.fetch = boom
+        with self.assertRaises(gw.ProviderError) as e: gw.search_eurlex('data', 5, law_barrier())
+        self.assertIn('provider_error', str(e.exception))
+        g = gw.Gateway([P.parent / 'plugins' / 'law.md'], T=LT, run='t-pe', state=pathlib.Path(self.tmp.name) / 's')
+        r = g.search('eurlex', 'data'); self.assertIn('provider_error', r['results']['error']); self.assertIsNone(r['index_total'])
+
+    def test_justice_administrative(self):
+        urls = []; gw.fetch = ja_fetch(urls); B = law_barrier()
+        out, tot = gw.search_justice_administrative('"référé-liberté"', 20, B)
+        self.assertEqual([o['id'] for o in out], ['ja:CE/DCE_000000_20240314'])
+        o = out[0]
+        self.assertIsNone(o['ecli'])                                                   # literal "undefined" removed
+        self.assertEqual((o['tier'], o['order'], o['coverage_from'], o['date']), ('primary', 'FR-ADM', '2021-09-30', LV))
+        self.assertIn('bounded', tot); self.assertIn('coverage_from', tot); self.assertIn('CE 2021-09-30', tot)
+        self.assertGreaterEqual(B.excluded, 6)
+        self.assertIn(f'/model_searchANDdates/openData/Date_Lecture/"référé-liberté"/{B.start}/{B.eve}/100', urls[0])
+        r = gw.read('ja:CE/DCE_000000_20240314', B); self.assertIn('TEXT', r['abstract'])
+        for i in range(1, 7): self.assertIn('refusal', gw.read(f'ja:CE/DCE_00000{i}_20240314', B), i)
+        self.assertIn('refusal', gw.read('ja:CE/DCE_000009_20240314', B))           # uploaded after T
+        self.assertIn('refusal', gw.read('ecli:ECLI:FR:CECHR:2024:000001.20240314', B))   # by ECLI: decision after T
+        self.assertIn('refusal', gw.read('ja:../etc', B))
+        self.clean(urls)
+        self.assertEqual(gw.INTERVAL['opendata.justice-administrative.fr'], 3.0)
+        self.assertIn(429, gw.STOP['opendata.justice-administrative.fr']); self.assertIn(403, gw.STOP['opendata.justice-administrative.fr'])
+
+    def test_hal(self):
+        urls = []; gw.fetch = hal_fetch(urls); B = law_barrier()
+        out, tot = gw.search_hal('données personnelles', 20, B)
+        self.assertEqual([o['id'] for o in out], ['hal:hal-00000000']); self.assertEqual(out[0]['tier'], 'secondary')
+        self.assertGreaterEqual(B.excluded, 6)                                          # includes the late deposit
+        self.assertIn('fq=level1_domain_s:shs.droit', urls[0])
+        self.assertIn(f'producedDate_tdate:[{B.start}T00:00:00Z TO {B.eve}T23:59:59Z]', urls[0]); self.assertIn(f'submittedDate_tdate:[{B.start}T00:00:00Z TO {B.eve}T23:59:59Z]', urls[0])
+        self.assertEqual(gw.read('hal:hal-00000000', B)['abstract'], 'ABSTRACT')
+        for i in list(range(1, 7)) + [99]: self.assertIn('refusal', gw.read(f'hal:hal-0000000{i}' if i < 10 else 'hal:hal-00000099', B), i)
+        self.clean(urls)
+
+    def test_theses_fr(self):
+        urls = []; gw.fetch = theses_fetch(urls); B = law_barrier()
+        out, tot = gw.search_theses_fr('changement climatique', 20, B)
+        self.assertEqual([o['id'] for o in out], ['thesesfr:2020PA010000']); self.assertEqual((out[0]['date'], out[0]['type']), (LV, 'thesis'))
+        self.assertGreaterEqual(B.excluded, 6)
+        self.assertIn(f'(changement climatique) AND dateSoutenance:[{B.start} TO {B.eve}]', urls[0])
+        self.assertEqual(gw.read('thesesfr:2020PA010000', B)['abstract'], 'RESUME')
+        for i in range(1, 7): self.assertIn('refusal', gw.read(f'thesesfr:2020PA01000{i}', B), i)
+        self.clean(urls)
+        self.assertEqual(gw.dmy('18/09/2018'), '2018-09-18'); self.assertEqual(gw.dmy('2024'), '2024'); self.assertIsNone(gw.dmy('soon'))
+        self.assertEqual(gw.INTERVAL['theses.fr'], 5.0)
+
+    def test_law_plugin_wiring(self):
+        s = gw.Gateway([P.parent / 'plugins' / 'law.md'], T=LT, run='t-law', state=pathlib.Path(self.tmp.name) / 's').sources()
+        self.assertEqual(s['engines'], ['eurlex', 'hal', 'justice-administrative', 'openalex', 'theses-fr'])
+        self.assertEqual(s['not_wired'], ['europarl', 'hudoc', 'isidore', 'judilibre'])
 
 
 def test_online():

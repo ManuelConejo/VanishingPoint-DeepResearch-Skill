@@ -62,7 +62,7 @@ class Test(unittest.TestCase):
         code = next(r for r in rep['plugins'] if r['plugin'] == 'code')
         self.assertEqual([i['variable'] for i in code['skipped']], ['VP_GITHUB_TOKEN'])          # GitHub skipped: token absent
         self.assertIn('code', code['active']); self.assertIn('https://github.com/settings/tokens', code['skipped'][0]['url'])
-        self.assertIn('github', code['not_wired'])
+        self.assertNotIn('github', code['not_wired']); self.assertEqual(code['served_by']['github'], 'code')   # served by the wired code engine
         law = next(r for r in rep['plugins'] if r['plugin'] == 'law')
         self.assertEqual([i['variable'] for i in law['keyed_not_wired']], ['PISTE_CLIENT_ID + PISTE_CLIENT_SECRET'])
         self.assertEqual(law['keyed_not_wired'][0]['note'], ck.NOTE_NOT_WIRED)
@@ -127,7 +127,7 @@ class Test(unittest.TestCase):
         # A declared key with no effect today (engine not wired, or key not passed) is never suggested, however well it matches.
         self.assertEqual(ck.suggest(ck.report([law]), 'case law Court of Cassation commercial lease'), [])            # Judilibre: not wired
         self.assertEqual(ck.suggest(ck.report([csai]), 'citation graph and citing articles in recent AI'), [])       # Semantic Scholar: not wired
-        self.assertEqual(ck.suggest(ck.report([code]), 'provenance of many repositories in archives'), [])           # SWH_TOKEN: not passed
+        self.assertEqual([x['variable'] for x in ck.suggest(ck.report([code]), 'provenance of many repositories in archives')], ['SWH_TOKEN'])   # SWH_TOKEN: sent since v0.3.1
         self.assertEqual(ck.suggest(ck.report([code]), 'licence of a specific repository file')[0]['variable'], 'VP_GITHUB_TOKEN')
         self.assertEqual(ck.suggest(ck.report([csai, law]), 'graph neural networks'), [])          # "graph" alone is not enough
         self.assertLessEqual(len(ck.suggest(ck.report(self.all), 'meta-analysis clinical trials systematic review citation chaining specific repository licence file')), 2)

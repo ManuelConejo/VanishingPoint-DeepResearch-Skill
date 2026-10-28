@@ -6,7 +6,7 @@ Read by the engine (SKILL.md). Four fixed sections. Sources, format and verifica
 
 Block read by `tools/gateway.py` (format README.md); engines that are not wired are declared anyway and refused cleanly. Access marked according to `ACCESS-POLICY.md` (`api` level 1; `page` level 2, pacing 1 request / 2 s / host, declarative UA, cache, stop on 429/403; `browser` level 2b; `tos_forbidden`, `technical_block` level 3, listed and disabled). Probes dated 2026-10-26 unless stated.
 ```sources
-engines: pubmed, europepmc, crossref, openalex, opencitations, gbif, ebi-search, unpaywall, clinicaltrials, doaj   # wired: pubmed, europepmc, crossref, openalex ; the others: not wired (unpaywall: already used downstream by tools/verifier/fetch_fulltext.py ; clinicaltrials: option, question on a specific trial ; doaj: option)
+engines: pubmed, europepmc, crossref, openalex, opencitations, gbif, ebi-search, unpaywall, clinicaltrials, doaj   # wired: pubmed, europepmc, crossref, openalex, clinicaltrials ; the others: not wired (unpaywall: already used downstream by tools/verifier/fetch_fulltext.py ; clinicaltrials: wired, option for a question on a specific trial or on publication bias ; doaj: option)
 cap: 60                                  # safety cap on calls
 keys: OPENALEX_KEY, NCBI_API_KEY         # optional, never required ; resolution KEYS.md (env NAME, ~/.config/vp/<name>.key) ; NCBI_API_KEY: 10 req/s instead of 3
 useful_when: pubmed=large PubMed searches, systematic review, meta-analysis, many clinical trials ; openalex=broad searches outside MEDLINE, citation chaining, grey literature   # free-key sources ; read by tools/check_keys.py --suggest
@@ -41,10 +41,11 @@ Date bound: provider filter at the day before T, then local re-check: **every** 
 
 5. **OpenCitations** (citing, fallback) - `access: api`: `https://api.opencitations.net/index/v2/citations/doi:<DOI>`; key: none; rate 0.4 s gateway; published limit not established.
 
-6. **Trial registries: ClinicalTrials.gov API v2** - `access: api` (robots `Disallow: /api/` has no effect, level 1); not wired, **not retained by default**
+6. **Trial registries: ClinicalTrials.gov API v2** - `access: api` (robots `Disallow: /api/` has no effect, level 1); wired (engine `clinicaltrials`), **not retained by default**: called for a question on a specific trial or a publication-bias check (registered trials, including those never published)
    - Endpoint: `https://clinicaltrials.gov/api/v2/studies?query.term=<q>&filter.advanced=AREA[StudyFirstPostDate]RANGE[<a>,MAX]&pageSize=<up to 1000>&pageToken=`; probe 200 (630 for "cancer" since 2026-10-01); OpenAPI `clinicaltrials.gov/api/oas/v2` without `securitySchemes`.
-   - Date bound: yes (`filter.advanced=AREA[StudyFirstPostDate]RANGE[MIN,<day before T>]`); local re-check.
+   - Date bound: yes (`filter.advanced=AREA[StudyFirstPostDate]RANGE[MIN,<day before T>]`); local re-check: first submitted AND first posted < T; results served only when first posted < T (else `has_results: false`, results fields dropped); a record **updated on/after T** keeps id, title, conditions, sponsor and first dates, while status, phase, enrollment, start date, summary, outcomes and interventions are masked (`validity` says so); no date on/after T is ever served.
    - Key: none. Rate: not published -> local pacing 1 s. Measured contribution 8/243 before T (3.3 %), -2.01 points at equal length (measured on our benches): option for a question on a specific trial only.
+   - State (2026-10-28): wired, `search-clinicaltrials "<q>"` (items `nct:<NCT id>`: title, status, phase, conditions, enrollment, has_results, dates) and `read nct:<NCT id>` (brief summary, primary/secondary outcomes, interventions, same barrier). Live probe: "semaglutide obesity" 10/10 at T 2026-10-26 (425 announced), 18 at T 2019-06-01, 0 date after T.
 
 7. **Biological databases** (identity, sequence, structure, taxon; never a biological effect) - `access: api`
    - GBIF: `https://api.gbif.org/v1/literature/search?q=&offset=&limit=` (papers citing GBIF data); `https://api.gbif.org/v1/species/search?q=&datasetKey=d7dddbf4-2cf0-4f39-9b2a-bb099caae36c` (Backbone Taxonomy: accepted names and synonyms).
