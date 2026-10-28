@@ -152,6 +152,25 @@ class Test(unittest.TestCase):
                            capture_output=True, text=True, env={**os.environ, 'HOME': self.tmp.name, 'VP_MODE': 'audit'}, timeout=60)
         self.assertEqual(p.returncode, 0, p.stderr); self.assertTrue(p.stdout.rstrip().endswith('Mode: audit (set by VP_MODE|~/.config/vp/mode)'))
 
+    def test_contradictors_line_names_only(self):
+        saved = {k: os.environ.get(k) for k in ('VP_CONTRADICTORS', 'OPENROUTER_API_KEY')}
+        try:
+            os.environ.pop('VP_CONTRADICTORS', None); os.environ.pop('OPENROUTER_API_KEY', None)
+            self.assertEqual(ck.contradictors(), []); self.assertTrue(ck.contradictors_line().startswith('Contradictors: none ('))
+            t = ck.text(ck.report([self.plugins['code']])); self.assertLess(t.index('Contradictors: none'), t.index('Mode: standard')); self.assertTrue(t.endswith('Mode: standard'))
+            os.environ['VP_CONTRADICTORS'] = 'Kimi, codex'
+            self.assertEqual(ck.contradictors(), ['kimi', 'codex']); self.assertIn('Contradictors: kimi, codex (OPENROUTER_API_KEY absent', ck.contradictors_line())
+            os.environ['OPENROUTER_API_KEY'] = 'SECRET-OPENROUTER-VALUE'
+            line = ck.contradictors_line(); self.assertIn('(OPENROUTER_API_KEY present)', line); self.assertIn('Contradictors: kimi, codex', line); self.assertNotIn('SECRET-OPENROUTER', line)
+            os.environ['VP_CONTRADICTORS'] = 'codex'; self.assertEqual(ck.contradictors_line(), 'Contradictors: codex (set by VP_CONTRADICTORS|~/.config/vp/contradictors|tools/config.json)')
+            os.environ.pop('VP_CONTRADICTORS'); d = pathlib.Path.home() / '.config' / 'vp'; d.mkdir(parents=True, exist_ok=True)
+            (d / 'contradictors').write_text('gemini  # comment\nkimi\n'); self.assertEqual(ck.contradictors(), ['gemini', 'kimi']); (d / 'contradictors').unlink()
+            self.assertEqual(ck.report([self.plugins['code']])['contradictors'], [])
+        finally:
+            for k, v in saved.items():
+                if v is None: os.environ.pop(k, None)
+                else: os.environ[k] = v
+
     def test_command_line_json_exit_0(self):
         env = {**os.environ, 'HOME': self.tmp.name}
         p = subprocess.run([sys.executable, '-I', str(TOOLS / 'check_keys.py'), '--json', '--plugin', str(self.plugins['biology'])],

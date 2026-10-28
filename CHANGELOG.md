@@ -61,3 +61,26 @@ Everything in this release was either measured on our benches before being adopt
 - Added: an exact inventory of plugins and tools at the top of SKILL.md section 1 (the Codex agent guessed 11 non-existent
   file names before listing the directory).
 - Still unmeasured: the quality of the verification step under OpenAI (first run had none).
+
+## v0.2.0, 2026-10-28 - contradictor option (measured, adopted)
+
+### Measured and adopted
+- Contradictor after the report (`tools/contradictor.py`, prompts `tools/prompts/CONTRADICTOR*.md`, SKILL.md "Contradictor",
+  plugins/code.md "Contradictor after the report"): optional, absent by default. A model of another family than the author (`codex` through the
+  Codex CLI on a Claude Code host, `claude` through `claude -p` on a Codex host, `kimi` or `gemini` through OpenRouter, optional) reads the report, Y and X without tools and claims at most 3 false statements
+  and 3 misses with references; mechanical check, exclusivity call, fresh-context rereads with the cited extracts only;
+  `contradictor.json` is applied by the orchestrator (annotation "contradicted by <family>", added findings verified like any other).
+  Measured on our benches on the 6 code reports of the whole-reading duel, frozen protocol and criterion: every family adoptable
+  (cases with a true detection 6/6 each; true detections against added errors: Gemini 14/11, Kimi 20/6, Codex 20/8); the measure
+  cost 6.95 USD; in use about 0.26 USD per contradictor call and 0.6 USD of rereads per report.
+- Known limits, stated in the plugin: n = 1 per cell; one reread model for every family; 36 of 37 misses confirmed by that reread;
+  exclusivity judged by two other families on our benches and by the host model in the product; the contradictor prompt is the
+  measured text with English JSON keys, the reread and match prompts are English translations of the measured French texts
+  (same rules, same answers), not re-measured after translation; `claude` as contradictor (Codex host) and anything outside the code plugin not measured.
+
+### Packaging
+- `check_keys.py` prints the configured contradictor families (names only, and whether `OPENROUTER_API_KEY` is present) before the
+  mode line; `KEYS.md` documents `OPENROUTER_API_KEY`; `tools/config.json` gains a `contradictor` block (families, measured
+  models, caps, reread model per host profile).
+- Tests: `tests/test_contradictor.py` (fake OpenRouter endpoint, fake Codex and claude executables: no network, no cost),
+  `tests/test_check_keys.py` extended.
