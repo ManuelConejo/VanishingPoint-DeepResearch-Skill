@@ -277,7 +277,8 @@ python3 -I "$SKILL/tools/report_lang.py" "<question>"           # the language o
 ```
 
 The checks and exports accept a report whose eight titles are all in one language of the table of `tools/report_lang.py`
-(English, French, Spanish, German); the skill itself still writes them in English.
+(English, French, Spanish, German); since v0.6.3 the skill writes the report in the language of the question (English titles
+and prose in that language for a language outside the table).
 
 To try them without a run, copy `examples/report-cs-ai/` to a scratch directory and run `finish_run.py <copy> --offline`.
 

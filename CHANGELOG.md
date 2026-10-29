@@ -776,3 +776,13 @@ Code changes from an offline analysis of 104 judge errors and 92 verifier non-FO
 
 - Fixed: the verifier's source text kept only title and abstract, so venues and in-force dates present in the source record were judged ABSENT and correct claims were removed (18 of 54 ABSENT in the analysed runs). The record header is now kept.
 - Changed: an identical gateway call (same command and argument, same run and pool) already made is served from the cache, marked `repeat` in the journal and not counted against the call cap (8.8 % of calls on average), with a bound on repeats.
+
+## v0.6.3 - 2026-10-29 - report in the language of the question
+
+- Adopted: the report prose, the eight section titles and the finding word are written in the language of the question
+  (`tools/report_lang.py`; English, French, Spanish, German; other languages: English titles, prose in that language), recorded
+  as `Report language: <code>` in `scope.md`. Trial: 69 content-claim pairs over 4 cards, the same claims verified in English and
+  in French against the same frozen sources: 1 flip in each direction (net 0), inside the 4.8 % English-vs-English verifier noise;
+  4.3 % errors in both languages. Venue claims failed equally in both languages (a separate defect, see v0.6.2). Reserves: Sonnet
+  verifier for all arms, claims translated rather than whole reports written in French, an effect below about 5 % is not
+  visible. Cost: 4.64 USD.
