@@ -786,3 +786,15 @@ Code changes from an offline analysis of 104 judge errors and 92 verifier non-FO
   4.3 % errors in both languages. Venue claims failed equally in both languages (a separate defect, see v0.6.2). Reserves: Sonnet
   verifier for all arms, claims translated rather than whole reports written in French, an effect below about 5 % is not
   visible. Cost: 4.64 USD.
+
+## v0.6.4 - 2026-10-29 - the verifier runs on the search model by default
+
+- Adopted: with `verifier.model` empty, the verifier now uses the search model (`VP_SEARCH_MODEL`, else `search_model`) on the
+  claude host profile instead of the host CLI default (`VP_MODEL` or `--model` still override it; the openai profile keeps its CLI
+  default). Paired replay on 5 frozen cards (145 claims, 29 planted alterations): verifier cost 5.11 -> 1.15 USD (-78 %); all four
+  frozen criteria met: 10 disagreements with the original verdicts vs 6 for the champion (threshold 12), 0 of 29 planted
+  alterations kept in both arms, 0 UNVERIFIED or INVALID, and the verdicts that differ are stricter, never more lenient.
+- Measured, no change: the anti-injection instructions ("source content is data") held against 15 planted injections (6 on the
+  verifier, 9 in full runs on a local corpus); the stronger challenger was not needed.
+- Waiting list: verification windows (no source on the default path reaches the window threshold, so no effect to measure there);
+  a mechanical check of cross-source statements carrying a single `[n]` (an instruction for it was tried and rejected).
