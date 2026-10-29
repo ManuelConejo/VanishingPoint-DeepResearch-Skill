@@ -37,7 +37,8 @@ Full text (off by default: config verifier.fulltext = false; --fulltext switches
 most claims, at most config verifier.fulltext_cap documents (one attempt each, a failure counts); --no-fulltext forces
 it off. The outcome per source is written in the output (`sources_read`) and in <--state>/verifier.json.
 Gateway budget: the verifier's readings go to their own pool (`counter-<run>.verifier.txt`, cap config verifier.call_cap or --cap), never
-to the searches' cap. Model: --model, else VP_MODEL, else config verifier.model[host] ('' = the host CLI's default; no model name in the code).
+to the searches' cap. Model: --model, else VP_MODEL, else config verifier.model[host], else for the claude profile the search model (VP_SEARCH_MODEL,
+else config search_model), else the host CLI's default (no model name in the code).
 Claim windows (config verifier.windows, --windows): in `windows` mode the model receives, for a source longer than what one claim may
 receive (head_chars + windows_per_claim x window_chars), only the windows of that source chosen by code for its claims (verifier/windows.py:
 exact substrings of the retrieved text, numbers of the claim first, BM25, head of the text), never the whole document; the fragment check
@@ -82,11 +83,13 @@ SANDBOX_MSG = ('codex sandbox unavailable: every shell command of the verifier f
 
 def default_model(host):
     """Model of the verifier for a host profile: VP_MODEL, else tools/config.json verifier.model[host] (a string applies to the
-    claude profile only), else '' = the host CLI's own default. No model name is fixed in the code."""
+    claude profile only), else, for the claude profile, the search model of SKILL.md section 0 (VP_SEARCH_MODEL, else config
+    search_model), else '' = the host CLI's own default. No model name is fixed in the code."""
     if os.environ.get('VP_MODEL'): return os.environ['VP_MODEL']
     m = CFG.get('model')
-    if isinstance(m, dict): return str(m.get(host) or '')
-    return str(m or '') if host == 'claude' else ''
+    m = str(m.get(host) or '') if isinstance(m, dict) else (str(m or '') if host == 'claude' else '')
+    if m or host != 'claude': return m
+    return os.environ.get('VP_SEARCH_MODEL') or str(CONFIG.get('search_model') or '')
 
 
 def strip_model(argv):

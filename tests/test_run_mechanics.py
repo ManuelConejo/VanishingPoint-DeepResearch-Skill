@@ -106,7 +106,8 @@ class VerifierBudget(Base):
         self.assertEqual(res['sources_read']['gateway']['pool'], 'verifier')
         self.assertEqual((self.tmp / 'state' / 'counter-mech.verifier.txt').read_text(), '3')    # one reading per cited source
         rec = json.loads((self.tmp / 'record.json').read_text())
-        self.assertNotIn('--model', rec['argv'])                                                 # '' -> the CLI decides
+        sm = os.environ.get('VP_SEARCH_MODEL') or V.CONFIG.get('search_model', '')
+        self.assertEqual(rec['argv'][rec['argv'].index('--model') + 1] if '--model' in rec['argv'] else '', sm)   # '' -> the search model (section 0)
         res = self.verify_main('--T', T, '--no-fulltext', '--cap', '1', '--run', 'mech2', '--sources', str(self.tmp / 'sources2'))
         un = [c['id'] for c in res['claims'] if c['status'] == 'SOURCE-UNAVAILABLE']
         self.assertEqual(un, ['A1', 'A4'])                                                       # S2 (2 claims) read first, S1 and S3 refused

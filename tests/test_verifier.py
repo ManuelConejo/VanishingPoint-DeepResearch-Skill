@@ -255,7 +255,14 @@ class Test(unittest.TestCase):
     def test_model_free_by_host(self):
         saved = os.environ.pop('VP_MODEL', None)
         try:
-            self.assertEqual(V.default_model('claude'), (V.CFG.get('model') or {}).get('claude', '') if isinstance(V.CFG.get('model'), dict) else V.CFG.get('model', ''))
+            saved_s = os.environ.pop('VP_SEARCH_MODEL', None)
+            cfg_m = (V.CFG.get('model') or {}).get('claude', '') if isinstance(V.CFG.get('model'), dict) else V.CFG.get('model', '')
+            self.assertEqual(V.default_model('claude'), cfg_m or V.CONFIG.get('search_model', ''))   # empty = the search model (section 0)
+            if not cfg_m:
+                os.environ['VP_SEARCH_MODEL'] = 'chosen-search'; self.assertEqual(V.default_model('claude'), 'chosen-search')
+                self.assertEqual(V.default_model('openai'), (V.CFG.get('model') or {}).get('openai', '') if isinstance(V.CFG.get('model'), dict) else '')
+            os.environ.pop('VP_SEARCH_MODEL', None)
+            if saved_s is not None: os.environ['VP_SEARCH_MODEL'] = saved_s
             self.assertEqual(V.default_model('openai'), (V.CFG.get('model') or {}).get('openai', '') if isinstance(V.CFG.get('model'), dict) else '')
             self.assertEqual(V.strip_model(['codex', 'exec', '-m', '', '-']), ['codex', 'exec', '-']); self.assertEqual(V.strip_model(['c', '--model', 'x']), ['c', '--model', 'x'])
             os.environ['VP_MODEL'] = 'chosen'; self.assertEqual(V.default_model('openai'), 'chosen')
