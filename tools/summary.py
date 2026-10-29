@@ -9,7 +9,9 @@ Standard library, no network, no model; run by finish_run.py after the exports, 
               `filter.removed`); never on the edited verdicts.json alone, where the ABSENT are already gone (23 FOUND of 41 would read 23 of 23).
               Without a raw output: `unknown`. Thresholds `summary.confidence`; one level lower when fewer than `summary.min_sources`
               bibliography entries carry the report; with the finding verdicts counted
-  verification  "N claims verified, of which X FOUND" on the same raw counts (ABSENT, DISTORTED... listed: removed afterwards)
+  verification  "N claims verified, of which X FOUND" on the same raw counts (ABSENT, DISTORTED... listed), then "K removed from the
+              report after verification": K = raw claims minus the claims left in verdicts.json (basis 'verifier'), or the removed claims
+              verdicts.json lists (basis 'verdicts+removed'); not shown when unknown or 0
   cost        --cost-usd when the host reports it; else the sum of the receipts of the nested calls (state/verifier.json, whole reading,
               contradictor.json), stated as partial; else "not known"
   duration    from state/run-start.json (tools/new_run.py) or the first gateway call, to the end of finish_run.py (state/finish_run.json)
@@ -115,6 +117,21 @@ def raw_counts(d):
     return counts, ('verdicts+removed' if any(isinstance(c, dict) for c in rem) else 'verdicts') if counts else None
 
 
+def removed_count(d, counts, basis):
+    """Claims removed from the report after verification (section 7), or None when it cannot be known.
+    basis 'verifier': raw total minus the claims still in verdicts.json; 'verdicts+removed': the removed ids verdicts.json still lists
+    that are no longer among its claims; 'verdicts' / None: unknown."""
+    ver = _json(d / 'verdicts.json')
+    if not isinstance(ver, dict) or not isinstance(ver.get('claims'), list): return None
+    kept = {str(c.get('id') or f'#{i}') for i, c in enumerate(ver['claims']) if isinstance(c, dict)}
+    if basis == 'verifier': return max(0, sum(counts.values()) - len(kept))
+    if basis == 'verdicts+removed':
+        f = ver.get('filter') if isinstance(ver.get('filter'), dict) else {}
+        rem = {str(c.get('id')) for c in list(ver.get('removed') or []) + list(f.get('removed') or []) if isinstance(c, dict) and c.get('id')}
+        return len(rem - kept)
+    return None
+
+
 def build(folder, cost_usd=None, lang=None):
     d = pathlib.Path(folder).resolve()
     md = _text(d / 'REPORT.md')
@@ -135,6 +152,7 @@ def build(folder, cost_usd=None, lang=None):
     else:
         cost = known_costs(d); kind = 'partial' if cost is not None else 'unknown'
     return {'dir': str(d), 'language': lang, 'answer': answer(md), 'level': level, 'claims': n, 'found': found, 'counts': counts, 'counts_basis': basis,
+            'removed': removed_count(d, counts, basis),
             'found_share': round(found / n, 3) if n else None, 'bibliography_entries': bib, 'finding_verdicts': finding_verdicts(md),
             'cost_usd': cost, 'cost_kind': kind, 'duration_s': duration(d),
             'report_html': str(html_p) if html_p.exists() else None, 'report_pdf': str(pdf_p) if pdf_p.exists() else None,
@@ -164,7 +182,8 @@ def render(x):
         detail.append(M('findings_verdicts', v=', '.join(f'{_verdict_label(L, k)} {v}' for k, v in sorted(x['finding_verdicts'].items(), key=lambda kv: SCALE.index(kv[0]) if kv[0] in SCALE else 99))))
     lines.append(f"**{M('confidence')}**{c}{M('level')[x['level']]}" + (f" ({(' ; ' if c.startswith(' ') else '; ').join(detail)})" if detail else ''))
     others = ', '.join(f'{k} {x["counts"][k]}' for k in ORDER if k != 'FOUND' and x['counts'].get(k))
-    lines.append(f"**{M('verification')}**{c}{M('claims_found', n=x['claims'], found=x['found'])}" + (f' ({others})' if others else ''))
+    lines.append(f"**{M('verification')}**{c}{M('claims_found', n=x['claims'], found=x['found'])}" + (f' ({others})' if others else '')
+                 + (f"{' ;' if c.startswith(' ') else ';'} {M('removed', k=x['removed'])}" if x.get('removed') else ''))
     usd = None if x['cost_usd'] is None else f"{x['cost_usd']:.2f}"
     lines.append(f"**{M('cost')}**{c}" + (M('cost_given', usd=usd) if x['cost_kind'] == 'host' else M('cost_partial', usd=usd) if x['cost_kind'] == 'partial' else M('cost_unknown')))
     if (du := _dur(L, x['duration_s'])): lines.append(f"**{M('duration')}**{c}{du}")

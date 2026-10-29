@@ -116,7 +116,7 @@ class Test(unittest.TestCase):
         self.assertTrue(ck.announce(ck.report(plugins)).startswith('Keys: first run'))
         cmd = [sys.executable, '-I', str(TOOLS / 'check_keys.py'), '--announce', '--plugin', str(plugins[0])]
         for _ in range(2):   # command line (real process): at most one announcement, then nothing when nothing changed
-            p = subprocess.run(cmd, capture_output=True, text=True, env={**os.environ, 'HOME': self.tmp.name}, timeout=60)
+            p = subprocess.run(cmd, capture_output=True, text=True, env={**os.environ, 'HOME': self.tmp.name, 'VP_OFFLINE': '1'}, timeout=60)   # VP_OFFLINE: no update check over the network (tools/auto_update.py)
         self.assertEqual((p.returncode, p.stdout), (0, ''), p.stderr)
 
     def test_contact_announced_once_like_a_key(self):

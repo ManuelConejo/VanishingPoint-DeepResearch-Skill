@@ -6,6 +6,8 @@ GitHub token (`read_token()`). Prints per plugin: active sources, degraded for l
 with the exact variable name, free or not, and the URL to obtain it (KEYS.md). Never a key value. Ends with the contradictor line
 ("Contradictors: none (...)" or the configured families, names only, and whether OPENROUTER_API_KEY is present) and the mode line
 ("Mode: standard" or "Mode: audit (set by VP_MODE|~/.config/vp/mode)").
+With --announce it first runs tools/auto_update.py (at most once a day): one information line when a newer release exists or was
+installed, otherwise nothing; never an error, never another exit code.
 Usage: check_keys.py [--plugin P.md ...] [--json] [--announce]   (without --plugin: every plugins/*.md except _TEMPLATE). Exit code: 0.
 --announce: prints the full report (links included) on the first run and each time the set of active sources or of present keys
 changes for an examined plugin (key added, removed, expired); otherwise an empty string. The fingerprint (names only, never
@@ -238,6 +240,14 @@ def announce(rep, state=None):
             + text(rep)) if changed else ''
 
 
+def update_line():
+    """At most one line from tools/auto_update.py (start of a run, at most once a day; update.* of tools/config.json). Any failure: ''."""
+    try:
+        import auto_update
+        return auto_update.run()
+    except Exception: return ''
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--plugin', action='append', default=[], help='plugin file (repeatable); default: every plugins/*.md')
@@ -251,8 +261,9 @@ def main(argv=None):
         s = suggest(rep, a.suggest)
         print(json.dumps({'suggestions': s}, ensure_ascii=False) if a.json else '\n'.join(x['text'] for x in s), end='\n' if s or a.json else '')
     elif a.announce:
-        t = announce(rep)
-        print(json.dumps({'announce': t, 'changed': bool(t), 'mode': rep['mode'], 'contradictors': rep['contradictors']}, ensure_ascii=False) if a.json else t, end='' if not t and not a.json else '\n')
+        t = announce(rep); u = update_line()
+        if a.json: print(json.dumps({'announce': t, 'changed': bool(t), 'mode': rep['mode'], 'contradictors': rep['contradictors'], 'update': u}, ensure_ascii=False))
+        else: print('\n'.join(x for x in (u, t) if x), end='\n' if t or u else '')
     else: print(json.dumps(rep, ensure_ascii=False, indent=1) if a.json else text(rep))
     return 0
 
