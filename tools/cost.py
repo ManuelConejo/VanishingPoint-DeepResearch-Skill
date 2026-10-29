@@ -8,12 +8,16 @@ Estimate: the base run (standard; law: long texts; code: with the whole reading 
   --contradictor F (one per family, `<via>[:<model>]`; a CLI on a subscription costs 0, an API call contradictor_api_call_usd; plus rereads).
   `expensive` = the options of costs.expensive present (the code plugin's whole reading counts as one): announce, and ask in an interactive session.
 Budget: --budget USD, or a budget written in the user's words (--text "<question>": "budget 5 $", "5 USD max", "plafond de 5 dollars",
-  "max. 5 €"...; euros are taken at par, said so). Under a budget every expensive mode is off; when the budget is below the base estimate,
-  the gateway cap and the waves are scaled by budget / base: cap = max(costs.budget.min_cap, call_cap x ratio), waves = max(1,
-  costs.budget.waves_full x ratio); the verifier keeps its own pool (verification is never cut). Write the plan in scope.md.
-Usage: cost.py [--plugin P ...] [--fulltext] [--audit] [--contradictor F ...] [--budget USD | --text "<question>"] [--lang CODE] [--json]
-Exit 0. Import: estimate(plugins, fulltext, audit, contradictors) -> dict; budget_in(text) -> (usd, currency) | None; plan(est, usd) -> dict."""
-import argparse, json, pathlib, re, sys
+  "max. 5 €"...; euros are taken at par, said so). Under a budget every expensive mode is off and the budget covers the whole run,
+  verification included: costs.budget.verifier_share of it is reserved for the verifier (verifier_usd), the rest (search_usd) pays the
+  orchestrator and the searchers, a fixed part plus a part per gateway call (trace_model(), derived from costs.trace_calibration):
+  cap = (search_usd - trace_usd_fixed) / trace_usd_per_call, bounded by costs.budget.min_cap and call_cap.default; waves = max(1, costs.budget.waves_full x cap / call_cap.default). With --state DIR the plan
+  is written to DIR/budget.json: tools/gateway.py takes its `cap` when no --cap is given, tools/verifier.py takes `verifier_usd` as its
+  spending limit (no model call beyond it). Write the plan in scope.md.
+Usage: cost.py [--plugin P ...] [--fulltext] [--audit] [--contradictor F ...] [--budget USD | --text "<question>"] [--state DIR] [--lang CODE] [--json]
+Exit 0. Import: trace_model() -> (usd per call, fixed usd); estimate(plugins, fulltext, audit, contradictors) -> dict; budget_in(text) -> (usd, currency) | None; plan(est, usd) -> dict;
+  write_plan(state_dir, plan, eur=False) -> path."""
+import argparse, datetime as dt, json, math, pathlib, re, sys
 P = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(P))
 import report_lang as RL   # noqa: E402
@@ -32,18 +36,20 @@ TEXT = {
            'contradictor': 'contradictor {f}', 'total': 'Estimated cost: {lo} to {hi} USD ({parts}).', 'total_one': 'Estimated cost: about {hi} USD ({parts}).',
            'confirm': 'Expensive option(s): {opts}. Confirm before launch (interactive session); orders of size from the measures, not a quote.',
            'nothing': 'No expensive option: no confirmation needed.',
-           'budget': 'Budget {usd:g} USD{eur}: expensive options off ({off}); gateway cap {cap} calls, at most {waves} wave(s); the verifier keeps its own pool.',
-           'budget_full': 'Budget {usd:g} USD{eur}: expensive options off ({off}); the base run fits (estimate {hi} USD): cap and waves unchanged.',
+           'budget': 'Budget {usd:g} USD{eur}, verification included: expensive options off ({off}); {ver:g} USD reserved for the verifier, {search:g} USD for the searches: gateway cap {cap} calls, at most {waves} wave(s).',
+           'budget_full': 'Budget {usd:g} USD{eur}, verification included: expensive options off ({off}); {ver:g} USD reserved for the verifier, {search:g} USD for the searches: cap and waves unchanged.',
            'eur': ' (euros taken at par: no exchange rate in the skill)', 'below': 'The budget is below the smallest run ({min_usd} USD at {min_cap} calls): the report may be partial.',
+           'thin': 'The verifier reserve ({ver:g} USD) is below the highest verification measured ({hi:g} USD): claims beyond it stay UNVERIFIED.',
            'none': 'none'},
     'fr': {'base': 'run de base', 'law': 'droit (textes longs lus en entier)', 'code': 'étude de code avec lecture complète', 'standard': 'run standard',
            'fulltext': 'vérification en texte intégral ({n} textes au plus)', 'audit': 'mode audit (x{lo:g} à x{hi:g})',
            'contradictor': 'contradicteur {f}', 'total': 'Coût estimé : {lo} à {hi} USD ({parts}).', 'total_one': 'Coût estimé : environ {hi} USD ({parts}).',
            'confirm': 'Option(s) coûteuse(s) : {opts}. Confirmer avant de lancer (session interactive) ; ordres de grandeur tirés des mesures, pas un devis.',
            'nothing': 'Aucune option coûteuse : pas de confirmation nécessaire.',
-           'budget': 'Budget {usd:g} USD{eur} : options coûteuses désactivées ({off}) ; plafond de la passerelle {cap} appels, au plus {waves} vague(s) ; le vérificateur garde son propre budget.',
-           'budget_full': 'Budget {usd:g} USD{eur} : options coûteuses désactivées ({off}) ; le run de base tient (estimation {hi} USD) : plafond et vagues inchangés.',
+           'budget': 'Budget {usd:g} USD{eur}, vérification comprise : options coûteuses désactivées ({off}) ; {ver:g} USD réservés au vérificateur, {search:g} USD aux recherches : plafond de la passerelle {cap} appels, au plus {waves} vague(s).',
+           'budget_full': 'Budget {usd:g} USD{eur}, vérification comprise : options coûteuses désactivées ({off}) ; {ver:g} USD réservés au vérificateur, {search:g} USD aux recherches : plafond et vagues inchangés.',
            'eur': ' (euros pris au pair : pas de taux de change dans le skill)', 'below': 'Le budget est sous le plus petit run ({min_usd} USD à {min_cap} appels) : le rapport risque d\'être partiel.',
+           'thin': 'La réserve du vérificateur ({ver:g} USD) est sous la plus haute vérification mesurée ({hi:g} USD) : les affirmations au-delà restent UNVERIFIED.',
            'none': 'aucune'},
 }
 
@@ -93,18 +99,45 @@ def budget_in(text):
     return float(amount.replace(',', '.')), ('EUR' if cur in ('€', 'eur', 'euro', 'euros') else 'USD')
 
 
+def trace_model(runs=None):
+    """(usd per search call, fixed usd) of a run's trace, from costs.trace_calibration.runs: least-squares slope of usd on calls, and the
+    highest intercept that keeps every measured run under the line, rounded up to the cent (an upper envelope: no measured run above it)."""
+    runs = runs if runs is not None else (C.get('trace_calibration') or {}).get('runs') or []
+    pts = [(float(r['calls']), float(r['usd'])) for r in runs]
+    if len({n for n, _ in pts}) < 2: raise ValueError('costs.trace_calibration.runs needs runs at two different numbers of calls at least')
+    mn = sum(n for n, _ in pts) / len(pts); mu = sum(u for _, u in pts) / len(pts)
+    per = sum((n - mn) * (u - mu) for n, u in pts) / sum((n - mn) ** 2 for n, _ in pts)
+    per = max(per, 0.0)
+    fixed = max(u - per * n for n, u in pts)
+    return round(per, 4), math.ceil(round(max(fixed, 0.0) * 100, 6)) / 100
+
+
 def plan(est, usd):
-    b = C.get('budget') or {}; waves_full = int(b.get('waves_full', 4)); min_cap = int(b.get('min_cap', 15))
+    """The budget covers the whole run, verification included: a share reserved for the verifier, the rest turned into a gateway cap."""
+    b = C.get('budget') or {}; waves_full = int(b['waves_full']); min_cap = int(b['min_cap']); share = float(b['verifier_share'])
+    per_call, fixed = trace_model(); ver_hi = _rng(C['verifier_usd'])[1]
     off = [e for e in EXPENSIVE]
     base = next(p for p in est['parts'] if p['item'] == est['base'])
     off_base = est['base'] == 'code'                      # the whole reading is an expensive option: under a budget, a standard study
-    ref = _rng(C.get('standard_usd', {'low': 2.8, 'high': 3.0}))[1] if off_base else base['high']
-    ratio = min(1.0, usd / ref) if ref > 0 else 1.0
-    cap = max(min_cap, int(CAP * ratio)); waves = max(1, int(waves_full * ratio))
-    return {'budget_usd': usd, 'expensive_off': off, 'base_estimate_usd': ref, 'ratio': round(ratio, 3), 'cap': cap if ratio < 1 else CAP,
-            'waves_max': waves if ratio < 1 else None, 'reduced': ratio < 1, 'below_min': usd < round(ref * min_cap / CAP, 2),
-            'min_usd': round(ref * min_cap / CAP, 2), 'min_cap': min_cap,
+    ref = _rng(C['standard_usd'])[1] if off_base else base['high']
+    ver = round(usd * share, 2); search = round(usd - ver, 2)
+    fit = int(max(search - fixed, 0) / per_call) if per_call > 0 else CAP
+    cap = max(min_cap, min(CAP, fit)); reduced = fit < CAP
+    min_usd = round((fixed + min_cap * per_call) / (1 - share), 2) if share < 1 else None
+    return {'budget_usd': usd, 'expensive_off': off, 'base_estimate_usd': ref, 'verifier_usd': ver, 'search_usd': search,
+            'trace_usd_per_call': per_call, 'trace_usd_fixed': fixed, 'ratio': round(cap / CAP, 3), 'cap': cap,
+            'waves_max': max(1, int(waves_full * cap / CAP)) if reduced else None, 'reduced': reduced,
+            'below_min': fit < min_cap, 'min_usd': min_usd, 'min_cap': min_cap, 'verifier_thin': ver < ver_hi, 'verifier_high_usd': ver_hi,
             'code_note': 'under a budget the code plugin runs without its whole reading before verdicts (SKILL.md "Cost and budget")' if off_base else ''}
+
+
+def write_plan(state_dir, pl, eur=False):
+    """state/budget.json: read by tools/gateway.py (cap, when no --cap) and tools/verifier.py (verifier_usd, its spending limit)."""
+    st = pathlib.Path(state_dir); st.mkdir(parents=True, exist_ok=True)
+    keep = ('budget_usd', 'verifier_usd', 'search_usd', 'cap', 'waves_max', 'reduced', 'trace_usd_per_call', 'trace_usd_fixed', 'expensive_off')
+    doc = {**{k: pl[k] for k in keep}, 'euros_at_par': bool(eur), 'written_utc': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds')}
+    (st / 'budget.json').write_text(json.dumps(doc, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
+    return st / 'budget.json'
 
 
 def render(est, pl, lang, eur=False):
@@ -120,9 +153,10 @@ def render(est, pl, lang, eur=False):
     else:
         e = _t(lang, 'eur') if eur else ''
         off = ', '.join(pl['expensive_off']) or _t(lang, 'none')
-        out.append(_t(lang, 'budget', usd=pl['budget_usd'], eur=e, off=off, cap=pl['cap'], waves=pl['waves_max']) if pl['reduced'] else
-                   _t(lang, 'budget_full', usd=pl['budget_usd'], eur=e, off=off, hi=f"{pl['base_estimate_usd']:g}"))
+        out.append(_t(lang, 'budget', usd=pl['budget_usd'], eur=e, off=off, ver=pl['verifier_usd'], search=pl['search_usd'], cap=pl['cap'], waves=pl['waves_max'])
+                   if pl['reduced'] else _t(lang, 'budget_full', usd=pl['budget_usd'], eur=e, off=off, ver=pl['verifier_usd'], search=pl['search_usd']))
         if pl['below_min']: out.append(_t(lang, 'below', min_usd=pl['min_usd'], min_cap=pl['min_cap']))
+        if pl['verifier_thin']: out.append(_t(lang, 'thin', ver=pl['verifier_usd'], hi=pl['verifier_high_usd']))
     return '\n'.join(out)
 
 
@@ -130,6 +164,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description='Cost estimate before an expensive mode; a budget turned into a ceiling (no model).')
     ap.add_argument('--plugin', action='append', default=[]); ap.add_argument('--fulltext', action='store_true'); ap.add_argument('--audit', action='store_true')
     ap.add_argument('--contradictor', action='append', default=[]); ap.add_argument('--budget', type=float); ap.add_argument('--text')
+    ap.add_argument('--state', help='with a budget: write the plan to STATE/budget.json (read by the gateway and the verifier)')
     ap.add_argument('--lang'); ap.add_argument('--json', action='store_true')
     a = ap.parse_args(argv)
     lang = a.lang if a.lang in RL.LANGS else (RL.detect(a.text) if a.text else 'en')
@@ -137,6 +172,7 @@ def main(argv=None):
     usd, eur = a.budget, False
     if usd is None and a.text and (b := budget_in(a.text)): usd, eur = b[0], b[1] == 'EUR'
     pl = plan(est, usd) if usd is not None else None
+    if pl is not None and a.state: write_plan(a.state, pl, eur)
     if a.json: print(json.dumps({'estimate': est, 'budget': pl, 'euros_at_par': eur}, ensure_ascii=False, indent=1))
     else: print(render(est, pl, lang, eur))
     return 0

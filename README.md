@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.6.7, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.6.8, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -168,8 +168,7 @@ In the conversation (v0.6.0; both steps below are prepared by a tool, no model c
   already written is redone. Measured once (v0.6.0 trials): all criteria met, at the cost of the reference run.
 
 Command-line tools, not used by the skill by default (shipped in v0.6.0, kept on a waiting list after the ergonomics trials, see
-CHANGELOG): `tools/summary.py` (`SUMMARY.md`, an end-of-run message; also `finish_run.py --summary`, off by default),
-`tools/progress.py` (a one-line progress status), `tools/cost.py` (an estimate before an expensive option, a plan under a budget), `tools/report_lang.py` (the
+CHANGELOG): `tools/progress.py` (a one-line progress status), `tools/report_lang.py` (the
 eight section titles in English, French, Spanish, German; since v0.6.3 the skill uses it to write the report in the language of
 the question). Each prints its usage with `--help`. Since v0.6.6 the skill itself uses `tools/new_run.py` (a new working directory
 named after the question) and `tools/parse_date.py` (a date in words in the question -> T).
@@ -231,6 +230,8 @@ the shape of a context capsule.
   about 0.26 USD per call through an API (OpenRouter, 2026-10-27), plus about 0.6 USD of fresh-context rereads per report
   (`contradictor.json` carries the figures, and says when a provider does not report its cost).
 - Codex CLI on a subscription: 0 USD per run on the metered side; the same number of gateway calls.
+- User budget ("Budget 2 USD"): it covers the whole run, verification included; `tools/cost.py` reserves a quarter for the
+  verifier and caps the gateway calls, expensive options off (3 Sonnet runs at 2 USD: 1.43 to 1.85 USD).
 
 ## Limits, measured honestly
 
@@ -316,7 +317,7 @@ tools/followup.py, resume.py   follow-up in the conversation, resuming an interr
 tools/export_report.py, export_data.py, passages.py, living_diff.py, law_checks.py   exports, cited passages, living review, legal rules
 tools/code_capsule.py, code_sources.py (library), condense_repo.py, whole_reading.py, contradictor.py   code plugin tools (capsule, Y condensation, whole reading, contradictor)
 tools/prior_art.py, prisma.py, followups.py   optional sections of SKILL.md (prior art, PRISMA flow diagram, follow-up questions)
-tools/evidence_bank.py, contradictions.py, summary.py, progress.py, cost.py   command-line tools, not used by the skill by default; report_lang.py, new_run.py, parse_date.py: used by the skill
+tools/evidence_bank.py, contradictions.py, progress.py   command-line tools, not used by the skill by default; report_lang.py, new_run.py, parse_date.py, summary.py (finish_run.py --summary), cost.py (budget): used by the skill
 tools/config.json   caps, models, host command profiles             tests/  examples/  KEYS.md  ACCESS-POLICY.md  CONTRIBUTING.md  CHANGELOG.md  USAGE.md  LICENSE  NOTICE
 .claude-plugin/     plugin.json + marketplace.json: the repository as a Claude Code plugin (the skill directory needs neither)
 ```

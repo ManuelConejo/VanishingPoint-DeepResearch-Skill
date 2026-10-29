@@ -829,3 +829,16 @@ Code changes from an offline analysis of 104 judge errors and 92 verifier non-FO
   read from the verifier's raw output; the end message itself stays on the waiting list (2 runs only, confirmation pending).
 - Waiting list, from a 4.65 USD trial on 2 runs: the progress line (3 lines out of 5 shown) and a USD budget that includes the
   verifier (verifier within its reserve, but one run at 2.69 USD for a 2 USD budget: the per-call cost estimate is too low).
+
+## v0.6.8 - 2026-10-29 - end-of-run message and a user budget that includes verification
+
+- Adopted: a budget given by the user ("Budget 2 USD") now covers the whole run, verification included. `tools/cost.py` reserves
+  a quarter of it for the verifier and writes `state/budget.json`; `tools/gateway.py` reads its call ceiling there and
+  `tools/verifier.py` its spending limit. The per-call cost is calibrated on 4 complete runs (fixed part + cost per call,
+  `costs.trace_calibration` in `tools/config.json`), measured with Sonnet as the search model; other models are not calibrated
+  yet. 3 runs with a 2 USD budget on new questions: 1.43, 1.61 and 1.85 USD, verifier within its reserve. A token-based,
+  model-independent calibration was tried offline and stays on the waiting list (2 of 36 past runs above its worst case).
+- Adopted: end-of-run message. `finish_run.py --summary` is part of the end steps and prints `SUMMARY.md` to be copied as is
+  into the final message (answer, confidence from the verifier's raw output, claims removed after verification, cost, duration).
+  2 complete runs with the exact wording: the 6 lines copied verbatim, counts matching the verifier.
+- Trial costs: 4.65 + 4.67 + 3.04 + 1.85 USD.

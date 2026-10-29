@@ -3,7 +3,7 @@
 """Offline test of verifier.py (fake engine, fake executables). Checks: role file and citation check used in place (tools/verifier/),
 statuses FOUND / DISTORTED / ABSENT / INVALID / SOURCE-UNAVAILABLE / UNVERIFIED, single retry, split per source, sources through
 the gateway (abstract), downstream filter rule, model_call for both host profiles (claude: argv after -p, tool restrictions,
-JSON output; openai: prompt on stdin, JSONL event stream), config dir guard. Fixture texts are data (French figures kept as data)."""
+JSON output; openai: prompt on stdin, JSONL event stream), config dir guard, spending limit of a user budget (state/budget.json). Fixture texts are data (French figures kept as data)."""
 import json, os, pathlib, stat, subprocess, sys, tempfile, unittest
 P = pathlib.Path(__file__).resolve().parent
 TOOLS = P.parent / 'tools'
@@ -108,6 +108,37 @@ class Test(unittest.TestCase):
         f = V.filter_claims(r)
         self.assertEqual([a['id'] for a in f['kept']], ['A1', 'A5']); self.assertEqual([a['id'] for a in f['removed']], ['A2', 'A3', 'A4'])
         self.assertEqual([a['id'] for a in f['to_flag']], ['A5'])
+
+    def test_spending_limit(self):
+        """A user budget (state/budget.json, tools/cost.py --state) caps the verifier: each call receives what is left, no call once it is
+        spent, the claims left without a verdict are UNVERIFIED with the reason (never ABSENT); the claude profile gets budget_args."""
+        seen = []
+        def raw(prompt, workdir, left=None):
+            seen.append(left)
+            return answer([{'id': 'A1', 'source': 'S1', 'verdict': 'FOUND', 'fragments': ['method M reaches 71.2 % accuracy']}]), {'cost_usd': 0.3, 'seconds': 1}
+        eng = V.budgeted(raw, 0.5)
+        r = V.verify(CARD, SRC, eng, work=self.tmp.name, mode='source')                # S1 and its retry (0.5 then 0.2 left), then S2 refused
+        st = {a['id']: (a['status'], a.get('discrepancy', '')) for a in r['claims']}
+        self.assertEqual(seen, [0.5, 0.2]); self.assertAlmostEqual(eng.spent, 0.6)
+        self.assertEqual(st['A1'][0], 'FOUND'); self.assertEqual(st['A5'][0], 'SOURCE-UNAVAILABLE')
+        for i in ('A2', 'A3'): self.assertEqual(st[i], ('UNVERIFIED', 'no verdict returned'))     # the model left them out
+        self.assertEqual(st['A4'][0], 'UNVERIFIED'); self.assertIn('verifier budget reached', st['A4'][1])   # never called: over budget
+        self.assertNotIn('ABSENT', [x[0] for x in st.values()])
+        eng = V.budgeted(raw, None); V.verify(CARD, SRC, eng, work=self.tmp.name + '/w2'); self.assertIsNone(seen[-1])   # no budget: no limit
+        stop = V.budgeted(raw, 0.0)
+        r = V.verify(CARD, SRC, stop, work=self.tmp.name + '/w3')
+        self.assertEqual({a['status'] for a in r['claims'] if a['id'] != 'A5'}, {'UNVERIFIED'}); self.assertIn('budget', r['claims'][0]['discrepancy'])
+        # claude profile: budget_args of config model_command, '{usd}' = what is left; a host stop on the budget is an error, its cost counted
+        rec = pathlib.Path(self.tmp.name) / 'record.json'; os.environ['VP_FAKE_RECORD'] = str(rec)
+        os.environ['VP_MODEL_COMMAND_CLAUDE'] = json.dumps(self.fake('fake-claude-b.py', FAKE_CLAUDE) + ['-p', '--model', '{model}', '--output-format', 'json'])
+        work = pathlib.Path(self.tmp.name) / 'work-b'; work.mkdir()
+        V.model_call('P', str(work), 'm', host='claude', budget_usd=0.4)
+        argv = json.loads(rec.read_text())['argv']; ba = V.CONFIG['model_command']['claude'].get('budget_args') or []
+        if ba: self.assertEqual(argv[argv.index(ba[0]) + 1], '0.40')
+        V.model_call('P', str(work), 'm', host='claude'); self.assertNotIn('--max-budget-usd', json.loads(rec.read_text())['argv'])
+        self.assertEqual(V.budget_args('openai', 0.4), V.CONFIG['model_command'].get('openai', {}).get('budget_args', []) or [])
+        t, m = V._parse_claude(json.dumps({'type': 'result', 'subtype': 'error_max_budget_usd', 'total_cost_usd': 0.41, 'usage': {}}))
+        self.assertTrue(m['budget_stop']); self.assertIn('verifier budget reached', m['error']); self.assertEqual((t, m['cost_usd']), ('', 0.41))
 
     def test_source_mode_and_failure(self):
         seen = []

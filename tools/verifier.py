@@ -13,7 +13,7 @@ Measured on our benches (n = 50 questions, downstream): -4.2 points of false cla
 Command line:
   verifier.py verify --card card.json --out verdicts.json [--sources DIR] [--T YYYY-MM-DD --plugin P.md ...] [--fulltext | --no-fulltext]
                      [--cap N] [--model M] [--host claude|openai] [--mode auto|card|source] [--windows windows|whole] [--work DIR] [--filter]
-                     [--repo DIR ...] [--run-dir DIR]
+                     [--repo DIR ...] [--run-dir DIR] [--budget-usd USD]
   verifier.py check verdicts.json SOURCES_DIR          (citation_check.py; reads `claims` as written by verify, or `verdicts`)
 Import:
   from verifier import verify, load_sources, filter_claims, model_call
@@ -46,6 +46,10 @@ and tools/passages.py still read the whole text kept under sources/. A claim jud
 windows is judged again on the whole text of its source in a second call when that text is at most escalation_max_chars; above, it is
 UNVERIFIED with the reason (never ABSENT on a partial reading). `whole` mode = the behaviour before windows, unchanged. What was sent is
 written in the output (`windows`) and in <--state>/verifier.json: windows and characters sent against characters available, per source.
+Spending limit (a user budget, tools/cost.py --state): --budget-usd, else `verifier_usd` of <--state>/budget.json, else none. The
+verifier spends at most that much on model calls: each call receives what is left (claude profile: the `budget_args` of
+config model_command, e.g. --max-budget-usd), no call is made once it is spent, and the claims left without a verdict are UNVERIFIED
+with the reason "verifier budget reached" (never ABSENT); the limit and the spend are written in the output and the --state receipt.
 Statuses: FOUND | DISTORTED | ABSENT | SOURCE-UNAVAILABLE | INVALID (fragments not found after one retry) | UNVERIFIED (call failed).
 
 Model call: tools/config.json "model_command"[host] (host = env VP_HOST, else config "host", default claude); the command list
@@ -191,9 +195,14 @@ def resolve_executable(cmd):
 def _parse_claude(stdout):
     out = json.loads(stdout)
     u = out.get('usage', {})
-    return out.get('result', ''), {'cost_usd': out.get('total_cost_usd', 0) or 0,
-                                   'tokens_in': (u.get('input_tokens', 0) or 0) + (u.get('cache_read_input_tokens', 0) or 0) + (u.get('cache_creation_input_tokens', 0) or 0),
-                                   'tokens_out': u.get('output_tokens', 0) or 0, 'turns': out.get('num_turns')}
+    m = {'cost_usd': out.get('total_cost_usd', 0) or 0,
+         'tokens_in': (u.get('input_tokens', 0) or 0) + (u.get('cache_read_input_tokens', 0) or 0) + (u.get('cache_creation_input_tokens', 0) or 0),
+         'tokens_out': u.get('output_tokens', 0) or 0, 'turns': out.get('num_turns')}
+    sub = str(out.get('subtype') or '')
+    if sub.startswith('error'):                                      # e.g. error_max_budget_usd: the call stopped, its cost is still counted
+        m['error'] = f'model call stopped by the host ({sub})'
+        if 'budget' in sub: m['error'], m['budget_stop'] = f'verifier budget reached (the host stopped the call: {sub})', True
+    return out.get('result', '') or '', m
 
 
 def _parse_codex(stdout):
@@ -230,13 +239,46 @@ def codex_sandbox_blocked(stdout):
     return (hit.strip().splitlines() or [''])[0][:200] if hit is not None else None
 
 
-def model_call(prompt, workdir, model=None, host=None):
+def budget_args(host, usd):
+    """Arguments that cap the spend of one call (config model_command[host].budget_args, '{usd}' replaced); [] when the profile has none."""
+    if usd is None: return []
+    args = ((CONFIG.get('model_command') or {}).get(host) or {}).get('budget_args') or []
+    return [str(a).replace('{usd}', f'{max(usd, 0):.2f}') for a in args]
+
+
+def budget_limit(cli_usd, state):
+    """Spending limit of the verifier: --budget-usd, else verifier_usd of <state>/budget.json (tools/cost.py --state), else None."""
+    if cli_usd is not None: return float(cli_usd)
+    if not state: return None
+    try: v = json.loads((pathlib.Path(state) / 'budget.json').read_text(encoding='utf-8')).get('verifier_usd')
+    except (OSError, ValueError, AttributeError): return None
+    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) and v >= 0 else None
+
+
+def budgeted(engine, limit):
+    """Wrap engine(prompt, workdir, budget_usd=None) with a spending limit (USD, None = none): each call receives what is left,
+    no call once it is spent (measure 'error' + 'budget_stop', so the claims are UNVERIFIED with that reason). .spent holds the sum."""
+    def call(prompt, workdir):
+        left = None if limit is None else round(limit - call.spent, 4)
+        if left is not None and left <= 0:
+            return None, {'error': f'verifier budget reached ({call.spent:.2f} of {limit:.2f} USD spent): not judged', 'budget_stop': True, 'cost_usd': 0, 'seconds': 0}
+        text, m = engine(prompt, workdir, left)
+        call.spent += float(m.get('cost_usd') or 0)
+        return text, m
+    call.spent = 0.0
+    return call
+
+
+def model_call(prompt, workdir, model=None, host=None, budget_usd=None):
     """One model call confined to workdir (read-only tools). claude profile: prompt after -p, tools restricted to Read/Grep/Glob;
-    openai profile: prompt on stdin (codex `-`), --json event stream parsed. Returns (text, measure) or (None, {'error': ...})."""
+    openai profile: prompt on stdin (codex `-`), --json event stream parsed. budget_usd: what the call may spend (budget_args of the
+    profile; a profile without them is only stopped between calls, by budgeted()). Returns (text, measure) or (None, {'error': ...})."""
     host = host_name(host)
     env = {k: v for k, v in os.environ.items() if k not in ('ANTHROPIC_API_KEY', 'CLAUDE_CODE_OAUTH_TOKEN')}
     model = default_model(host) if model is None else model
     argv = strip_model([a.replace('{model}', model) for a in model_command(host)])
+    if budget_usd is not None and (extra := budget_args(host, budget_usd)):
+        argv = argv[:-1] + extra + argv[-1:] if argv and argv[-1] == '-' else argv + extra   # codex: before the stdin marker
     stdin = None
     if host == 'claude':
         if '-p' in argv: argv.insert(argv.index('-p') + 1, prompt)
@@ -445,7 +487,8 @@ def _unit(card, sources, engine, workdir):
     for i in expected:
         v = verdicts.get(i)
         if v is None:
-            out[i] = {'status': 'UNVERIFIED', 'discrepancy': measures[0].get('error', 'no verdict') if failed else 'no verdict returned'}
+            out[i] = {'status': 'UNVERIFIED', 'discrepancy': measures[0].get('error', 'no verdict') if failed else
+                      measures[-1]['error'] if measures and measures[-1].get('budget_stop') else 'no verdict returned'}
             continue
         status = (v.get('verdict') or '').upper()
         if i in pbs: status, v = 'INVALID', dict(v, problems=pbs[i])
@@ -582,6 +625,7 @@ def main():
     v.add_argument('--repo', action='append', default=None, help='code sources: local git directory (repeatable) tried first; '
                    'default: found from the run directory (capsule.json, capsule.md, scope.md, parent holding .git)')
     v.add_argument('--run-dir', default=None, help='run directory holding capsule.json / scope.md (default: the directory of --card)')
+    v.add_argument('--budget-usd', type=float, default=None, help='spending limit of the model calls; default: verifier_usd of <--state>/budget.json (tools/cost.py --state), else none')
     c = sub.add_parser('check'); c.add_argument('verdicts'); c.add_argument('sources_dir')
     a = ap.parse_args()
     if a.action == 'check':
@@ -603,13 +647,18 @@ def main():
     sources = load_sources(card, a.sources, gateway, fulltext, T=a.T, fulltext_cap=FULLTEXT_CAP, repos=repos, run_dir=run_dir,
                            out_dir=a.sources or (pathlib.Path(a.work) / 'sources' if a.work else pathlib.Path(a.out).resolve().parent / 'sources'))
     blocked = []                                                     # first sandbox failure: no further model call (each would fail the same way)
-    def engine(prompt, workdir):
+    def raw_engine(prompt, workdir, left=None):
         if blocked: return None, dict(blocked[0], seconds=0)
-        text, m = model_call(prompt, workdir, a.model, a.host)
+        text, m = model_call(prompt, workdir, a.model, a.host, left)
         if m.get('sandbox_unavailable'): blocked.append(m)
         return text, m
+    limit = budget_limit(a.budget_usd, a.state)
+    engine = budgeted(raw_engine, limit)
     res = verify(card, sources, engine, a.work, a.mode, windows=dict(WIN_CFG, mode=a.windows) if a.windows else None)
     if blocked: res['host_problem'] = blocked[0]['error']
+    if limit is not None:
+        res['budget'] = {'limit_usd': limit, 'spent_usd': round(engine.spent, 4), 'reached': any(m.get('budget_stop') for m in res['measures']),
+                         'unverified_by_budget': sum(1 for c in res['claims'] if c['status'] == 'UNVERIFIED' and 'budget' in str(c.get('discrepancy', '')))}
     res['sources_read'] = dict(sources_read(sources), fulltext_mode=bool(fulltext), fulltext_cap=FULLTEXT_CAP)
     if gateway is not None: res['sources_read']['gateway'] = {'pool': gateway.pool, 'cap': gateway.cap, 'run': gateway.run}
     if a.filter: res['filter'] = filter_claims(res)
@@ -619,6 +668,7 @@ def main():
         (st / 'verifier.json').write_text(json.dumps({'out': str(pathlib.Path(a.out).resolve()), 'summary': res['summary'], 'cost_usd': res['cost_usd'],
                                                       'model': a.model if a.model is not None else default_model(host_name(a.host)), 'host': host_name(a.host),
                                                       **res['sources_read'], 'windows': receipt_windows(res['windows']),
+                                                      **({'budget': res['budget']} if 'budget' in res else {}),
                                                       **({'host_problem': res['host_problem']} if blocked else {})}, ensure_ascii=False, indent=1))
     print(json.dumps(res['summary'], ensure_ascii=False))
     if blocked:                                                      # never a silent UNVERIFIED: message on stderr, exit 3 (outputs written)
