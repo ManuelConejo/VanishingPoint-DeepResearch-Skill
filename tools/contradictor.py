@@ -40,7 +40,18 @@ Rereads and the match call: host profile --host / VP_HOST / config "host"; model
 "contradictor.reread_model"[host]. VP_OPENROUTER_URL overrides the OpenRouter endpoint (tests). No key value is ever printed
 or written. No clone, no execution: the tool reads the run directory only.
 
-Usage: contradictor.py RUN_DIR [--families F ...] [--host claude|openai] [--model M] [--y-cap N] [--max-usd U] [--prompts-only]
+General mode (any plugin but code; --mode general, or auto when there is no whole-reading material and the code plugin is not
+named in scope.md): after the verification (SKILL.md section 7), the contradictor reads REPORT.md, card.json, the source texts the
+verifier read (sources/<key>/source.txt, whole, in key order, under contradictor.general.sources_cap_chars; a source left out is
+declared) and the "Discipline biases" section of each plugin of the run, no network (prompts/CONTRADICTOR-GENERAL.md). It returns at
+most 3 statements FALSE or TOO STRONG (exact quotation + fragments copied verbatim from a source S<n>) and at most 3 MISSING ANGLES
+(counter-evidence, plugin bias, population, date T, other; at least one verbatim source fragment). Same three gates: (a) the
+quotation is in the report and every fragment is in the named text after normalisation of spaces, quotes and case only (at least
+general.min_fragment_chars characters); (b) the match call (prompts/CONTRADICTOR-GENERAL-MATCH.md, list A = the sections of the
+report but the bibliography); (c) the rereads with the source extracts (prompts/CONTRADICTOR-GENERAL-REREAD-FALSE.md,
+-REREAD-MISS.md). Same statuses and receipt, with "mode": "general".
+
+Usage: contradictor.py RUN_DIR [--mode auto|code|general] [--plugin plugins/<d>.md ...] [--families F ...] [--host claude|openai] [--model M] [--y-cap N] [--max-usd U] [--prompts-only]
 """
 import argparse, datetime as dt, difflib, hashlib, json, os, pathlib, re, shutil, subprocess, sys, tempfile, time, urllib.error, urllib.parse, urllib.request
 from types import SimpleNamespace
@@ -245,13 +256,21 @@ def findings(report):
 
 # ------------------------------------------------------------------ model calls
 def extract_json(txt):
+    """The JSON object of an answer; when the answer holds several (a model that corrects itself), the last one that parses."""
     t = (txt or '').strip()
     t = re.sub(r'^```(?:json)?\s*|\s*```$', '', t)
     a, z = t.find('{'), t.rfind('}')
     if a < 0 or z <= a: return None
     try: j = json.loads(t[a:z + 1])
-    except ValueError: return None
-    return j if isinstance(j, dict) else None
+    except ValueError: j = None
+    if isinstance(j, dict): return j
+    dec = json.JSONDecoder(); last = None; k = t.find('{')
+    while 0 <= k:
+        try: obj, end = dec.raw_decode(t, k)
+        except ValueError: k = t.find('{', k + 1); continue
+        if isinstance(obj, dict): last = obj
+        k = t.find('{', end)
+    return last
 
 
 def http_call(spec, prompt, trace):
@@ -407,17 +426,281 @@ def reread(els, report, xb, yb, host, model, d, costs):
             e.update(reread=verdict, reread_usd=m.get('usd'), status='miss verified' if verdict == 'FOUND' else f'miss false: {verdict}')
 
 
+# ------------------------------------------------------------------ general mode (any plugin but code): the report against its own sources
+GE = CO.get('general') or {}
+SRC_CAP = int(GE.get('sources_cap_chars', 220000)); MIN_FRAG = int(GE.get('min_fragment_chars', 20))
+WHOLE_SRC = int(GE.get('whole_source_below_chars', 8000)); SRC_WINDOW = int(GE.get('window_chars', 2000))
+SECTION_CHARS = int(GE.get('section_chars', 6000)); BIAS_HEADING = GE.get('bias_heading', '## Discipline biases')
+PLUGIN_REF = re.compile(r'plugins/([A-Za-z][\w-]*)\.md')
+KEY_FORM = re.compile(r'^\[?\s*(?:S|s)?\s*(\d+)\s*\]?$')
+
+
+def natural(k):
+    m = re.match(r'^[A-Za-z]*(\d+)$', k); return (0, int(m.group(1)), k) if m else (1, 0, k)
+
+
+def read_sources(run):
+    """{key: text} of <run>/sources/<key>/source.txt, the texts the verifier read (SKILL.md section 7), in key order."""
+    out = {}
+    for f in sorted((run / 'sources').glob('*/source.txt'), key=lambda f: natural(f.parent.name)):
+        try: out[f.parent.name] = f.read_text(errors='replace')
+        except OSError: pass
+    return out
+
+
+def run_plugins(run, given=None):
+    """Plugin names of the run: --plugin, else the `plugins/<name>.md` named in scope.md, then in REPORT.md (code and _TEMPLATE left out)."""
+    names = []
+    for g in (given or []):
+        n = pathlib.Path(g).stem
+        if n not in names: names.append(n)
+    if not names:
+        shipped = {f.stem for f in (HERE.parent / 'plugins').glob('*.md')}
+        for f in ('scope.md', 'REPORT.md'):
+            try: t = (run / f).read_text(errors='replace')
+            except OSError: continue
+            for m in PLUGIN_REF.finditer(t):
+                if m.group(1) not in names: names.append(m.group(1))
+            if f == 'scope.md':                                   # "Plugin: law." / "Plugins: biology, finance"
+                for line in re.findall(r'^\W*plugins?\W*:\s*(.+)$', t, re.I | re.M):
+                    for w in re.findall(r'[A-Za-z][\w-]*', line):
+                        if w.lower() in shipped and w.lower() not in names: names.append(w.lower())
+            if names: break
+    return [n for n in names if n != '_TEMPLATE']
+
+
+def plugin_biases(names):
+    """{plugin:<name>: text of its `## Discipline biases` section} for the plugins shipped in plugins/."""
+    out = {}
+    for n in names:
+        f = HERE.parent / 'plugins' / f'{n}.md'
+        try: t = f.read_text(errors='replace')
+        except OSError: continue
+        i = t.find(BIAS_HEADING)
+        if i < 0: continue
+        j = t.find('\n## ', i + len(BIAS_HEADING)); out[f'plugin:{n}'] = t[i:j if j > 0 else len(t)].strip()
+    return out
+
+
+def general_material(srcs, biases, cap):
+    """Sources in key order, whole, as long as they fit under cap (a source that does not fit is left out and declared, never cut),
+    then the bias sections of the plugins. Returns (text, keys included, keys excluded)."""
+    parts, used, inc, exc = [], 0, [], []
+    for k, t in srcs.items():
+        block = f"=== source {k} ({len(t)} characters) ===\n{t.rstrip()}\n"
+        if used + len(block) > cap: exc.append(k); continue
+        parts.append(block); used += len(block); inc.append(k)
+    head = (f"# [Contradictor: sources cut at {cap} characters; {len(exc)} sources read by the verifier but NOT INCLUDED (contradictor cap): "
+            + ', '.join(exc) + "]\n\n") if exc else ''
+    for k, t in biases.items(): parts.append(f"=== {k} (bias section of the plugin) ===\n{t}\n")
+    return head + '\n'.join(parts), inc, exc
+
+
+def source_key(raw, texts):
+    """'S3', 's3', '[3]', '3', 'plugin:biology' -> the key of texts, or None."""
+    r = str(raw or '').strip()
+    if r in texts: return r
+    if r.lower().startswith('plugin'):
+        n = r.split(':', 1)[1].strip().lower() if ':' in r else ''
+        hits = [k for k in texts if k.startswith('plugin:') and (k[7:] == n or not n)]
+        return hits[0] if len(hits) == 1 else None
+    m = KEY_FORM.match(r)
+    if m:
+        hits = [k for k in texts if not k.startswith('plugin:') and re.sub(r'\D', '', k) == m.group(1)]
+        return hits[0] if len(hits) == 1 else None
+    return None
+
+
+def check_evidence(evs, texts):
+    """Evidence of the contradictor -> [{source, side, fragment, exists, note}]; a fragment exists when, after normalisation of
+    spaces, quotes and case only, it is a substring of the named text and has at least min_fragment_chars characters."""
+    out = []
+    for ev in as_list(evs):
+        if not isinstance(ev, dict):
+            m = re.match(r'^\s*\[?([A-Za-z]*\d+|plugin:[\w-]+)\]?\s*[:,-]\s*(.+)$', str(ev), re.S)
+            ev = {'source': m.group(1), 'fragment': m.group(2)} if m else {'source': '', 'fragment': str(ev)}
+        raw = str(ev.get('source') or ''); frag = str(ev.get('fragment') or ev.get('quote') or '')
+        k = source_key(raw, texts); q = normalise(frag)
+        r = dict(source=k or raw[:60], side='plugin' if (k or '').startswith('plugin:') else 'source', fragment=one_line(frag)[:600], exists=False, note='')
+        if not k: r['note'] = 'source not in the material'
+        elif len(q) < MIN_FRAG: r['note'] = f'fragment shorter than {MIN_FRAG} characters'
+        elif q not in norm_map(texts[k])[0]: r['note'] = 'fragment not found verbatim in the source'
+        else: r.update(exists=True, note='verbatim')
+        out.append(r)
+    return out
+
+
+def general_extracts(evs, texts):
+    """The text of each existing fragment: the whole source when it is short, else a window around the fragment."""
+    blocks = []; seen = set()
+    for r in evs:
+        if not r['exists']: continue
+        t = texts[r['source']]; nt, idx = norm_map(t); k = nt.find(normalise(r['fragment']))
+        pos = idx[k] if k >= 0 else 0
+        a, z = (0, len(t)) if len(t) <= WHOLE_SRC else (max(0, pos - SRC_WINDOW), min(len(t), pos + len(r['fragment']) + SRC_WINDOW))
+        if (r['source'], a) in seen: continue
+        seen.add((r['source'], a))
+        blocks.append(f"=== {r['source']} (characters {a}-{z} of {len(t)}) ===\n" + t[a:z])
+    return '\n\n'.join(blocks) or '(no readable extract)'
+
+
+def report_sections(report):
+    """List A of the general match call: every `##`/`###` section of the report but the bibliography, whole up to section_chars."""
+    items = []
+    for part in re.split(r'^(?=#{2,3} )', report, flags=re.M):
+        head = part.split('\n', 1)[0].lower()
+        if not part.startswith('##') or re.match(r'^## (bibliograph|références|references)', head): continue
+        if part.startswith('## ') and '\n### ' in part: part = part.split('\n### ', 1)[0]   # the findings come as their own items
+        if part.strip(): items.append(part.strip()[:SECTION_CHARS])
+    return items or [report.strip()[:40000]]
+
+
+def card_text(run):
+    try: c = json.loads((run / 'card.json').read_text())
+    except (OSError, ValueError): return '(no card.json)', ''
+    keep = {k: c.get(k) for k in ('question', 'conclusion', 'claims') if k in c}
+    return json.dumps(keep, ensure_ascii=False, indent=0)[:60000], str(c.get('question') or '')
+
+
+def build_prompt_general(a, report, card, material, plugins):
+    g = (HERE / 'prompts' / 'CONTRADICTOR-GENERAL.md').read_text()
+    return W.fill(g, {'T': a.T, 'REQUEST': a.request, 'PLUGINS': ', '.join(plugins) or '(none named)', 'MIN_FRAG': str(MIN_FRAG),
+                      'REPORT': report.rstrip(), 'CARD': card.rstrip(), 'SOURCES': material.rstrip()})
+
+
+def analyse_general(name, j, report, texts):
+    """Mechanical check of one family's JSON in general mode -> elements with a status, same statuses as the code mode."""
+    els = []
+    for i, f in enumerate(as_list(j.get('false_claims'))[:MAX_PER_LIST]):
+        if not isinstance(f, dict): f = {'quote': str(f)}
+        quote = str(f.get('quote') or ''); why = one_line(f.get('why') or '')
+        found, pos, method = find_quote(quote, report); evs = check_evidence(f.get('evidence'), texts)
+        src_ok = bool(evs) and all(r['exists'] for r in evs) and all(r['side'] == 'source' for r in evs)
+        status = ('to reread' if found and src_ok else 'false added: quotation not found in the report' if not found
+                  else 'false added: no evidence' if not evs else 'false added: evidence not found verbatim in a source' if not all(r['exists'] for r in evs)
+                  else 'false added: evidence from the plugin only')
+        els.append(dict(kind='false', family=name, i=i + 1, quote=quote[:600], evidence=[f"{r['source']}: {r['fragment'][:200]}" for r in evs], why=why[:800],
+                        quote_found=found, quote_method=method, position=pos, refs=evs, status=status))
+    for i, m in enumerate(as_list(j.get('missed'))[:MAX_PER_LIST]):
+        if not isinstance(m, dict): m = {'claim': str(m)}
+        claim = one_line(m.get('claim') or ''); angle = one_line(m.get('angle') or '')[:60]; why = one_line(m.get('why') or '')
+        evs = check_evidence(m.get('evidence'), texts)
+        has_src = any(r['side'] == 'source' and r['exists'] for r in evs); all_ok = bool(evs) and all(r['exists'] for r in evs)
+        status = ('to match' if all_ok and has_src else 'miss false: no evidence' if not evs else 'miss false: evidence not found verbatim in a source'
+                  if not all_ok else 'miss false: no source fragment (plugin only)')
+        els.append(dict(kind='miss', family=name, i=i + 1, angle=angle, claim=claim[:800], evidence=[f"{r['source']}: {r['fragment'][:200]}" for r in evs], why=why[:800], refs=evs, status=status))
+    return els
+
+
+def match_general(els, report, host, model, d, costs):
+    cands = [e for e in els if e['status'] == 'to match']
+    if not cands: return
+    g = (HERE / 'prompts' / 'CONTRADICTOR-GENERAL-MATCH.md').read_text()
+    la = '\n\n'.join(f'### A{i + 1}\n{t}' for i, t in enumerate(report_sections(report)))
+    lb = '\n\n'.join(f"### B{i + 1}\n[{e['angle'] or 'angle'}] {e['claim']}\n  why: {e['why']}\n  evidence: {' | '.join(e['evidence'])}" for i, e in enumerate(cands))
+    if costs['rereads'] + REREAD_USD > MAX_USD:
+        for e in cands: e['status'] = 'not reread: contradictor budget reached'
+        return
+    txt, m = host_call(host, model, W.fill(g, {'LIST_A': la, 'LIST_B': lb}), d / 'match.trace.jsonl'); costs['rereads'] += m.get('usd') or 0
+    j = extract_json(txt or '')
+    if j is None:
+        for e in cands: e['status'] = 'not reread: match call failed'; e['match'] = m.get('error') or 'no JSON'
+        return
+    matched = set()
+    for pair in (j.get('pairs') or []):
+        if isinstance(pair, dict) and str(pair.get('B', '')).upper().startswith('B'):
+            try: matched.add(int(str(pair['B'])[1:]))
+            except ValueError: pass
+    for i, e in enumerate(cands):
+        e['exclusive'] = (i + 1) not in matched; e['status'] = 'to reread' if e['exclusive'] else 'not exclusive: already stated in the report'
+
+
+def reread_general(els, report, texts, question, host, model, d, costs):
+    n = 0
+    for e in els:
+        if e['status'] != 'to reread': continue
+        if costs['rereads'] + REREAD_USD > MAX_USD: e['status'] = 'not reread: contradictor budget reached'; continue
+        n += 1; trace = d / f"reread-{n}-{e['kind']}-{fname(e['family'])}-{e['i']}.trace.jsonl"
+        if e['kind'] == 'false':
+            g = (HERE / 'prompts' / 'CONTRADICTOR-GENERAL-REREAD-FALSE.md').read_text()
+            p = W.fill(g, {'QUOTATION': one_line(e['quote']), 'CONTEXT': context(report, e['position']),
+                           'OBJECTION': e['why'] + '\nEvidence: ' + ' | '.join(e['evidence']), 'EXTRACTS': general_extracts(e['refs'], texts)})
+            txt, m = host_call(host, model, p, trace); costs['rereads'] += m.get('usd') or 0; up = (txt or '').upper()
+            verdict = first_verdict(up, ('NOT CONTRADICTED', 'NOT-CONTRADICTED', 'CONTRADICTED')).replace('-', ' ')
+            e.update(reread=verdict, reread_usd=m.get('usd'), status='false detected' if verdict == 'CONTRADICTED' else f'false added: {verdict}')
+        else:
+            g = (HERE / 'prompts' / 'CONTRADICTOR-GENERAL-REREAD-MISS.md').read_text()
+            frag = f"[{e['angle'] or 'angle'}] {e['claim']}\nWhy: {e['why']}"
+            p = W.fill(g, {'QUESTION': one_line(question), 'FRAGMENT': frag, 'EXTRACTS': general_extracts(e['refs'], texts)})
+            txt, m = host_call(host, model, p, trace); costs['rereads'] += m.get('usd') or 0; up = (txt or '').upper()
+            verdict = first_verdict(up, ('NOT FOUND', 'FOUND', 'ABSENT')).replace('NOT FOUND', 'ABSENT')
+            e.update(reread=verdict, reread_usd=m.get('usd'), status='miss verified' if verdict == 'FOUND' else f'miss false: {verdict}')
+
+
 def receipt(run, d, rec):
     (run / 'contradictor.json').write_text(json.dumps(rec, ensure_ascii=False, indent=1) + '\n'); chown(run)
+
+
+def main_general(a, run, d, fams, plugins):
+    """General mode: REPORT.md, card.json and the source texts the verifier read (sources/<key>/source.txt), no network reading."""
+    srcs = read_sources(run)
+    if not (run / 'REPORT.md').exists() or not srcs:
+        rec = dict(status='skipped', mode='general', families=fams, note='REPORT.md and the source texts of the verifier (sources/<key>/source.txt, SKILL.md section 7) are required: run the verification first (a code run needs instead the whole-reading material: run tools/whole_reading.py first); report unchanged', utc=utc())
+        receipt(run, d, rec); print(json.dumps(rec, ensure_ascii=False)); return 0
+    report = (run / 'REPORT.md').read_text(errors='replace'); card, question = card_text(run)
+    biases = plugin_biases(plugins); material, inc, exc = general_material(srcs, biases, a.y_cap)
+    texts = {k: srcs[k] for k in inc}; texts.update(biases)
+    ns = SimpleNamespace(T=a.T, request=a.request or question or None, target='-', x_sha=None, x2_sha=None, y_sha=None, x_name=None, x2_name=None, y_name=None, x_repo=None, x2_repo=None)
+    ns = W.from_scope(run, ns)
+    p = build_prompt_general(ns, report, card, material, plugins); (d / 'PROMPT.md').write_text(p)
+    mat = dict(sources=len(srcs), sources_included=len(inc), sources_not_included=exc, sources_chars=sum(len(srcs[k]) for k in inc), cap=a.y_cap,
+               plugins=plugins, bias_sections=sorted(biases), report_chars=len(report), prompt_chars=len(p), prompt_sha256=hashlib.sha256(p.encode()).hexdigest())
+    host = host_name(a); model = reread_model(a, host)
+    rec = dict(status='prompts' if a.prompts_only else 'running', mode='general', families={}, material=mat, reread=dict(host=host, model=model or '(host default)'), utc=utc())
+    if a.prompts_only:
+        rec['note'] = 'prompt built, no model called'; receipt(run, d, rec); print(json.dumps(dict(status='prompts', mode='general', families=fams, **mat), ensure_ascii=False)); return 0
+    costs = dict(contradictors=0.0, rereads=0.0); els = []
+    for name in fams:
+        spec = family_spec(name)
+        if not spec: rec['families'][name] = dict(error='unknown family: write openai[:<model>], claude[:<model>] or <provider>:<model> with a provider of tools/config.json contradictor.providers (' + ', '.join(sorted(providers())) + ')', exploitable=False); continue
+        txt, m = contradictor_call(spec, p, d, name); j = extract_json(txt or '') if txt else None
+        (d / f'{fname(name)}.json').write_text(json.dumps(dict(family=name, via=spec['via'], model=spec['model'] or '(host default)', raw=(txt or '')[:200000], json=j, measure=m, utc=utc()), ensure_ascii=False, indent=1) + '\n')
+        costs['contradictors'] += float(m.get('usd') or 0)
+        fam = dict(via=spec['via'], kind=spec['kind'], model=spec['model'] or '(host default)', usd=m.get('usd'), cost_known=m.get('cost_known', spec['kind'] == 'cli'), seconds=m.get('seconds'), exploitable=bool(j))
+        if m.get('error'): fam['error'] = m['error']; fam['note'] = m.get('note') or m.get('detail')
+        elif not j: fam['error'] = 'answer is not the expected JSON'
+        rec['families'][name] = fam
+        if j:
+            els += analyse_general(name, j, report, texts)
+            fam.update(n_false=len(as_list(j.get('false_claims'))), n_missed=len(as_list(j.get('missed'))))
+    match_general(els, report, host, model, d, costs)
+    reread_general(els, report, texts, question or ns.request or '', host, model, d, costs)
+    false_detected = [dict(family=e['family'], quote=e['quote'], evidence=e['evidence'], why=e['why'], position=e['position']) for e in els if e['status'] == 'false detected']
+    verified = [dict(family=e['family'], angle=e['angle'], claim=e['claim'], evidence=e['evidence'], why=e['why']) for e in els if e['status'] == 'miss verified']
+    counts = {}
+    for e in els: counts[e['status']] = counts.get(e['status'], 0) + 1
+    rec.update(status='done', elements=els, false_detected=false_detected, misses_verified=verified, counts=counts,
+               cost_usd=dict(contradictors=round(costs['contradictors'], 4), rereads=round(costs['rereads'], 4), total=round(costs['contradictors'] + costs['rereads'], 4), cap=MAX_USD),
+               note=('apply (SKILL.md "Contradictor", general mode, same treatment as the code mode): for each "false detected", annotate the finding that carries the quotation "contradicted by <family>: <why>" '
+                     'and keep the quotation out of the executive summary and the verdicts; for each "miss verified", add a finding with its evidence (the [n] of the cited sources, whose fragments were '
+                     'checked verbatim against the source texts the verifier read); state in the methodology appendix the families, the counts (false detected / false added / misses verified / '
+                     'misses false or not exclusive) and the cost; everything else stays in contradictor.json; the tool never edits REPORT.md'), utc=utc())
+    receipt(run, d, rec)
+    print(json.dumps(dict(status='done', mode='general', families={k: (v.get('error') or f"ok ({v.get('n_false', 0)} false, {v.get('n_missed', 0)} missed)") for k, v in rec['families'].items()},
+                          false_detected=len(false_detected), misses_verified=len(verified), counts=counts, cost_usd=rec['cost_usd']['total'], file=str(run / 'contradictor.json'), note=rec['note']), ensure_ascii=False))
+    return 0
 
 
 def main(argv=None):
     global MAX_USD
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('run'); ap.add_argument('--families', nargs='*'); ap.add_argument('--host', choices=['claude', 'openai']); ap.add_argument('--model')
-    ap.add_argument('--y-cap', type=int, default=Y_CAP); ap.add_argument('--max-usd', type=float, default=MAX_USD)
+    ap.add_argument('--y-cap', type=int, default=None, help='cap of Y (code) or of the sources (general); default: contradictor.y_cap_chars or general.sources_cap_chars'); ap.add_argument('--max-usd', type=float, default=MAX_USD)
     ap.add_argument('--prompts-only', action='store_true', help='build the prompt and the receipt without calling any model')
     ap.add_argument('--T'); ap.add_argument('--request'); ap.add_argument('--target')
+    ap.add_argument('--mode', choices=['auto', 'code', 'general'], default='auto',
+                    help='code = the whole-reading material of plugins/code.md; general = the report against sources/<key>/source.txt (any other plugin); auto = code when the material is there')
+    ap.add_argument('--plugin', action='append', help='plugin of the run (general mode: its bias section joins the material); default: the plugins named in scope.md')
     a = ap.parse_args(argv)
     MAX_USD = a.max_usd
     run = pathlib.Path(a.run).resolve(); d = run / 'state' / 'contradictor'; d.mkdir(parents=True, exist_ok=True)
@@ -426,6 +709,13 @@ def main(argv=None):
         rec = dict(status='absent', note='no contradictor configured (VP_CONTRADICTORS, ~/.config/vp/contradictors or tools/config.json contradictor.families); report unchanged', utc=utc())
         receipt(run, d, rec); print(json.dumps(rec, ensure_ascii=False)); return 0
     wr = run / 'state' / 'whole-reading'
+    mode = a.mode; plugins = run_plugins(run, a.plugin)
+    if mode == 'auto':
+        has_material = (wr / 'material-Y.txt').exists() and (wr / 'material-X.txt').exists()
+        mode = 'code' if has_material or 'code' in plugins else 'general'
+    if mode == 'general':
+        a.y_cap = a.y_cap or SRC_CAP; return main_general(a, run, d, fams, [n for n in plugins if n != 'code'])
+    a.y_cap = a.y_cap or Y_CAP
     if not (run / 'REPORT.md').exists() or not (wr / 'material-Y.txt').exists() or not (wr / 'material-X.txt').exists():
         rec = dict(status='skipped', families=fams, note='REPORT.md and the whole-reading material (state/whole-reading/material-Y.txt, material-X.txt) are required: run tools/whole_reading.py first; report unchanged', utc=utc())
         receipt(run, d, rec); print(json.dumps(rec, ensure_ascii=False)); return 0

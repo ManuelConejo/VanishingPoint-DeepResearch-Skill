@@ -856,3 +856,17 @@ Code changes from an offline analysis of 104 judge errors and 92 verifier non-FO
   `tools/validate_card.py` check 2 reports it. Offline replay of that card: 5 of 5 sources read, against 0 of 5 before.
 - Waiting list: a "small corpus" rule (the pipeline skip seen earlier did not recur on v0.6.8 in 2 new cases), the
   quote-first and contradiction sections, C19 and C20 (see the bench notes). Trial costs: 4.39 + 4.60 + 3.60 USD.
+
+## v0.6.10 - 2026-10-29 - contradictor for every plugin
+
+- Adopted: the contradictor (optional, never on by default) now also runs on biology, cs-ai, law and finance reports.
+  General mode of `tools/contradictor.py` (`--mode auto|code|general`, `--plugin`), after the verification (SKILL.md section 7)
+  and before `finish_run.py`: a model of another family reads `REPORT.md`, `card.json` and the source texts already read by the
+  verifier (no network reading) and must (1) find a false or overstated claim with a verbatim quote of a source as proof,
+  (2) name a missing angle (counter-study, plugin bias, population, date T). Each detection is reread before it is applied;
+  the contradictor never edits `REPORT.md` itself. 4 new prompts `tools/prompts/CONTRADICTOR-GENERAL*.md`, a
+  `contradictor.general` block in `tools/config.json`, one line per non-code plugin.
+- Measure (frozen criterion of the code duel, 6 existing reports: biology 3, cs-ai 2, law 1, French and English): Codex 6/6
+  cases with a true detection, 20 true detections against 4 added errors; Kimi (OpenRouter) 5/6, 15 against 4. Cost 4.88 USD.
+  Not measured: finance, `claude` as contradictor; the reread judge was of the author's family.
+- Fixed: the contradictor reads the last valid JSON object of a judge answer (an answer with two objects was dropped).
