@@ -769,3 +769,10 @@ Code fixes, each with offline tests (44 test files pass); no change to SKILL.md.
 - Fixed: `provenance <origin>` read the latest Software Heritage visit; it now returns the last visit with a snapshot dated before T (visit list, bisection, at most `software_heritage.visit_requests` requests) and refuses with "unavailable before T" when there is none.
 - Improved: `search-dbnomics` relevance: a pool of `data_series.dbnomics_candidates` datasets and `dbnomics_series_pool` series per dataset re-ranked by the query words in their names, case duplicates merged, datasets interleaved; same number of requests.
 - Fixed: the verifier under Codex without a working sandbox no longer returns silent UNVERIFIED claims: it detects the sandbox failure (`verifier.sandbox_failure_markers`), stops calling the model, writes `host_problem`, prints the reason and exits 3; fallback documented in README ("Codex CLI").
+
+## v0.6.2 - 2026-10-29 - verifier sees record fields; repeated calls not counted
+
+Code changes from an offline analysis of 104 judge errors and 92 verifier non-FOUND verdicts; 45 test files pass; no change to SKILL.md.
+
+- Fixed: the verifier's source text kept only title and abstract, so venues and in-force dates present in the source record were judged ABSENT and correct claims were removed (18 of 54 ABSENT in the analysed runs). The record header is now kept.
+- Changed: an identical gateway call (same command and argument, same run and pool) already made is served from the cache, marked `repeat` in the journal and not counted against the call cap (8.8 % of calls on average), with a bound on repeats.
