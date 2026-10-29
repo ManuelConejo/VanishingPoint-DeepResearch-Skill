@@ -8,7 +8,7 @@ Role instructions and citation check live next to this file and are used in plac
   verifier/fetch_fulltext.py   open-access full text retrieval (--fulltext)
   verifier/windows.py          claim windows: the spans of a long source sent to the model (config verifier.windows)
   verifier/code_files.py       code sources <path>@<SHA>: the whole file at the SHA, by git show (local git directories) or gateway code-file
-Measured in the lab (n = 50 questions, downstream): -4.2 points of false claims (CI 97.5 [-7.1; -1.5]); hardened set: 81/81.
+Measured on our benches (n = 50 questions, downstream): -4.2 points of false claims (CI 97.5 [-7.1; -1.5]); hardened set: 81/81.
 
 Command line:
   verifier.py verify --card card.json --out verdicts.json [--sources DIR] [--T YYYY-MM-DD --plugin P.md ...] [--fulltext | --no-fulltext]
@@ -358,12 +358,24 @@ def load_sources(card, sources_dir=None, gateway=None, fulltext=False, out_dir=N
                     d.mkdir(parents=True, exist_ok=True); (d / 'record.json').write_text(json.dumps(rep, ensure_ascii=False))
                 r = rep.get('results') or {}
                 if isinstance(r, dict) and r.get('abstract') and not NO_ABSTRACT.match(str(r['abstract'])):
-                    txt = f"{r.get('title') or ''}\n\n{r['abstract']}"; origin = 'abstract'; note = '(record + abstract)'
+                    txt = record_header(r) + f"{r.get('title') or ''}\n\n{r['abstract']}"; origin = 'abstract'; note = '(record + abstract)'
                     if d: (d / 'source.txt').write_text(txt)
                 else: note = rep.get('refusal') or rep.get('error') or (r.get('refusal') or r.get('error') if isinstance(r, dict) else None) or 'no abstract'
         if txt is not None and not txt.strip(): txt = None; origin = 'missing'
         out[c] = {'text': txt or '', 'origin': origin, 'note': note, 'desc': desc, **({'fulltext': attempt} if attempt else {})}
     return out
+
+
+RECORD_FIELDS = ('id', 'doi', 'journal', 'venue', 'year', 'date', 'type', 'in_force_from', 'applies_from', 'in_force_to', 'in_force', 'consolidated',
+                 'declared_void_by', 'court', 'number', 'ecli')
+
+
+def record_header(r):
+    """The record fields the gateway served with the abstract (venue, year, type; for a law text the Cellar dates of force), kept at the head
+    of source.txt so that a venue or a date-of-force claim is judged against the record that states it. Measured 2026-10-29 on the verdicts of
+    the duels of 2026-10-28: 17 of the 54 ABSENT were venue or Cellar-date claims whose value was in record.json but not in source.txt."""
+    lines = [f'{k}: {r[k]}' for k in RECORD_FIELDS if r.get(k) not in (None, '', [], 'None')]
+    return ('Record served by the gateway:\n' + '\n'.join(lines) + '\n\n') if lines else ''
 
 
 def sources_read(sources):

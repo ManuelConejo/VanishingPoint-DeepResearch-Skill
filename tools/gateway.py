@@ -180,6 +180,28 @@ class Gateway:
             f.seek(0); f.truncate(); f.write(str(k + 1))
         return k + 1
 
+    def _repeat(self, cmd, arg, n, opt):
+        """An identical call (command, argument, n, filters) already journaled without error in this run and pool is a repeat: its pages come
+        from the HTTP cache (sources/_common.py), so it is not counted; at most `cap` repeats per run and pool (counter-...repeat.txt). Measured
+        2026-10-29 on the journals of the duels of 2026-10-28/29: 22 % of the reads of the search pool were repeats of a read already made.
+        -> the call number to report (the current count, unchanged), or None (not a repeat: the caller counts it)."""
+        key = [cmd, arg, n, {k: opt[k] for k in FILTER_OPT.get(cmd, ()) if opt.get(k)}]
+        j = self.state / 'journal.jsonl'
+        if not j.exists(): return None
+        seen = False
+        for line in j.read_text(errors='replace').splitlines():
+            try: x = json.loads(line)
+            except ValueError: continue
+            if x.get('run') == self.run and x.get('pool') == self.pool and not x.get('error') and [x.get('call'), x.get('query'), x.get('n'), x.get('filters') or {}] == key:
+                seen = True; break
+        if not seen: return None
+        with open(self.state / (f'counter-{self.run}.repeat.txt' if not self.pool else f'counter-{self.run}.{self.pool}.repeat.txt'), 'a+') as f:
+            fcntl.flock(f, fcntl.LOCK_EX); f.seek(0); r = int(f.read() or 0)
+            if r >= self.cap: return None
+            f.seek(0); f.truncate(); f.write(str(r + 1))
+        c = self.state / (f'counter-{self.run}.txt' if not self.pool else f'counter-{self.run}.{self.pool}.txt')
+        return int(c.read_text() or 0) if c.exists() else 0
+
     def call(self, cmd, arg, n=20, **opt):
         """One counted and journaled command. opt: language, repo (search-code); court, date_from, date_to (search-justice-administrative)."""
         if cmd == 'sources': return self.sources()
@@ -195,7 +217,8 @@ class Gateway:
             return {'refusal': f"engine '{cmd[7:]}' not declared by the plugins (sources block) or not wired; available engines: {', '.join(self.engines)}"}
         if not (cmd.startswith('search-') or cmd in ('read', 'citing', 'references', 'related') or cmd in CODE_ENGINES):
             return {'refusal': f"unknown command '{cmd}'"}
-        k = self._count()
+        rep = self._repeat(cmd, arg, n, opt)
+        k = rep or self._count()
         if k is None:
             if self.pool: return {'refusal': f"CAP reached ({self.cap} calls of the {self.pool} budget, {self.pool}.call_cap of tools/config.json)", 'pool': self.pool}
             return {'refusal': f"CAP reached ({self.cap} calls): stop searching and return your list."}
@@ -217,7 +240,7 @@ class Gateway:
                'excluded_post_T_or_forbidden': B.excluded, 'results': res, 'engine': engine, 'query': arg, 'n': n, **extra, **({'key_invalid': inv} if inv else {})}
         with open(self.state / 'journal.jsonl', 'a') as f:
             f.write(json.dumps({'utc': dt.datetime.now(dt.timezone.utc).isoformat(), 'run': self.run, **({'pool': self.pool} if self.pool else {}), 'T': B.T.isoformat(), 'call': cmd, 'engine': engine,
-                                'query': arg, **({'filters': ja_opt} if ja_opt else {}), 'n': n, 'count': len(res) if isinstance(res, list) else None, 'excluded': B.excluded, 'error': err, **({'key_invalid': inv} if inv else {}),
+                                'query': arg, **({'filters': ja_opt} if ja_opt else {}), **({'repeat': True} if rep else {}), 'n': n, 'count': len(res) if isinstance(res, list) else None, 'excluded': B.excluded, 'error': err, **({'key_invalid': inv} if inv else {}),
                                 'ids': [r.get('id') for r in res] if isinstance(res, list) else [res.get('id')] if isinstance(res, dict) else []},
                                ensure_ascii=False) + '\n')
         return out
