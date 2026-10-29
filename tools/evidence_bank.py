@@ -55,6 +55,7 @@ sys.path.insert(0, str(HERE)); sys.path.insert(0, str(HERE / 'verifier'))
 from citation_check import MIN_CHARS, norm                  # noqa: E402  (same normalisation and minimum as the fragment check)
 import passages as PS                                       # noqa: E402  (refs_of, fs_key, _code, _fence)
 from export_report import CITE_RE                           # noqa: E402  (the [n] / [n, m] citation syntax of the report)
+import report_lang as RL                                     # noqa: E402  (canonical titles of the sections, any language)
 
 
 def _config():
@@ -347,7 +348,7 @@ def report_units(md, skip=None):
     flush()
     out = []
     for sec, sb, p in pars:
-        if sec in skip: continue
+        if sec in skip or (RL.canonical(sec) or sec) in skip: continue      # a title of any language of tools/report_lang.py
         for t in sentences(p):
             cites = [int(x) for m in CITE_RE.finditer(t) for x in re.split(r'\s*[,;]\s*', m.group(1))]
             if cites: out.append({'section': sec, 'sub': sb, 'text': t, 'cites': list(dict.fromkeys(cites))})

@@ -8,7 +8,9 @@ search) in place of the report checks 6, 7, 8, 10, 11, 12 (no REPORT.md nor resu
 Checks: 1 card.json (minimal schema); 2 source keys (an identifier field of a known kind, validate_card.IDS: doi, pmid, arxiv, celex, ecli... as declared by tools/sources/, or `code` for a file read at a SHA); 3 placeholders;
 4 searches/ (>= 3, with queries); 5 verdicts.json handled (no ABSENT/INVALID left, known statuses); 6 REPORT.md: exactly the eight level-2
 sections of the output contract, in order (Executive Summary 200-400 words, Introduction, Main Analysis with 4 to 8 findings headed
-`### Finding n — <title>`, Synthesis & Insights, Limitations & Caveats, Recommendations, Bibliography, Methodology Appendix); 7 unverified claims
+`### Finding n — <title>`, Synthesis & Insights, Limitations & Caveats, Recommendations, Bibliography, Methodology Appendix; or the same
+eight titles and finding word in one other language of tools/report_lang.py, e.g. Résumé ... Annexe méthodologique, `### Constat n — <title>`;
+a follow-up run, marked by followup.json, uses the bounds of config.json `followup` for the summary, the findings and the searches); 7 unverified claims
 flagged; 8 result.json valid (validate_result); 9 run.json consistent with the journal; 10 "Source coverage" block present (in the methodology
 appendix), with its active and skipped lines; 11 each [n] of the text is in the bibliography and each [n] entry is cited; 12 prose >= 80 % (bullet lines <= 20 %);
 13 (command line, runs with a gateway journal only) end steps done on the current files: state/finish_run.json, written by tools/finish_run.py,
@@ -20,47 +22,63 @@ import hashlib, json, pathlib, re, sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from validate_result import problems as pb_result
 import sources as _reg   # noqa: E402  (source registry)
+import report_lang as RL   # noqa: E402  (titles of the eight sections, one version per language)
 
 IDS = tuple(i['field'] for i in _reg.IDS if i['card'])   # card identifier fields, from the source declarations (tools/sources/): code = `<path>@<SHA>` or `local:<path>@<SHA>`; the others: ids served by the gateway engines (SKILL.md section 0 "Identity of sources")
 STATUSES = {'FOUND', 'DISTORTED', 'ABSENT', 'SOURCE-UNAVAILABLE', 'INVALID', 'UNVERIFIED'}
 UNHANDLED = {'ABSENT', 'INVALID'}
 PLACEHOLDER = re.compile(r'TODO|TBD|FIXME|to be completed|lorem ipsum|XXX|<[a-z ]{3,30}>|\[\.\.\.\]|\?\?\?', re.I)
-COVERAGE = re.compile(r'source coverage', re.I)
-SECTIONS = ['Executive Summary', 'Introduction', 'Main Analysis', 'Synthesis & Insights', 'Limitations & Caveats', 'Recommendations', 'Bibliography', 'Methodology Appendix']
-FINDING = re.compile(r'^### Finding (\d+) — \S', re.M)   # the em dash (U+2014) is the only non-ASCII character of the contract
+COVERAGE = RL.any_words('coverage'); ACTIVE = RL.any_words('active'); SKIPPED = RL.any_words('skipped'); UNVERIFIED = RL.any_words('unverified')
+SECTIONS = RL.EN                     # canonical (English) titles; the report may use the eight titles of any one language of tools/report_lang.py
 SUMMARY_WORDS = (200, 400); FINDINGS = (4, 8); BULLETS_MAX = 0.20
+FOLLOWUP = (json.loads((pathlib.Path(__file__).resolve().parent / 'config.json').read_text(encoding='utf-8')).get('followup') or {})
+
+
+def finding_heading(lang):
+    """`### <word of the language> n — <title>`: the em dash (U+2014) is required by the contract."""
+    return re.compile(r'^### ' + re.escape(RL.LANGS[lang]['finding']) + r' (\d+) — \S', re.M)
+
+
+def is_followup(folder):
+    """A follow-up run (SKILL.md "Follow-up in the conversation"): written by tools/followup.py, marker followup.json."""
+    return (pathlib.Path(folder) / 'followup.json').is_file()
 CITATION = re.compile(r'\[(\d{1,3})\]')
 
 
 def sections(t):
-    """Splits REPORT.md by level-2 headings: [(title, body)] in file order."""
-    parts = re.split(r'^## +(.+?)\s*$', t, flags=re.M)
-    return [(parts[i].strip(), parts[i + 1]) for i in range(1, len(parts) - 1, 2)]
+    """Splits REPORT.md by level-2 headings: [(title, body)] in file order; a known title of any language of tools/report_lang.py is
+    returned as its canonical English title (the raw titles: report_lang.raw_sections)."""
+    return RL.sections(t)
 
 
-def report_problems(t):
-    """Checks 6, 10, 11, 12 on the text of REPORT.md (output contract, SKILL.md section 5)."""
-    pb = []; secs = sections(t); titles = [s for s, _ in secs]
-    if titles != SECTIONS:
-        missing = [s for s in SECTIONS if s not in titles]; extra = [s for s in titles if s not in SECTIONS]
-        pb.append('6 REPORT.md: eight level-2 sections expected in order ' + ' > '.join(SECTIONS)
-                  + (f'; missing: {missing}' if missing else '') + (f'; extra: {extra}' if extra else '') + ('; different order' if not missing and not extra else ''))
-    body = dict(secs)
+def report_problems(t, followup=False):
+    """Checks 6, 10, 11, 12 on the text of REPORT.md (output contract, SKILL.md section 5). The eight titles are those of one language of
+    tools/report_lang.py (all eight in the same language). followup=True: the bounds of a follow-up report (config.json `followup`)."""
+    pb = []; raw = RL.raw_sections(t); lang = RL.title_language([s for s, _ in raw]); expected = RL.LANGS[lang]['sections']
+    titles = [s for s, _ in raw]
+    words = tuple(FOLLOWUP.get('summary_words') or SUMMARY_WORDS) if followup else SUMMARY_WORDS
+    nf = tuple(FOLLOWUP.get('findings') or FINDINGS) if followup else FINDINGS
+    if titles != expected:
+        missing = [s for s in expected if s not in titles]; extra = [s for s in titles if s not in expected]
+        pb.append(f'6 REPORT.md: eight level-2 sections expected in order ({RL.LANGS[lang]["name"]}) ' + ' > '.join(expected)
+                  + (f'; missing: {missing}' if missing else '') + (f'; extra: {extra}' if extra else '') + ('; different order' if not missing and not extra else '')
+                  + f' (all eight titles in one language of tools/report_lang.py: {", ".join(RL.LANGS)})')
+    secs = sections(t); body = dict(secs)
     if 'Executive Summary' in body:
         n = len(body['Executive Summary'].split())
-        if not SUMMARY_WORDS[0] <= n <= SUMMARY_WORDS[1]: pb.append(f'6 REPORT.md: Executive Summary of {n} words, {SUMMARY_WORDS[0]} to {SUMMARY_WORDS[1]} expected')
+        if not words[0] <= n <= words[1]: pb.append(f'6 REPORT.md: Executive Summary of {n} words, {words[0]} to {words[1]} expected')
     if 'Main Analysis' in body:
         heads = re.findall(r'^### .*$', body['Main Analysis'], re.M); n = len(heads)
-        if not FINDINGS[0] <= n <= FINDINGS[1]: pb.append(f'6 REPORT.md: Main Analysis has {n} level-3 finding(s), {FINDINGS[0]} to {FINDINGS[1]} expected')
-        bad = [h for h in heads if not FINDING.match(h)]
-        if bad: pb.append(f'6 REPORT.md: finding heading not in the form "### Finding n — <title>": {bad[0]!r}')
+        if not nf[0] <= n <= nf[1]: pb.append(f'6 REPORT.md: Main Analysis has {n} level-3 finding(s), {nf[0]} to {nf[1]} expected')
+        rx = finding_heading(lang); bad = [h for h in heads if not rx.match(h)]
+        if bad: pb.append(f'6 REPORT.md: finding heading not in the form "### {RL.LANGS[lang]["finding"]} n — <title>": {bad[0]!r}')
     # 10 source coverage: present (methodology appendix), with its two lines
     m = COVERAGE.search(t)
     if not m: pb.append('10 REPORT.md: "Source coverage" block missing (active / skipped: reason + link; check_keys.py)')
     else:
         block = t[m.end():]; end = re.search(r'\n#{1,6} ', block); block = block[:end.start()] if end else block
-        if not re.search(r'active', block, re.I): pb.append('10 REPORT.md: "Source coverage" without an "active" line')
-        if not re.search(r'skipped', block, re.I): pb.append('10 REPORT.md: "Source coverage" without a "skipped" line (write "skipped: none" if applicable)')
+        if not ACTIVE.search(block): pb.append('10 REPORT.md: "Source coverage" without an "active" line')
+        if not SKIPPED.search(block): pb.append('10 REPORT.md: "Source coverage" without a "skipped" line (write "skipped: none" if applicable)')
     # 11 citations [n] <-> bibliography
     biblio = body.get('Bibliography', '')
     defined = {int(x) for x in re.findall(r'^\s*\[(\d{1,3})\]', biblio, re.M)}
@@ -145,7 +163,8 @@ def problems(folder, prior_art=False):
             pb.append(f'3 card.json: placeholder {m.group(0)!r}'); break
     # 4 searches
     se = sorted((d / 'searches').glob('*.md')) if (d / 'searches').is_dir() else []
-    if len(se) < 3: pb.append(f'4 searches/: {len(se)} file(s), at least 3 expected')
+    fu = is_followup(d); smin = int(FOLLOWUP.get('min_searches', 1)) if fu else 3
+    if len(se) < smin: pb.append(f'4 searches/: {len(se)} file(s), at least {smin} expected')
     for p in se:
         if not re.search(r'query|search-|citing|references|read ', p.read_text(encoding='utf-8', errors='replace'), re.I):
             pb.append(f'4 {p.name}: no query nor gateway receipt')
@@ -170,9 +189,9 @@ def problems(folder, prior_art=False):
     elif not (d / 'REPORT.md').exists(): pb.append('6 REPORT.md: missing')
     else:
         t = (d / 'REPORT.md').read_text(encoding='utf-8', errors='replace')
-        pb += report_problems(t)
+        pb += report_problems(t, followup=fu)
         if PLACEHOLDER.search(t): pb.append(f'3 REPORT.md: placeholder {PLACEHOLDER.search(t).group(0)!r}')
-        if unverified and not re.search(r'unverified|not verified', t, re.I): pb.append(f'7 REPORT.md: {len(unverified)} unverified claim(s) not flagged')
+        if unverified and not UNVERIFIED.search(t): pb.append(f'7 REPORT.md: {len(unverified)} unverified claim(s) not flagged')
     # 8 result.json
     r = load(d / 'result.json') if (d / 'result.json').exists() else None
     if prior_art: pass

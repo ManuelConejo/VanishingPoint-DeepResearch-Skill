@@ -711,3 +711,52 @@ Five sources that the plugins already declared as `not_wired` are now served by 
 - The text read is kept in `sources/<KEY>/source.txt`, with a `code.json` receipt (repository, commit, commit date, sha256), so the fragment check and `tools/passages.py` work on the real file. An excerpt written by the engine is never read in its place. `state/verifier.json` gives the receipt per source.
 - Offline replay of the trial's source-reading step (no model): 0/16 sources read before, 16/16 after (32/32 claims). The trial's 32 verdict fragments are all found in the files read at the SHA, and 32/32 passages are shown.
 - Tests: `tests/test_verifier_code.py` (7 cases, real git repositories built by the test). They cover a true claim (FOUND), a false claim true only after the SHA (INVALID), a nonexistent SHA (SOURCE-UNAVAILABLE), the refusals, an engine excerpt ignored, no repository-configured program run, the CLI receipt, and the gateway fallback with its date barrier.
+
+## v0.6.0 - 2026-10-29 - follow-up and resume in the conversation
+
+Eight ergonomics changes were built and trialled on one frozen candidate (protocol and amendments written before reading
+the results; n = 1 per cell; Claude Code, gmail subscription). Two are adopted into the skill; six stay on a waiting list:
+their tools ship as command-line tools, not used by the skill by default.
+
+### Measured and adopted
+- **Follow-up in the conversation** (SKILL.md section 8, `tools/followup.py`): "dig into point 3", "and for France?" after a
+  delivered run prepares `<dir>/followups/<n>/` (same T and plugins, the parent's gateway cache linked, the parent's sources
+  listed as known, 1 to 3 new angles); the short run is verified like any run and `finish_run.py` delivers
+  `<dir>/FOLLOWUP-<n>.md` / `.html` / `.pdf`; the parent's files are never written (`validate_card.py` applies the bounds of
+  config `followup`). Trial B2: all six criteria met with an Opus and with a Sonnet orchestrator; own cost 1.49 USD (Sonnet,
+  0.62x the reference run) and 1.69 USD (Opus), under the 1.3x guard. Without the language point (below), the follow-up report
+  keeps the English section titles.
+- **Resuming an interrupted run** (SKILL.md section 8, `tools/resume.py`): names the step to resume (frame, search, complete,
+  write, annex, verify, apply, deliver) from the files present and what is missing; the run continues with the same T, plugins
+  and gateway counter. Trial B1: all five criteria met, 2.42 USD (1.00x the reference run). "Session continuation" is removed
+  from the "not taken over" list of SKILL.md.
+
+### Waiting list (shipped as command-line tools, not used by the skill by default)
+- **Language of the report** (`tools/report_lang.py`): the verifier's ABSENT share outside the controls' range on both runs
+  (43.9 % with Opus, 11.1 % with Sonnet against a maximum of 10.3 %), all on publication-venue claims judged on the abstract, so
+  the effect of the language cannot be separated from the kind of claim; cost above the guard. A dedicated trial is needed. The
+  checks and exports (`validate_card.py`, `export_report.py`, `living_diff.py`, `evidence_bank.py`, `followups.py`) now accept a
+  report whose eight titles are all in one language of its table (English, French, Spanish, German); the skill still writes the
+  English titles.
+- **End-of-run message** (`tools/summary.py`): with a Sonnet orchestrator the final message paraphrased `SUMMARY.md` instead of
+  copying it; cost above the guard. `finish_run.py` no longer calls it by default: `--summary` (off by default). Bug fixed in
+  this release: the confidence was computed on `verdicts.json` after the removal of the ABSENT claims (run A: "high, 23 FOUND of
+  23" for 23 FOUND of 41 at the verifier); it now reads the verifier's raw output (`state/verifier.json`, else `verdicts.json`
+  plus the removed claims it still lists, else `unknown`), with a test of the 23-of-41 case.
+- **Progress lines** (`tools/progress.py`): the line was not shown at the expected steps (3 of 5 with Opus, 0 with Sonnet).
+- **Automatic working directory** (`tools/new_run.py`) and **date T in words** (`tools/parse_date.py`): their own criteria met
+  on both runs, but the run that carried them failed the cost guard (4.18 USD with Sonnet against 3.69). The tools call no
+  model; the frozen rule cannot separate their effect from the rest of the run, so they wait for a run of their own.
+- **Cost and budget** (`tools/cost.py`): the budget run went over its ceiling (3.36 USD for a 2.5 maximum): the verifier, out of
+  the budget by design, made the run exceed it.
+
+### Other changes (tested, not re-measured)
+- `tools/resume.py` and `tools/progress.py` no longer require `SUMMARY.md` to call a run done; `tools/followup.py` no longer
+  writes `Report language:` into the follow-up's `scope.md`.
+- Tests: 44 files, all passing as an unprivileged user with an empty home (new: `test_followup.py`, `test_resume_progress.py`,
+  `test_summary.py`, `test_report_lang.py`, `test_parse_date.py`, `test_new_run.py`, `test_cost.py`).
+
+### Cost of the trials
+24.67 USD-equivalent for the night, of which 19.50 USD for the trial runs (trial A 6.36, trial B 7.47, Sonnet re-measure of A
+and B2 5.67). Two scorer bugs were found after the runs and declared as amendments without touching the frozen scripts: the
+scorer read `verdicts.json` after the ABSENT removals, and counted B1's cost again in B2 (resumed session).

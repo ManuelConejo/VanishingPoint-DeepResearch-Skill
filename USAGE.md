@@ -2,7 +2,7 @@
 
 A practical guide for someone who has installed the skill and wants to use it in Claude Code or Codex CLI. Installation,
 requirements and the method itself are in [README.md](README.md); the engine's full rules are in [SKILL.md](SKILL.md).
-Everything below applies to v0.5.4.
+Everything below applies to v0.6.0.
 
 In the commands, `$SKILL` is the skill directory, set once in your shell:
 
@@ -45,6 +45,7 @@ Code plugin, `$SKILL` is the directory that `claude plugin list` prints for `van
 | `studies.csv`, `references.bib`, `references.ris`, `references.json` | exports for spreadsheets and reference managers |
 | `scope.md`, `searches/<n>.md` | framing and the searchers' notes, with gateway receipts |
 | `run.json`, `state/`, `sources/` | calls per command (from the gateway journal), journal and cache, texts re-read by the verifier |
+| `FOLLOWUP-<n>.md` / `.html` / `.pdf`, `followups/<n>/` | follow-up reports asked in the conversation, and their working directories |
 | `retractions.json` | mechanical retraction check of the DOIs (Crossref, Retraction Watch); `unknown` stays `unknown` |
 
 The code plugin adds `capsule.md` (input) and `mechanisms.json`. A real, unedited run is in
@@ -121,6 +122,8 @@ All are off by default; none changes the standard deliverables unless stated.
 | Audit | figures or rules that commit (law, finance, clinical) | `VP_MODE=audit`, or `~/.config/vp/mode` containing `audit`, or "audit mode" in the question | every atomic claim checked, by batches; corrections re-verified once | 6 to 7 times the standard mode (measured: -6.7 points of false claims) |
 | Contradictor (code plugin only) | a second model family should try to prove a code report wrong | `VP_CONTRADICTORS` or `~/.config/vp/contradictors` = `openai[:<model>]`, `claude[:<model>]` or `<provider>:<model>` | `contradictor.json`; findings annotated "contradicted by <family>" or added and verified | 0 USD with Codex CLI on a subscription; about 0.26 USD per API call + about 0.6 USD of rereads per report |
 | Update a previous run | refresh a report at today's T | "update my review of <dir>" | a new run in a new directory, plus `UPDATE.md` and `update.json` (what changed) | a normal run |
+| Follow-up | more on a delivered report: one finding, one country, one population | "dig into point 3", "and for France?" | a short verified run in `<dir>/followups/<n>/` (`tools/followup.py`: same T and plugins, gateway cache and known sources reused), delivered as `<dir>/FOLLOWUP-<n>.md` / `.html` / `.pdf`; the main report is never modified | measured once: about 1.5 USD (Sonnet orchestrator, verification included) |
+| Resume | a run stopped midway (quota, crash, closed session) | "resume the research in <dir>" | `tools/resume.py` names the step to resume and what is missing; the run continues from there with the same gateway counter, nothing already written is redone | the remaining steps only |
 
 Notes:
 - **Prior art**: the answer is decided by code from the verified claims (Exists = one source dated before T discloses every
@@ -257,7 +260,24 @@ python3 -I "$SKILL/tools/validate_card.py" <dir>          # empty output or "OK"
 python3 -I "$SKILL/tools/export_report.py" <dir> --pdf    # REPORT.html, and REPORT.pdf if WeasyPrint, Chromium, wkhtmltopdf or pandoc is installed
 python3 -I "$SKILL/tools/export_data.py" <dir>            # studies.csv, references.bib / .ris / .json, passages.json
 python3 -I "$SKILL/tools/living_diff.py" <old dir> <new dir>   # UPDATE.md and update.json
+python3 -I "$SKILL/tools/followup.py" <dir> "and for France?"  # prepares followups/<n>/ for a follow-up (finish_run.py on it delivers FOLLOWUP-<n>.*)
+python3 -I "$SKILL/tools/resume.py" <dir>                      # the step to resume and what is missing (reads, never writes)
 ```
+
+Command-line tools, not used by the skill by default (shipped with v0.6.0, kept on a waiting list after the ergonomics trials,
+see CHANGELOG): you may run them by hand; the skill never runs them unless a later version adopts them.
+
+```
+python3 -I "$SKILL/tools/finish_run.py" <dir> --summary [--cost-usd 3.1]   # also writes SUMMARY.md / summary.json (tools/summary.py)
+python3 -I "$SKILL/tools/progress.py" <dir>                     # a one-line progress status of the step reached
+python3 -I "$SKILL/tools/parse_date.py" "before March 2024"     # a date in words -> T, with the rule applied
+python3 -I "$SKILL/tools/new_run.py" "<question>"               # a new working directory vp-<date>-<subject>/, never an existing one
+python3 -I "$SKILL/tools/cost.py" --plugin cs-ai --fulltext     # an estimate before an expensive option, or a plan under "budget 2 $"
+python3 -I "$SKILL/tools/report_lang.py" "<question>"           # the language of a question and the eight section titles in it
+```
+
+The checks and exports accept a report whose eight titles are all in one language of the table of `tools/report_lang.py`
+(English, French, Spanish, German); the skill itself still writes them in English.
 
 To try them without a run, copy `examples/report-cs-ai/` to a scratch directory and run `finish_run.py <copy> --offline`.
 
@@ -268,6 +288,7 @@ To try them without a run, copy `examples/report-cs-ai/` to a scratch directory 
 | The host refuses a command | The skill runs one bare script per shell call (`python3 -I <skill>/tools/<script> ...`, no `&&`, pipes or `cd`) and retries a denied call once. Allow that pattern in your host's permissions; for `claude -p`, the README shows `--allowedTools "Bash(python3 -I $SKILL/tools/*)" Read Write Agent Glob Grep Skill`. |
 | `key refused` from `setup_keys.py`, or `key_invalid` in the report | The provider rejected the key: the run goes on without it (call retried once without the key, key dropped for the run). Copy the key again whole and run `setup_keys.py <name> --check`. PISTE "not subscribed": subscribe the application to the API on piste.gouv.fr. |
 | A source is `skipped`, `rate_limited`, `blocked` or `provider_error` | Read the "Source coverage" block: a missing key (install it, section 5), a quota (OpenAlex without key falls back to Crossref), a bot challenge (HUDOC: no workaround), or a slow provider (a first EUR-Lex query can take 60-90 s). The run continues with the other sources. |
+| The session stopped before the end (quota, crash) | Ask "resume the research in <dir>": `python3 -I "$SKILL/tools/resume.py" <dir>` shows the step reached and what is missing; nothing already written is redone. |
 | `claude -p` run ends with no `result.json` | Background sub-agents were killed after an idle delay. Launch with `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` (README, "Claude Code"). |
 | Claims left UNVERIFIED, "CAP reached" | The call cap stopped further readings; the report flags what was not verified. Rerun the question in a new directory if you need them checked. |
 | `validate_card.py` reports check 13 | The end steps did not run on the current files: run `finish_run.py <dir>`. |
