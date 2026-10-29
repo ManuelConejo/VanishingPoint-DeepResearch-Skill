@@ -305,8 +305,8 @@ tools/config.json   caps, models, host command profiles             tests/  exam
 
 ## Attribution
 
-The method is a rewrite, in the authors' own words, inspired by existing deep-research skills (the one published by
-199 Biotechnologies among others); none of their text, prompts or templates is copied. The tools are original code
+The method is a rewrite, in the authors' own words, inspired by existing deep-research skills; none of their text,
+prompts or templates is copied. The tools are original code
 (Python standard library only); no third-party code is copied (the repository-condensation idea owes something to
 Aider's repository map, as an idea only).
 
