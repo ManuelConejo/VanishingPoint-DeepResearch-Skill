@@ -200,7 +200,7 @@ def test_output_is_deterministic_for_the_same_sha(repo):
     da, db = json.loads(ta), json.loads(tb)
     assert da.pop("meta")["tool"] == db.pop("meta")["tool"] and da == db
     assert ta == json.dumps(json.loads(ta), ensure_ascii=False, sort_keys=True, indent=1) + "\n"  # sorted keys, timestamp only in meta
-    today = __import__("datetime").datetime.now(__import__("datetime").UTC).strftime("%Y-%m-%dT%H")  # commit dates are pinned to 2026-01-01
+    today = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H")  # commit dates are pinned to 2026-01-01
     assert today not in json.dumps(da) and da["identity"]["commit_date"].startswith("2026-01-01T00:00:00")
     assert pathlib.Path(a["markdown"]).read_text().split("## Meta")[0] == pathlib.Path(b["markdown"]).read_text().split("## Meta")[0]
 
@@ -287,6 +287,61 @@ def test_auto_seams_follow_the_module_map_and_skip_tests(repo, tmp_path):
     where = [s["where"].split("@")[0] for s in doc["target_seam"]]
     assert where[0] == "retrying/policy.py:4" and len(where) <= 3, where              # module named by the request first, first definition cited
     assert not any(w.startswith(("docs/", "retrying/tests/", "tests/")) for w in where), where
+
+
+PYPROJECTS = [  # forms met in pyproject.toml files; the minimal parser (Python < 3.11 without tomli) must read them as tomllib does
+    FILES_1["pyproject.toml"],
+    '[build-system]\nrequires = ["setuptools>=61", \'wheel\']  # comment\nbuild-backend = "setuptools.build_meta"\n\n[project]\nname = "x-y"\n'
+    'version = "0.1.0"\ndescription = """Multi\nline "quoted" \\\n    text"""\nreadme = \'README.md\'\nrequires-python = ">=3.9"\n'
+    'license = {text = "Apache-2.0"}\nauthors = [{name = "A \\u00e9", email = "a@b"}, { name = "B" }]\nkeywords = []\ndynamic = ["x",]\n'
+    'dependencies = [\n  "a>=1",  # why\n  "b[c]; python_version < \'3.11\'",\n]\n[project.optional-dependencies]\ndev = ["pytest"]\n'
+    '[project.scripts]\nx-cli = "x.cli:main"\n[project.entry-points."x.plugins"]\none = "x.one:P"\n[tool.black]\nline-length = 88\n'
+    'target-version = [\'py39\']\nskip = true\nratio = 1.5e3\nhexa = 0xff\nbig = 1_000\n[[tool.mypy.overrides]]\nmodule = "a.*"\n'
+    '[[tool.mypy.overrides]]\nmodule = "b"\nwhen = 2026-10-29\nat = 2026-10-29T10:00:00Z\n[tool.x.y]\nz.w = \'lit\\eral\'\n',
+]
+
+
+def test_minimal_toml_parser_reads_pyproject_like_the_standard_parser():
+    cc = module()
+    for text in PYPROJECTS:
+        got = cc._MiniToml(text).parse()
+        assert got["project"]["name"] in ("pkg", "x-y")
+        if cc._toml is not None:
+            assert got == cc._toml.loads(text) or _dates_as_text(cc._toml.loads(text)) == got, got
+    full = cc._MiniToml(PYPROJECTS[1]).parse()["project"]
+    assert full["dependencies"] == ["a>=1", "b[c]; python_version < '3.11'"] and full["license"] == {"text": "Apache-2.0"}
+    assert full["description"] == 'Multi\nline "quoted" text' and full["authors"][0]["name"] == "A é"
+    assert full["entry-points"] == {"x.plugins": {"one": "x.one:P"}} and full["scripts"] == {"x-cli": "x.cli:main"}
+    for bad in ('[project]\nname = "trunc', '[project]\ndependencies = [\n  "a",\n', 'a = 1\na = 2\n', 'a = b c\n', '[project\n', 'a = "x\\q"\n',
+                'a = {b = 1,}\n', 'd = 1979-05-27 07:32:00Z\n'):
+        with pytest.raises(ValueError):
+            cc._MiniToml(bad).parse()
+
+
+def _dates_as_text(d):  # tomllib returns datetime objects where the minimal parser keeps the text
+    if isinstance(d, dict):
+        return {k: _dates_as_text(v) for k, v in d.items()}
+    if isinstance(d, list):
+        return [_dates_as_text(v) for v in d]
+    return d.isoformat().replace("+00:00", "Z") if hasattr(d, "isoformat") else d
+
+
+def test_capsule_with_the_minimal_toml_parser_is_the_same_and_says_so(repo):
+    r, shas, commit, run = repo
+    cc = module()
+    saved = cc._toml, cc.TOML_PARSER
+    try:
+        cc._toml, cc.TOML_PARSER = None, "minimal"
+        doc_min, _ = cc.build(str(r), shas[0], None, 50)
+    finally:
+        cc._toml, cc.TOML_PARSER = saved
+    doc_std, _ = cc.build(str(r), shas[0], None, 50)
+    assert doc_min["meta"]["toml_parser"] == "minimal" and doc_std["meta"]["toml_parser"] == cc.TOML_PARSER
+    assert doc_min["entry_points"]["list"] == doc_std["entry_points"]["list"] and doc_min["license"] == doc_std["license"]
+    lim = f"pyproject.toml: {cc.TOML_MINIMAL_LIMIT}"
+    assert lim in doc_min["entry_points"]["limits"] and (lim in doc_std["entry_points"]["limits"]) == (cc.TOML_PARSER == "minimal")
+    assert [x for x in doc_min["entry_points"]["limits"] if x != lim] == [x for x in doc_std["entry_points"]["limits"] if x != lim]
+    assert ("pyproject.toml scripts", "pkg-cli = pkg:main") in {(p["type"], p["text"]) for p in doc_min["entry_points"]["list"]}
 
 
 if __name__ == "__main__":                               # standard library run; under pytest only the test_* functions are collected

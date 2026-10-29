@@ -55,7 +55,7 @@ Five-minute trial: `python3 -I tools/gateway.py --plugin plugins/cs-ai.md --T 20
 
 ## Local dependencies
 
-- **Python >= 3.11** (`tomllib` in `code_capsule.py`; tested on 3.12.3); Linux/macOS (`fcntl`). **No pip dependency** at runtime (standard library only, README rule); the tests are `unittest` (`tests/test_code_capsule.py` also runs under `pytest`, which is optional).
+- **Python >= 3.9** (`code_capsule.py` uses `tomllib` on 3.11+, else `tomli` if installed, else a built-in minimal TOML parser; tested on 3.9 and 3.12); Linux/macOS (`fcntl`). **No pip dependency** at runtime (standard library only, README rule); the tests are `unittest` (`tests/test_code_capsule.py` also runs under `pytest`, which is optional).
 - **git** (>= 2.x, tested 2.43) for `tools/code_capsule.py` (`git -C ... ls-tree / show / grep` at a SHA, read-only).
 - **Claude Code CLI** (`claude -p`) or **Codex CLI** (`codex exec`) for `tools/verifier.py` and for the whole reading (`tools/whole_reading.py`): paid model calls, billed according to the host's current rules; not needed to search.
 

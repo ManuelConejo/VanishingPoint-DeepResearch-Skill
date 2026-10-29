@@ -179,5 +179,18 @@ class LabMaterials(Base):
                     self.assertEqual(sorted(got), sorted(want))
 
 
+class CommandWithoutModel(unittest.TestCase):
+    """A family without a model (openai = the Codex CLI's default) must drop `-m` and its empty value together (v0.6.10 left `''`, which Codex rejects)."""
+    def test_empty_model_drops_flag_and_value(self):
+        old = os.environ.get('VP_MODEL_COMMAND_OPENAI')
+        os.environ['VP_MODEL_COMMAND_OPENAI'] = json.dumps(['codex', 'exec', '-m', '{model}', '-s', 'read-only', '-'])
+        try:
+            self.assertEqual(W.command('openai', ''), ['codex', 'exec', '-s', 'read-only', '-'])
+            self.assertEqual(W.command('openai', 'm1'), ['codex', 'exec', '-m', 'm1', '-s', 'read-only', '-'])
+        finally:
+            if old is None: os.environ.pop('VP_MODEL_COMMAND_OPENAI', None)
+            else: os.environ['VP_MODEL_COMMAND_OPENAI'] = old
+
+
 if __name__ == '__main__':
     unittest.main()

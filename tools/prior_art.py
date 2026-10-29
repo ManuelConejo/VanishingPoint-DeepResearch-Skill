@@ -196,7 +196,9 @@ def render(data):
         for x in c['elements']:
             if x['status'] == 'FOUND': L.append(f'   - {x["element"]} FOUND ({x["claim"]}): "{x["fragment"] or x["text"]}"')
     L += ['', '## What differs', '']
-    if data['novel_elements']: L.append(f'Disclosed by no source read: {", ".join(f"{e} ({_short(next(x["text"] for x in data["elements"] if x["id"] == e), CFG["claim_chars"])})" for e in data["novel_elements"])}.')
+    if data['novel_elements']:
+        text_of = {x['id']: x['text'] for x in reversed(data['elements'])}   # first element of each id, as next() did
+        L.append('Disclosed by no source read: ' + ', '.join(f"{e} ({_short(text_of[e], CFG['claim_chars'])})" for e in data['novel_elements']) + '.')
     for c in data['closest']:
         miss = [x for x in c['elements'] if x['status'] != 'FOUND']
         if not miss: L.append(f'- {c["ref"]}: nothing; it discloses every element.'); continue

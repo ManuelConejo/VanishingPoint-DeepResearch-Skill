@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.6.10, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.6.11, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -30,7 +30,7 @@ Status: v0.6.10, research preview. Measured on small private benches (3 to 50 ca
 
 ## Installation
 
-Requirements: Python >= 3.11 (standard library only, no `pip install`; `pytest` is optional), `git` (code plugin), and one agent host:
+Requirements: Python >= 3.9 (standard library only, no `pip install`; `pytest` is optional), `git` (code plugin), and one agent host:
 Claude Code CLI or Codex CLI. Network access for the gateway (arXiv, OpenAlex, Crossref, Europe PMC, PubMed, Sourcegraph,
 deps.dev, Hugging Face Papers, Software Heritage); every API key is optional (KEYS.md).
 

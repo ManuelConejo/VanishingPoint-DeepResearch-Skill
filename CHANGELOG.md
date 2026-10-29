@@ -870,3 +870,19 @@ Code changes from an offline analysis of 104 judge errors and 92 verifier non-FO
   cases with a true detection, 20 true detections against 4 added errors; Kimi (OpenRouter) 5/6, 15 against 4. Cost 4.88 USD.
   Not measured: finance, `claude` as contradictor; the reread judge was of the author's family.
 - Fixed: the contradictor reads the last valid JSON object of a judge answer (an answer with two objects was dropped).
+
+## v0.6.11 - 2026-10-29 - Python 3.9, contradiction hunt, contradictor on finance
+
+- Python >= 3.9 (was 3.11): `tools/code_capsule.py` reads `pyproject.toml` with `tomllib`, else `tomli` if installed, else a
+  minimal parser of the `[project]` table (same result as `tomllib` on 200 real files; the parser used is in `meta.toml_parser`);
+  `datetime.UTC` replaced; one f-string of `tools/prior_art.py` rewritten. The whole test suite passes offline on Python 3.9,
+  3.10, 3.11 and 3.12; a new test (`tests/test_py39_compat.py`) refuses 3.10+ syntax and APIs.
+- Adopted: contradiction hunt (optional, only on request): a section of SKILL.md that runs `tools/contradictions.py` after the
+  verification; the planted disagreement was found in 3 of 3 small cases (biology 1, finance 2).
+- Adopted: the contradictor's general mode is measured on finance too (2 of 2 cases with a true detection, Codex).
+- Fixed: the Codex CLI without a model name (`openai` alone, the host CLI's default model) left an empty `--model` value and
+  the command was refused.
+- Fixed: the title of SKILL.md no longer carries a version; the progress hook no longer shows a searches line with 0 files.
+- Waiting list: quote-first with a minimum quote bank (1 of 2 cases), the contradictor on by default when Codex is present
+  (reports improved, +3 and +1 net, but 21-41 % more time and 20-34 % more cost), C19 and C20, a model-independent cost
+  calibration. Trial costs: 1.10 + 2.67 + 5.04 USD.
