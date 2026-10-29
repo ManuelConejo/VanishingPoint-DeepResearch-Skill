@@ -264,7 +264,7 @@
   "answer_chars": 500,
   "confidence": {"high": 0.9, "medium": 0.75},
   "min_sources": 10,
-  "note": "SUMMARY.md / summary.json (tools/summary.py, run by finish_run.py): the message the assistant copies at the end of a run. answer_sentences / answer_chars = the first sentences of the Executive Summary shown as the answer (citations [n] removed), cut at a word. confidence = level from the share of FOUND among the claims checked (FOUND / all statuses kept in verdicts.json): >= high -> high, >= medium -> medium, else low; lowered one level when fewer than min_sources bibliography entries carry the report (SKILL.md section 5 asks to say so). A reading convention for one line of chat, not a measured calibration: the report's verdicts and the Methodology Appendix remain the reference."
+  "note": "SUMMARY.md / summary.json (tools/summary.py, run by finish_run.py): the message the assistant copies at the end of a run. answer_sentences / answer_chars = the first sentences of the Executive Summary shown as the answer (citations [n] removed), cut at a word. confidence = level from the share of FOUND among all the claims the verifier judged, read on its raw output before the removals of section 7 (state/verifier.json `summary`; never the edited verdicts.json alone; the number removed afterwards is shown on the Verification line): >= high -> high, >= medium -> medium, else low; lowered one level when fewer than min_sources bibliography entries carry the report (SKILL.md section 5 asks to say so). A reading convention for one line of chat, not a measured calibration: the report's verdicts and the Methodology Appendix remain the reference."
  },
  "new_run": {
   "prefix": "vp",
@@ -286,5 +286,20 @@
   "excerpt_chars": 200,
   "skip_sections": ["Bibliography"],
   "note": "Check 14 of validate_card.py (tools/cross_source.py): a clause that compares, ranks, counts, excludes or reports a search outcome across sources while citing a single source. enabled = false switches the check off. excerpt_chars = longest excerpt of a flagged sentence printed (a display bound). skip_sections = canonical titles of the sections not read (the bibliography holds no prose). The marker words are in tools/cross_source.py, one entry per language of tools/report_lang.py."
+ },
+ "update": {
+  "auto": false,
+  "notify": true,
+  "interval_hours": 24,
+  "timeout_s": 5,
+  "remote": "",
+  "tag_pattern": "^v(\\d+)\\.(\\d+)\\.(\\d+)$",
+  "manifest": ".claude-plugin/plugin.json",
+  "label": "VanishingPoint",
+  "config_dir": ".config/vp",
+  "choice_file": "update.json",
+  "state_file": "update-state.json",
+  "managed_path_markers": ["/.claude/plugins/"],
+  "note": "Automatic update (tools/auto_update.py), run by tools/check_keys.py --announce at the start of a run, at most once per interval_hours (time of the last check in <HOME>/<config_dir>/<state_file>). auto = default when the user has not answered the setup question (python3 -I tools/auto_update.py --setup writes {\"auto\": true|false} to <HOME>/<config_dir>/<choice_file>, which wins). The latest version is the highest tag matching tag_pattern on the public repository (remote; empty = the `repository` of the manifest), read by `git ls-remote --tags` without any credential; never a branch. Only when it is strictly higher than the manifest's `version`: with auto, `git fetch` of that tag then a fast-forward only (hooks disabled, no script run), refused (one notice line instead) when tracked files are modified, the branch has diverged, the skill directory is not the top of its own git repository, its path holds one of managed_path_markers (a copy managed by Claude Code's plugin system), VP_OFFLINE=1, or the network fails; without auto, the notice line only. notify = false silences the notice line. timeout_s = limit of each git call (seconds). Any failure prints nothing and never changes the exit code of check_keys.py."
  }
 }

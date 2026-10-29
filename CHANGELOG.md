@@ -817,3 +817,15 @@ Code changes from an offline analysis of 104 judge errors and 92 verifier non-FO
   framing phase, the only phase these steps touch: functional checks met in every run, cost ratio 1.058 (pairs 1.03, 1.06, 1.08)
   under the frozen 1.3, about +0.015 USD per run; the 1.47x of the v0.6.0 trial did not come from these two steps. Downstream
   effect not measured. Cost: 1.63 USD.
+
+## v0.6.7 - 2026-10-29 - automatic update (opt-in)
+
+- New: automatic update to the latest published release (`tools/auto_update.py`, run by `tools/check_keys.py --announce` at
+  the start of a run, at most once a day). Off unless you answer yes to `python3 -I tools/auto_update.py --setup` or set
+  `update.auto` in `tools/config.json`. Follows release tags `vX.Y.Z` only (never `main`), fast-forward only, git hooks disabled,
+  no token and nothing sent; with local changes, a diverged branch, a plugin copy, `VP_OFFLINE=1` or a network error it changes
+  nothing and prints at most one "available" line. Takes effect at the next run. 13 offline tests on local git repositories.
+- Fixed: `tools/summary.py` (optional end-of-run message) now counts the claims removed from the report after verification,
+  read from the verifier's raw output; the end message itself stays on the waiting list (2 runs only, confirmation pending).
+- Waiting list, from a 4.65 USD trial on 2 runs: the progress line (3 lines out of 5 shown) and a USD budget that includes the
+  verifier (verifier within its reserve, but one run at 2.69 USD for a 2 USD budget: the per-call cost estimate is too low).

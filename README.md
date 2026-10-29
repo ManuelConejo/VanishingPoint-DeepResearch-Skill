@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.6.6, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.6.7, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -51,7 +51,18 @@ Update: `git -C ~/.claude/skills/vanishingpoint pull` (or `git -C <project>/.cla
 ```
 python3 -I ~/.claude/skills/vanishingpoint/tools/check_keys.py --plugin cs-ai     # offline: which sources are active, which keys are missing
 python3 -I ~/.claude/skills/vanishingpoint/tools/setup_keys.py contact            # recommended: your contact e-mail (Unpaywall, SEC EDGAR, polite Crossref)
+python3 -I ~/.claude/skills/vanishingpoint/tools/auto_update.py --setup           # "Update VanishingPoint automatically? [Y/n]" (asked once)
 ```
+
+Automatic update (off unless you answer yes, or set `update.auto` in `tools/config.json`): at the start of a run,
+at most once a day, `tools/check_keys.py --announce` looks up the latest release tag `vX.Y.Z` of the public repository
+(`git ls-remote`, no token, nothing sent; never `main`). If it is higher than the `version` of `.claude-plugin/plugin.json`
+and the option is on, it fetches that tag and fast-forwards the clone to it (git hooks disabled, no script run), then prints
+one line, for instance `VanishingPoint updated 0.6.6 -> 0.6.7 (takes effect at the next run)`. It never merges or rewrites:
+with modified tracked files, a diverged branch, a copy that is not its own git clone, `VP_OFFLINE=1`, or a network error,
+it changes nothing and prints at most `VanishingPoint 0.6.7 available (installed 0.6.6): git -C <dir> pull`. With the option
+off you get that notice line only (`update.notify: false` silences it). Your answer is stored in `~/.config/vp/update.json`,
+the daily timestamp in `~/.config/vp/update-state.json`; settings in `tools/config.json` `update`.
 
 Then open `claude` in an empty directory and ask, for instance: "Use the vanishingpoint skill. T = 2026-10-27. What is the
 state of the art on speculative decoding for LLM inference? Work in the current directory." (Codex: same lines with
@@ -83,7 +94,9 @@ The skill is then `/vanishingpoint:vanishingpoint` and triggers on its descripti
 `claude plugin marketplace update vanishingpoint-deepresearch`, then `claude plugin update vanishingpoint@vanishingpoint-deepresearch`
 (the plugin follows the `version` of `plugin.json`). The plugin copy lives in Claude Code's plugin directory, not in
 `~/.claude/skills/`: for the First run commands, use the path that `claude plugin list` prints, or ask Claude to run
-`tools/check_keys.py` and `tools/setup_keys.py contact` from the skill directory. Install it either as a plugin or as a
+`tools/check_keys.py` and `tools/setup_keys.py contact` from the skill directory. VanishingPoint's own automatic update
+does not touch a plugin copy (it only prints the notice line); Claude Code's `/plugin` menu has its own auto-update
+setting for marketplaces, which you may turn on there (its exact behaviour depends on your Claude Code version). Install it either as a plugin or as a
 cloned skill, not both (two copies of the same skill would compete). The clone above stays the simplest way.
 
 ### Codex CLI
@@ -297,7 +310,7 @@ no `pytest`; without it, skip `test_code_capsule.py` or install it (`python3 -m 
 ```
 SKILL.md            the engine (one file, read by the host)        plugins/     cs-ai, code, finance, biology, law, _TEMPLATE
 tools/gateway.py    date-bounded documentary access (sources: tools/sources/, one file each)   tools/verifier.py (+ verifier/ROLE.md, citation_check.py, fetch_fulltext.py, windows.py)
-tools/check_keys.py keys and mode (setup_keys.py: install + live check) tools/validate_card.py, validate_result.py   mechanical checks
+tools/check_keys.py keys and mode (setup_keys.py: install + live check; auto_update.py: daily release check) tools/validate_card.py, validate_result.py   mechanical checks
 tools/finish_run.py all end steps in one command (checks, retractions, law checks, exports; SKILL.md section 8; --summary optional)
 tools/followup.py, resume.py   follow-up in the conversation, resuming an interrupted run (v0.6.0)
 tools/export_report.py, export_data.py, passages.py, living_diff.py, law_checks.py   exports, cited passages, living review, legal rules

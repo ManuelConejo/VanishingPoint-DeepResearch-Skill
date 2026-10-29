@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 """Offline test of tools/summary.py (v0.6.0 point 2): on a copy of tests/fixtures/finish_run, SUMMARY.md gives the answer (first sentences of
-the Executive Summary, no [n]), the confidence level from the FOUND share of the RAW verifier output (state/verifier.json; the "23 FOUND of 41" case of run A is never "high"; thresholds of config `summary`, lowered under min_sources),
+the Executive Summary, no [n]), the confidence level from the FOUND share of the RAW verifier output (state/verifier.json; the "23 FOUND of 41" case of run A is never "high"; thresholds of config `summary`, lowered under min_sources), the number of claims removed after verification (18 in that case),
 "N claims verified, of which X FOUND", the cost (host figure, else the receipts as partial, else unknown), the duration (run-start.json to
 finish_run.json) and the absolute paths of REPORT.html / REPORT.pdf; summary.json names the file to attach (PDF first); the French run
 gives the French message; exit 2 without REPORT.md."""
@@ -56,14 +56,22 @@ class T(unittest.TestCase):
             self.assertNotEqual(x['level'], 'high'); self.assertEqual(x['level'], 'low'); self.assertEqual(x['found_share'], round(23 / 41, 3))
             t = S.render(x)
             self.assertNotRegex(t, r'\b(high|élevée)\b'); self.assertNotIn('23 of 23', t); self.assertNotIn('23 sur 23', t); self.assertIn('ABSENT 18', t)
-        self.assertIn('**Verification**: 41 claims verified, of which 23 FOUND (ABSENT 18)', S.render(S.build(self.d)))
+        self.assertIn('**Verification**: 41 claims verified, of which 23 FOUND (ABSENT 18); 18 removed from the report after verification', S.render(S.build(self.d)))
+        self.assertEqual(S.build(self.d)['removed'], 18)
+        self.assertIn('18 retirées du rapport après vérification', S.render(S.build(self.d, lang='fr')))
+        # nothing removed yet (verdicts.json still holds the 41 claims): the count is 0 and not shown
+        full = kept + [{'id': f'B{i}', 'status': 'ABSENT'} for i in range(18)]
+        (self.d / 'verdicts.json').write_text(json.dumps({'claims': full}))
+        x = S.build(self.d); self.assertEqual((x['removed'], x['claims']), (0, 41)); self.assertNotIn('removed from the report', S.render(x))
+        (self.d / 'verdicts.json').write_text(json.dumps({'claims': kept}))
         # no state/verifier.json, removed claims still listed in verdicts.json: same raw counts
         (self.d / 'state' / 'verifier.json').unlink()
         (self.d / 'verdicts.json').write_text(json.dumps({'claims': kept, 'filter': {'removed': [{'id': f'B{i}', 'status': 'ABSENT'} for i in range(18)]}}))
         x = S.build(self.d); self.assertEqual((x['claims'], x['found'], x['counts_basis'], x['level']), (41, 23, 'verdicts+removed', 'low'))
+        self.assertEqual(x['removed'], 18); self.assertIn('18 removed from the report after verification', S.render(x))
         # verdicts.json alone, removals unknown: never a level computed on the kept claims
         (self.d / 'verdicts.json').write_text(json.dumps({'claims': kept}))
-        x = S.build(self.d); self.assertEqual((x['counts_basis'], x['level']), ('verdicts', 'unknown'))
+        x = S.build(self.d); self.assertEqual((x['counts_basis'], x['level'], x['removed']), ('verdicts', 'unknown', None))
         self.assertNotRegex(S.render(x), r'\bhigh\b'); self.assertNotIn('23 of 23 checked', S.render(x))
 
     def test_costs_pdf_french(self):
