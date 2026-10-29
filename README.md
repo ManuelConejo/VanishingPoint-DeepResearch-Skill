@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.6.8, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.6.9, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -167,9 +167,13 @@ In the conversation (v0.6.0; both steps below are prepared by a tool, no model c
   apply, deliver) from the files present and what is missing; the run continues with the same T, plugins and gateway counter, nothing
   already written is redone. Measured once (v0.6.0 trials): all criteria met, at the cost of the reference run.
 
-Command-line tools, not used by the skill by default (shipped in v0.6.0, kept on a waiting list after the ergonomics trials, see
-CHANGELOG): `tools/progress.py` (a one-line progress status), `tools/report_lang.py` (the
-eight section titles in English, French, Spanish, German; since v0.6.3 the skill uses it to write the report in the language of
+Progress: on Claude Code, a `PostToolUse` hook declared in the header of `SKILL.md` runs `tools/progress.py --hook` after
+each tool call of the orchestrator and shows one line when the run reaches a new step (framing, searches, report, verification,
+end), for instance `PostToolUse:Bash says: VP: framing done, 5 research angles, T = 2024-03-01.`; the model does not copy it
+(Claude Code folds tool output, so a line printed by a tool alone is not seen). The hook looks for the skill in the plugin
+directory, `<project>/.claude/skills/vanishingpoint` and `~/.claude/skills/vanishingpoint`; elsewhere it does nothing. Codex: no
+progress line. `tools/progress.py <dir>` prints the same line by hand. `tools/report_lang.py` gives the
+eight section titles in English, French, Spanish, German (since v0.6.3 the skill uses it to write the report in the language of
 the question). Each prints its usage with `--help`. Since v0.6.6 the skill itself uses `tools/new_run.py` (a new working directory
 named after the question) and `tools/parse_date.py` (a date in words in the question -> T).
 
@@ -317,7 +321,7 @@ tools/followup.py, resume.py   follow-up in the conversation, resuming an interr
 tools/export_report.py, export_data.py, passages.py, living_diff.py, law_checks.py   exports, cited passages, living review, legal rules
 tools/code_capsule.py, code_sources.py (library), condense_repo.py, whole_reading.py, contradictor.py   code plugin tools (capsule, Y condensation, whole reading, contradictor)
 tools/prior_art.py, prisma.py, followups.py   optional sections of SKILL.md (prior art, PRISMA flow diagram, follow-up questions)
-tools/evidence_bank.py, contradictions.py, progress.py   command-line tools, not used by the skill by default; report_lang.py, new_run.py, parse_date.py, summary.py (finish_run.py --summary), cost.py (budget): used by the skill
+tools/evidence_bank.py, contradictions.py   command-line tools, not used by the skill by default; progress.py (run by the SKILL.md hook on Claude Code), report_lang.py, new_run.py, parse_date.py, summary.py (finish_run.py --summary), cost.py (budget): used by the skill
 tools/config.json   caps, models, host command profiles             tests/  examples/  KEYS.md  ACCESS-POLICY.md  CONTRIBUTING.md  CHANGELOG.md  USAGE.md  LICENSE  NOTICE
 .claude-plugin/     plugin.json + marketplace.json: the repository as a Claude Code plugin (the skill directory needs neither)
 ```

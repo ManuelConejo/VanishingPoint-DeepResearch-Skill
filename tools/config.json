@@ -312,5 +312,11 @@
   "state_file": "update-state.json",
   "managed_path_markers": ["/.claude/plugins/"],
   "note": "Automatic update (tools/auto_update.py), run by tools/check_keys.py --announce at the start of a run, at most once per interval_hours (time of the last check in <HOME>/<config_dir>/<state_file>). auto = default when the user has not answered the setup question (python3 -I tools/auto_update.py --setup writes {\"auto\": true|false} to <HOME>/<config_dir>/<choice_file>, which wins). The latest version is the highest tag matching tag_pattern on the public repository (remote; empty = the `repository` of the manifest), read by `git ls-remote --tags` without any credential; never a branch. Only when it is strictly higher than the manifest's `version`: with auto, `git fetch` of that tag then a fast-forward only (hooks disabled, no script run), refused (one notice line instead) when tracked files are modified, the branch has diverged, the skill directory is not the top of its own git repository, its path holds one of managed_path_markers (a copy managed by Claude Code's plugin system), VP_OFFLINE=1, or the network fails; without auto, the notice line only. notify = false silences the notice line. timeout_s = limit of each git call (seconds). Any failure prints nothing and never changes the exit code of check_keys.py."
+ },
+ "progress": {
+  "hook_tools": ["Bash", "Write", "Edit", "MultiEdit", "Read"],
+  "steps": ["framing", "searches", "writing", "annex", "verify", "verified", "done"],
+  "log": "progress.log",
+  "note": "tools/progress.py --hook, run by Claude Code after each tool call of the orchestrator (PostToolUse hook of the SKILL.md header; never by the model). Measured 29/10 (skill-vp/essai-progress-29-10): Claude Code 2.1.292 folds tool output (\"Ran 1 shell command\") and shows it only in the detailed transcript (ctrl+o), so a line printed by a tool is not seen unless the model copies it (copied 5 times out of 8 in the two runs of essai-ergo-263); a hook systemMessage is shown by the host itself (\"PostToolUse:Bash says: ...\"), in the default view and in stream-json (system/informational). Hooks do not run for sub-agent tool calls. hook_tools = the tools whose calls carry a run path; steps = the order in which each step is shown once (searches: again on each new searcher file); log = file under state/."
  }
 }

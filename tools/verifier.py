@@ -324,6 +324,17 @@ def ident_of(desc):
     return None
 
 
+def misfiled_ident(desc):
+    """A gateway identifier written in the `code` field of the card's sources table (`"code": "localdoc:notes.md@local"`, as an annex
+    that only knows the doi/pmid/arxiv/code template writes it) -> the identifiers to read through the gateway, in order: without a
+    trailing `@<suffix>` that is not a SHA, then as written; [] for a real code source (`<path>@<SHA>`, `local:`), which keeps its route."""
+    v = str((desc or {}).get('code') or '').strip()
+    m = re.fullmatch(r'([a-z][a-z0-9]*):(\S+)', v)
+    if not m or m.group(1) not in READ_IDS: return []
+    bare = re.sub(r'@(?![0-9a-fA-F]{7,40}$)[^@/\s]*$', '', v)
+    return [bare, v] if bare != v and bare.split(':', 1)[1] else [v]
+
+
 def claim_order(card):
     """Source keys cited by the card, those carrying the most claims first (ties: key order): the order of the full-text attempts and of
     the gateway readings, so that a cap cuts the sources that weigh least."""
@@ -364,7 +375,7 @@ def load_sources(card, sources_dir=None, gateway=None, fulltext=False, out_dir=N
     keys = claim_order(card)
     table = card.get('sources') or {}
     out = {}; tried = 0
-    refs = {c: _code.code_ref(c, table.get(c) or {}) for c in keys}
+    refs = {c: None if misfiled_ident(table.get(c)) else _code.code_ref(c, table.get(c) or {}) for c in keys}
     if repos is None and any(refs.values()): repos = _code.run_repos(run_dir)
     for c in keys:
         desc = table.get(c) or {}
@@ -396,8 +407,11 @@ def load_sources(card, sources_dir=None, gateway=None, fulltext=False, out_dir=N
             else: note = meta.get('reason') or ''
         if txt is None and gateway is not None:
             ident = ident_of(desc) or (c if re.match(r'^(doi|arxiv|pmid|celex|ecli|ja|hal|thesesfr|judilibre|legi|jorf):', c) else None)   # law ids: gateway.read_law
-            if ident:
+            idents = [ident] if ident else misfiled_ident(desc)              # an identifier filed under `code` is read as an identifier
+            for k, ident in enumerate(idents):
                 rep = gateway.read(ident) or {}
+                r = rep.get('results') or {}
+                if k + 1 < len(idents) and not (isinstance(r, dict) and r.get('abstract')): continue   # next spelling of a misfiled identifier
                 d = pathlib.Path(out_dir) / fs_key(c) if out_dir else None
                 if d:                                                  # every reading kept: record for tools/law_checks.py, text for the fragment check
                     d.mkdir(parents=True, exist_ok=True); (d / 'record.json').write_text(json.dumps(rep, ensure_ascii=False))
@@ -406,6 +420,7 @@ def load_sources(card, sources_dir=None, gateway=None, fulltext=False, out_dir=N
                     txt = record_header(r) + f"{r.get('title') or ''}\n\n{r['abstract']}"; origin = 'abstract'; note = '(record + abstract)'
                     if d: (d / 'source.txt').write_text(txt)
                 else: note = rep.get('refusal') or rep.get('error') or (r.get('refusal') or r.get('error') if isinstance(r, dict) else None) or 'no abstract'
+                break
         if txt is not None and not txt.strip(): txt = None; origin = 'missing'
         out[c] = {'text': txt or '', 'origin': origin, 'note': note, 'desc': desc, **({'fulltext': attempt} if attempt else {})}
     return out
