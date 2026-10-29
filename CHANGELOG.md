@@ -809,3 +809,11 @@ Code changes from an offline analysis of 104 judge errors and 92 verifier non-FO
   above the champion rate and could not be met; confirmation on 4 new cases with a frozen 50 % relative threshold: 8/144 ->
   3/147 (-63 %), never worse in any case, volume, precise pairs and form unchanged. Extra cost: about 0.21 USD per report.
   False positives: 2.2 % of pairs the judges held correct. Total trial cost 9.29 USD.
+
+## v0.6.6 - 2026-10-29 - working directory and date in words used by default
+
+- Adopted: the skill now creates its working directory with `tools/new_run.py` (`vp-<date>-<subject>/`, never an existing one)
+  and turns a date written in words in the question into T with `tools/parse_date.py`. Cost confirmation on 3 Sonnet pairs over the
+  framing phase, the only phase these steps touch: functional checks met in every run, cost ratio 1.058 (pairs 1.03, 1.06, 1.08)
+  under the frozen 1.3, about +0.015 USD per run; the 1.47x of the v0.6.0 trial did not come from these two steps. Downstream
+  effect not measured. Cost: 1.63 USD.
