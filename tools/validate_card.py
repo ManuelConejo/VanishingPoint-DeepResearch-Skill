@@ -13,16 +13,21 @@ eight titles and finding word in one other language of tools/report_lang.py, e.g
 a follow-up run, marked by followup.json, uses the bounds of config.json `followup` for the summary, the findings and the searches); 7 unverified claims
 flagged; 8 result.json valid (validate_result); 9 run.json consistent with the journal; 10 "Source coverage" block present (in the methodology
 appendix), with its active and skipped lines; 11 each [n] of the text is in the bibliography and each [n] entry is cited; 12 prose >= 80 % (bullet lines <= 20 %);
+14 no cross-source statement on a single citation: a clause that compares, ranks, counts, excludes or reports a search outcome across sources
+("the largest series [5]", "excluded [12]", "no later ruling was found [13]") and cites one source only (tools/cross_source.py; config.json
+`cross_source`): the fact of the source in its own sentence with its [n], the comparison as the writer's synthesis without [n], or every
+source compared cited;
 13 (command line, runs with a gateway journal only) end steps done on the current files: state/finish_run.json, written by tools/finish_run.py,
 whose fingerprints of REPORT.md, card.json, result.json and verdicts.json match the files (else: run finish_run.py, which runs these checks,
 the retraction check, law_checks and the exports).
-Output: problems (empty = OK), exit code 1 if there are any. Import: problems(dir) -> [str] (checks 1-12); end_problems(dir) -> [str] (check 13);
+Output: problems (empty = OK), exit code 1 if there are any. Import: problems(dir) -> [str] (checks 1-12 and 14); end_problems(dir) -> [str] (check 13);
 header(dir) -> dict."""
 import hashlib, json, pathlib, re, sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from validate_result import problems as pb_result
 import sources as _reg   # noqa: E402  (source registry)
 import report_lang as RL   # noqa: E402  (titles of the eight sections, one version per language)
+import cross_source as CS   # noqa: E402  (check 14)
 
 IDS = tuple(i['field'] for i in _reg.IDS if i['card'])   # card identifier fields, from the source declarations (tools/sources/): code = `<path>@<SHA>` or `local:<path>@<SHA>`; the others: ids served by the gateway engines (SKILL.md section 0 "Identity of sources")
 STATUSES = {'FOUND', 'DISTORTED', 'ABSENT', 'SOURCE-UNAVAILABLE', 'INVALID', 'UNVERIFIED'}
@@ -52,7 +57,7 @@ def sections(t):
 
 
 def report_problems(t, followup=False):
-    """Checks 6, 10, 11, 12 on the text of REPORT.md (output contract, SKILL.md section 5). The eight titles are those of one language of
+    """Checks 6, 10, 11, 12, 14 on the text of REPORT.md (output contract, SKILL.md section 5). The eight titles are those of one language of
     tools/report_lang.py (all eight in the same language). followup=True: the bounds of a follow-up report (config.json `followup`)."""
     pb = []; raw = RL.raw_sections(t); lang = RL.title_language([s for s, _ in raw]); expected = RL.LANGS[lang]['sections']
     titles = [s for s, _ in raw]
@@ -90,6 +95,8 @@ def report_problems(t, followup=False):
     lines = [l for s, c in secs if s != 'Bibliography' for l in c.splitlines() if l.strip() and not l.startswith('#')]
     bullets = [l for l in lines if re.match(r'^\s*([-*+]|\d+[.)])\s', l)]
     if lines and len(bullets) / len(lines) > BULLETS_MAX: pb.append(f'12 REPORT.md: {len(bullets)} bullet lines out of {len(lines)} ({100*len(bullets)/len(lines):.0f} %), prose >= 80 % expected')
+    # 14 cross-source statements carrying a single citation
+    pb += CS.problems(t, lang)
     return pb
 
 

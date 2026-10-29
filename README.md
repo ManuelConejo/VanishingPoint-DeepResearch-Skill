@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.6.4, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.6.5, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -138,7 +138,7 @@ every command below uses it.
    with receipts), `REPORT.md` (the report), `card.json` and `result.json` (machine annex), `verdicts.json` and
    `sources/<key>/source.txt` (verification), `run.json` (header derived from the gateway journal), `state/` (gateway journal,
    receipts without URL nor key). The code plugin adds `capsule.md` (input) and `mechanisms.json` (output).
-5. Check before using the report: `python3 -I "$SKILL/tools/validate_card.py" <dir> --header` (13 numbered mechanical checks, the 13th: end steps run by `finish_run.py` below; `OK`
+5. Check before using the report: `python3 -I "$SKILL/tools/validate_card.py" <dir> --header` (14 numbered mechanical checks, the 13th: end steps run by `finish_run.py` below, the 14th: no cross-source statement on a single `[n]`; `OK`
    = valid; without `state/journal.jsonl` the header is left as it is). A report that keeps ABSENT or INVALID claims unhandled is not delivered as valid.
 6. Export: `python3 -I "$SKILL/tools/export_report.py" <dir> [--pdf] [--open]` writes `REPORT.html` (one self-contained page, prints to PDF from any browser) and, with `--pdf`, `REPORT.pdf` through WeasyPrint, Chromium, wkhtmltopdf or pandoc when one is installed (nothing is installed, no network). Then `python3 -I "$SKILL/tools/export_data.py" <dir>` writes `studies.csv` (one row per study, criteria and verification counts) and `references.bib` / `.ris` / `.json` (CSL-JSON) for reference managers.
 
