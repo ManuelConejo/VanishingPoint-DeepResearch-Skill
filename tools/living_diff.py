@@ -18,15 +18,19 @@ UPDATE.md holds a prose paragraph ready to paste under `### What changed since T
 the new report's numbers; dropped sources are named by title and year, never by [n]), then the details. Exit: 0 written; 2 a dir lacks
 card.json or REPORT.md. Import: compare(old, new) -> dict; render(diff) -> str."""
 import argparse, difflib, json, pathlib, re, sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import report_lang as RL   # noqa: E402  (section titles and finding word in every language of the table)
 
 MATCH_MIN = 0.5                                       # title similarity under which two findings are not the same finding
 VERDICT_WORDS = ('established', 'probable', 'possible', 'open', 'unlikely', 'refuted', 'NO-GO', 'GO', 'WATCH', 'Y side', 'X side', 'consequence')
+VERDICT_ALIASES = {w: en for c, L in RL.LANGS.items() if c != 'en' for w, en in L['verdicts'].items() if w != en}
+VERDICT_LINE = re.compile(r'^\W*(?:' + '|'.join(L['verdict_label'] for L in RL.LANGS.values()) + r')\b', re.I)
 FLAG = re.compile(r'retract\w*|erratum|errata|expression of concern', re.I)
 STATUS_ORDER = ('FOUND', 'DISTORTED', 'ABSENT', 'SOURCE-UNAVAILABLE', 'INVALID', 'UNVERIFIED')
 PREFIXES = ('doi', 'pmid', 'pmcid', 'arxiv', 'celex', 'ecli', 'ja', 'hal', 'thesesfr', 'nct', 'dblp', 'econbiz', 'osv', 'openreview', 'zenodo', 'hfmodel', 'hfdataset', 'rfc', 'pep', 'w3c', 'acl', 'pmlr', 'cvf', 'code')
 ID_RE = re.compile(r'\b(' + '|'.join(PREFIXES) + r'):\s?([^\s,;()\[\]]+)', re.I)
 DATE_RE = re.compile(r'\b(\d{4}-\d{2}-\d{2})\b')
-FINDING_RE = re.compile(r'^### +Finding +(\d+)\s*[—-]+\s*(.+?)\s*$', re.M)
+FINDING_RE = RL.finding_re()                          # `### Finding n — title`, or the finding word of another language of the table
 
 
 def norm_id(kind, value):
@@ -62,8 +66,7 @@ def load(p):
 
 
 def sections(t):
-    parts = re.split(r'^## +(.+?)\s*$', t, flags=re.M)
-    return {parts[i].strip(): parts[i + 1] for i in range(1, len(parts) - 1, 2)}
+    return dict(RL.sections(t))                       # canonical English titles, whatever the language of the report
 
 
 def run_T(d, report):
@@ -134,7 +137,7 @@ def read_run(d):
     heads = list(FINDING_RE.finditer(ma))
     for i, m in enumerate(heads):
         body = ma[m.end(): heads[i + 1].start() if i + 1 < len(heads) else len(ma)]
-        vl = next((re.sub(r'^\W+', '', l).strip() for l in body.splitlines() if re.match(r'^\W*verdict\b', l, re.I)), '')
+        vl = next((re.sub(r'^\W+', '', l).strip() for l in body.splitlines() if VERDICT_LINE.match(l)), '')
         paren = re.findall(r'\(([^()]*)\)\s*$', m.group(2))
         findings.append({'n': int(m.group(1)), 'title': m.group(2), 'verdict': vl, 'words': verdict_words(vl or (paren[0] if paren else ''))})
     es = re.sub(r'\s+', ' ', secs.get('Executive Summary', '')).strip()
@@ -150,6 +153,8 @@ def verdict_words(text):
     found = []
     for w in VERDICT_WORDS:   # NO-GO before GO: "GO" inside "NO-GO" is not counted twice
         for m in re.finditer(r'(?<![\w-])' + re.escape(w) + r'(?![\w-])', text, re.I if w.islower() else 0): found.append((m.start(), w))
+    for w, en in VERDICT_ALIASES.items():   # verdict words of the other languages of the table -> the English scale word
+        for m in re.finditer(r'(?<![\w-])' + re.escape(w) + r'(?![\w-])', text, re.I): found.append((m.start(), en))
     out = []
     for _, w in sorted(found):
         if w not in out: out.append(w)

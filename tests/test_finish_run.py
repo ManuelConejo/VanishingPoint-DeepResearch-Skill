@@ -4,7 +4,7 @@
 ok / problems / skipped; validation passes (exit 0), run.json is derived, REPORT.html and the data exports are written and printed;
 retraction check: a Crossref `updated-by` retraction (Retraction Watch source) -> retracted, a record with no notice -> none, a network
 failure -> unknown (never none), notices found through `filter=updates:` (expression of concern) -> concern, the RW CSV alone -> retracted,
---offline with an empty cache -> unknown; a broken run fails validation (exit 1) but the other steps still run; law_checks runs only for law."""
+--offline with an empty cache -> unknown; summary.py runs only with --summary (off by default); a broken run fails validation (exit 1) but the other steps still run; law_checks runs only for law."""
 import contextlib, io, json, pathlib, shutil, sys, tempfile, unittest, urllib.error
 P = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(P.parent / 'tools')); import finish_run as F   # noqa: E702
@@ -41,6 +41,7 @@ class T(unittest.TestCase):
         r = F.finish(self.d)
         self.assertEqual([s['step'] for s in r['steps']], ['validate_card --header', 'validate_result', 'retractions', 'law_checks', 'export_report', 'export_data'])
         st = {s['step']: s['status'] for s in r['steps']}
+        self.assertNotIn('--- SUMMARY.md', out); self.assertFalse((self.d / 'SUMMARY.md').exists())   # v0.6.0: summary.py only with --summary
         self.assertEqual((st['validate_card --header'], st['validate_result'], st['law_checks'], st['export_report'], st['export_data']), ('ok', 'ok', 'skipped', 'ok', 'ok'))
         self.assertEqual(st['retractions'], 'problems')
         for f in ('run.json', 'REPORT.html', 'studies.csv', 'references.bib', 'references.ris', 'references.json', 'retractions.json'):
@@ -48,6 +49,12 @@ class T(unittest.TestCase):
         x = json.loads((self.d / 'retractions.json').read_text())['sources']
         self.assertEqual({k: v['state'] for k, v in x.items()}, {'S1': 'retracted', 'S2': 'none', 'S3': 'unknown'})
         self.assertTrue(x['S1']['retraction_watch']); self.assertIn('error', x['S3'])
+
+    def test_summary_option(self):
+        c, out = self.run_main('--summary')                                                            # optional step 8, off by default
+        self.assertEqual(c, 0, out); self.assertIn('--- SUMMARY.md (--summary)', out)
+        self.assertTrue((self.d / 'SUMMARY.md').is_file()); self.assertIn('**Verification**', (self.d / 'SUMMARY.md').read_text())
+        r = F.finish(self.d, summary=True); self.assertEqual(r['steps'][-1]['step'], 'summary'); self.assertEqual(r['steps'][-1]['status'], 'ok')
 
     def test_states(self):
         F.gw.STATE = self.d / 'state'

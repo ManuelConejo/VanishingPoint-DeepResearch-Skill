@@ -19,9 +19,12 @@ records at export time); --followups adds the follow-up questions of tools/follo
 Usage: export_report.py RUN_DIR [--pdf] [--out DIR] [--prisma] [--followups]     Exit: 0 written; 2 no REPORT.md.
 Import: render(md, meta, extra=[(id, title, html)]) -> str; meta(dir) -> [(k, v)]; extras(dir, prisma, followups) -> [(id, title, html)]."""
 import argparse, datetime as dt, html, importlib, importlib.util, json, os, pathlib, re, shutil, subprocess, sys, tempfile
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import report_lang as RL   # noqa: E402  (titles of the eight sections in every language of the table)
 
 TIMEOUT = 180  # seconds per converter attempt
-PAGE_BREAK = {'Bibliography', 'Methodology Appendix'}  # level-2 sections that start a new printed page
+PAGE_BREAK = {'Bibliography', 'Methodology Appendix'}  # level-2 sections that start a new printed page (canonical titles, any language: report_lang)
+FINDING_SLUG = re.compile(r'(?:' + '|'.join(map(re.escape, RL.finding_words())) + r') (\d+)\b')
 SAFE_URL = re.compile(r'^(https?://|mailto:)[^\s]+$|^#[\w.:-]+$', re.I)
 IDLINK = {'doi': 'https://doi.org/{}', 'pmid': 'https://pubmed.ncbi.nlm.nih.gov/{}/', 'arxiv': 'https://arxiv.org/abs/{}',
           'pmcid': 'https://www.ncbi.nlm.nih.gov/pmc/articles/{}/'}
@@ -150,7 +153,7 @@ class Inline:
 
 # ---------- blocks ----------
 def slug(s, used):
-    b = f'finding-{m.group(1)}' if (m := re.match(r'Finding (\d+)\b', s.strip())) else re.sub(r'[^a-z0-9]+', '-', s.lower()).strip('-')[:60] or 'section'
+    b = f'finding-{m.group(1)}' if (m := FINDING_SLUG.match(s.strip())) else re.sub(r'[^a-z0-9]+', '-', s.lower()).strip('-')[:60] or 'section'
     s, i = b, 2
     while s in used: s, i = f'{b}-{i}', i + 1
     used.add(s); return s
@@ -190,14 +193,14 @@ def blocks(lines, inl, ctx):
             i += 1; out.append(f'<pre><code>{html.escape(chr(10).join(body), quote=True)}</code></pre>'); continue
         if (m := HEAD.match(l)):
             lvl, raw = len(m.group(1)), m.group(2); i += 1
-            if lvl == 2 and raw.strip() == 'Bibliography' and ctx.get('bib') is not None:   # bibliography: rendered last (back-links)
+            if lvl == 2 and RL.canonical(raw) == 'Bibliography' and ctx.get('bib') is not None:   # bibliography: rendered last (back-links)
                 body = []
                 while i < n and not re.match(r'^#{1,2}\s', lines[i]): body.append(lines[i]); i += 1
                 hid = slug(raw, ctx['used']); ctx['toc'].append((2, hid, inl(raw, cite=False)))
                 out.append(f'<h2 id="{hid}" class="pb">{inl(raw, cite=False)}</h2>'); out.append(ctx['bib']); ctx['bib_lines'] = body; continue
             if lvl == 1 and not ctx.get('h1_done'):
                 ctx['h1_done'] = True; out.append(f'<h1>{inl(raw, cite=False)}</h1>'); out.append(ctx['after_h1']); continue
-            hid = slug(raw, ctx['used']); cls = ' class="pb"' if lvl == 2 and raw.strip() in PAGE_BREAK else ''
+            hid = slug(raw, ctx['used']); cls = ' class="pb"' if lvl == 2 and RL.canonical(raw) in PAGE_BREAK else ''
             if lvl in (2, 3): ctx['toc'].append((lvl, hid, inl(raw, cite=False)))
             out.append(f'<h{lvl} id="{hid}"{cls}>{inl(raw)}</h{lvl}>'); continue
         if HR.match(l): out.append('<hr>'); i += 1; continue
@@ -301,7 +304,7 @@ def render(md, meta=(), title_fallback='Report', passages=None, extra=()):
     lines = md.split('\n')
     refs, inbib = set(), False
     for l in lines:
-        if re.match(r'^##\s', l): inbib = l.strip()[2:].strip() == 'Bibliography'
+        if re.match(r'^##\s', l): inbib = RL.canonical(l.strip()[2:].strip()) == 'Bibliography'
         elif inbib and (m := BIB_LINE.match(l)): refs.add(int(m.group(1)))
     inl = Inline(refs)
     h1 = next((HEAD.match(l).group(2) for l in lines if HEAD.match(l) and len(HEAD.match(l).group(1)) == 1), None)
@@ -330,7 +333,8 @@ def render(md, meta=(), title_fallback='Report', passages=None, extra=()):
     body = body.replace('\x02HEADER\x02', head) if '\x02HEADER\x02' in body else head + body
     title = html.escape(re.sub(r'[`*_]', '', h1 or title_fallback).strip(), quote=True)
     gen = dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
-    return (f'<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+    lang = RL.report_language(md) if any(RL.canonical(t) for t, _ in RL.raw_sections(md)) else RL.DEFAULT
+    return (f'<!DOCTYPE html>\n<html lang="{lang}">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n'
             f'<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; img-src data:">\n'
             f'<meta name="generator" content="VanishingPoint export_report.py">\n<title>{title}</title>\n<style>{CSS}</style>\n</head>\n<body>\n<main>\n{body}\n</main>\n'
             f'<footer>Exported from REPORT.md by VanishingPoint on {gen}. The citations [n] link to the bibliography.</footer>\n</body>\n</html>\n')
@@ -361,7 +365,7 @@ def meta(folder):
     if (t := _join(run.get('T')) or _join(card.get('T')) or sc(r'\bT\s*=\s*(\d{4}-\d{2}-\d{2}[\dT:Z+-]*)')): out.append(('Date T', t))
     if (p := _join(run.get('plugins') or run.get('plugin') or card.get('plugins')) or sc(r'\bPlugins?:\s*([^.\n]+)')): out.append(('Plugin(s)', p))
     mode = _join(run.get('mode')) or sc(r'\bMode:\s*([\w-]+)')
-    if not mode and (m := re.search(r'\bMode:\s*(standard|audit)\b', report.split('## Methodology Appendix')[-1] if '## Methodology Appendix' in report else '')): mode = m.group(1)
+    if not mode and (m := re.search(r'\bMode\s?:\s*(standard|audit)\b', RL.section(report, 'Methodology Appendix'))): mode = m.group(1)
     if mode: out.append(('Mode', mode))
     if isinstance(ver, dict) and isinstance(ver.get('claims'), list) and ver['claims']:
         counts = {}

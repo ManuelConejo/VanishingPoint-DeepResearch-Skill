@@ -226,5 +226,42 @@
   "claim_chars": 200,
   "idea_chars": 90,
   "note": "Optional 'Prior art?' mode (tools/prior_art.py; validate_card.py --prior-art; finish_run.py --prior-art). elements_max = most elements an idea is cut into (an idea needing more is a project, not a prior-art question); closest = closest sources listed; queries_max = queries listed in 'What was searched' (the rest counted, all in state/journal.jsonl); claim_chars / idea_chars = longest claim, fragment or idea quoted. Not measured: reading bounds of the answer."
+ },
+ "costs": {
+  "currency": "USD",
+  "standard_usd": {"low": 2.8, "high": 3.0},
+  "law_usd": {"low": 3.0, "high": 10.0},
+  "code_whole_reading_usd": {"low": 7.0, "high": 7.0},
+  "fulltext_usd_per_text": 0.75,
+  "fulltext_extra_low_usd": 1.8,
+  "audit_factor": {"low": 6.0, "high": 7.0},
+  "contradictor_api_call_usd": 0.26,
+  "contradictor_cli_call_usd": 0.0,
+  "contradictor_rereads_usd": 0.6,
+  "expensive": ["code_whole_reading", "fulltext", "contradictor", "audit"],
+  "budget": {"waves_full": 4, "min_cap": 15},
+  "note": "Estimates shown by tools/cost.py before an expensive mode (SKILL.md section 0 'Cost and budget'); every figure comes from a measure written in CHANGELOG.md / README.md / USAGE.md, none is a price list. standard_usd = academic question, standard mode, Claude Code (Opus orchestrator, Sonnet searchers), verification included: 2.8 to 3.0 USD measured (USAGE section 6; README 'about 2-3 USD'). law_usd = legal texts read whole by the verifier: up to about 10 USD (USAGE section 6; v0.5.1 mechanics duel, T-LAW 10.03 USD). code_whole_reading_usd = code study with the whole reading before verdicts, about 7 USD (README; the whole reading alone 0.9 to 2.6 USD, CHANGELOG v0.1). fulltext_usd_per_text = verifier cost per full text read: about 9 USD-equivalent for the 12 texts of one report (CHANGELOG v0.5.1, USAGE section 6), times verifier.fulltext_cap (the high end); fulltext_extra_low_usd = the smallest extra measured with full text on in the v0.5.1 mechanics duel (arm M minus arm C0: D05 and D06 1.83 USD; AN13 9.35, T-LAW 6.52, RAG 5.26; couts.json of that duel), the low end. audit_factor = 6 to 7 times the standard mode (CHANGELOG v0.1). contradictor_* = per family: 0.26 USD per API call (OpenRouter, 2026-10-27), 0 for a CLI on a subscription, plus about 0.6 USD of rereads per report (CHANGELOG v0.2.0). Prices change with the models: these are orders of size, not quotes. expensive = the modes announced before launch and switched off by a user budget. budget.waves_full = waves of a full run used to scale the waves under a budget (first wave, one complement, two saturation waves: the smallest run the stopping rule of section 4 allows to end on saturation); budget.min_cap = smallest gateway cap a budget may set (three searchers of five calls: the floor of section 3). Conventions, not measured optima."
+ },
+ "summary": {
+  "answer_sentences": 3,
+  "answer_chars": 500,
+  "confidence": {"high": 0.9, "medium": 0.75},
+  "min_sources": 10,
+  "note": "SUMMARY.md / summary.json (tools/summary.py, run by finish_run.py): the message the assistant copies at the end of a run. answer_sentences / answer_chars = the first sentences of the Executive Summary shown as the answer (citations [n] removed), cut at a word. confidence = level from the share of FOUND among the claims checked (FOUND / all statuses kept in verdicts.json): >= high -> high, >= medium -> medium, else low; lowered one level when fewer than min_sources bibliography entries carry the report (SKILL.md section 5 asks to say so). A reading convention for one line of chat, not a measured calibration: the report's verdicts and the Methodology Appendix remain the reference."
+ },
+ "new_run": {
+  "prefix": "vp",
+  "slug_words": 5,
+  "slug_chars": 40,
+  "extra_stopwords": ["en", "did", "under", "following", "meet", "criteria", "been", "would", "could", "should", "deep", "research", "recherche", "approfondie", "etat", "art", "state", "known", "sait", "connait", "please", "stp", "svp", "vanishingpoint", "skill", "use", "utilise"],
+  "note": "Working directory created by tools/new_run.py when the instruction names none: <prefix>-<YYYY-MM-DD>-<slug>/ in the current directory, slug = the first slug_words content words of the question (accents removed, ASCII, lower case, hyphens), at most slug_chars characters; never an existing directory (suffix -2, -3...). Stopwords = the frequent words of every language of tools/report_lang.py plus extra_stopwords. Naming conventions."
+ },
+ "followup": {
+  "dir": "followups",
+  "summary_words": [80, 250],
+  "findings": [1, 3],
+  "min_searches": 1,
+  "call_cap": 20,
+  "note": "Follow-up in the conversation (SKILL.md 'Follow-up in the conversation', tools/followup.py): a short complementary run in <run>/followups/<n>/ (its own scope.md, searches/, REPORT.md, card.json, result.json, verdicts.json, state/ with the parent's gateway cache linked), delivered as <run>/FOLLOWUP-<n>.md / .html / .pdf by finish_run.py; the parent's files are never written. summary_words / findings / min_searches = the bounds validate_card.py applies to a follow-up (the eight sections stay); call_cap = gateway cap of the follow-up's searches (a third of call_cap.default); the verifier keeps its own pool. Conventions for a short run, not measured."
  }
 }

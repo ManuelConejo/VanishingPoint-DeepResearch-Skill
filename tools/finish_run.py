@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """End of a run in one command (SKILL.md section 8, plus the shared retraction rule of the plugins). Standard library, no model.
 Usage: finish_run.py RUN_DIR [--T YYYY-MM-DD] [--plugin plugins/law.md ...] [--offline] [--rw-csv FILE] [--json]
-                     [--prisma] [--followups] [--prior-art]
+                     [--prisma] [--followups] [--prior-art] [--summary [--cost-usd USD]]
 Optional steps (never by default; SKILL.md, optional sections): --prisma writes PRISMA.md / PRISMA.svg / prisma.json (tools/prisma.py) and
 appends the diagram to REPORT.html; --followups writes FOLLOWUPS.md / followups.json (tools/followups.py) and appends them to REPORT.html;
 --prior-art ("Prior art?" mode) first writes PRIOR-ART.md (tools/prior_art.py), then validates with validate_card.py --prior-art and skips
@@ -11,7 +11,9 @@ Runs, in this order, each step whatever the others gave (status ok | problems | 
   1 validate_card.py DIR --header (--header skipped without state/journal.jsonl)   2 validate_result.py DIR/result.json
   3 retraction check (below; writes DIR/retractions.json)   4 law_checks.py DIR (only when a law plugin is used: --plugin, else scope.md)
   5 export_report.py DIR --pdf --open (with the cited passages under each bibliography entry)   6 export_data.py DIR (also passages.json,
-  PASSAGES.md: tools/passages.py)
+  PASSAGES.md: tools/passages.py)   7 a follow-up run only (followup.json, tools/followup.py), validation passed: copies REPORT.md / .html / .pdf
+  to <parent>/FOLLOWUP-<n>.md / .html / .pdf (never a parent file)   8 --summary only (off by default; command-line tool, not used by the
+  skill by default): summary.py DIR [--cost-usd U] writes SUMMARY.md and summary.json after the receipt (the duration ends at its finished_utc)
 Exit code 0 only when steps 1 and 2 passed; the paths of the files produced are printed at the end.
 Receipt: DIR/state/finish_run.json (fingerprints of REPORT.md, card.json, result.json, verdicts.json taken before the steps, then the steps and
 their statuses). `validate_card.py DIR` (check 13, gateway runs) refuses a run without it or whose files changed after it: the run cannot be
@@ -25,7 +27,7 @@ retracted | concern | erratum | none (Crossref answered, no notice) | unknown (n
 turned into `none`. Network through gateway.fetch (polite User-Agent / VP_CONTACT, per-host interval, retries), cache in DIR/state/cache;
 --offline: cache only. Current state of the record, not dated at T (a retraction after T still matters for the reader).
 Import: finish(dir, T=None, plugins=(), offline=False, rw_csv=None) -> dict ; retractions(dir, offline=False, rw_csv=None) -> dict."""
-import argparse, csv, datetime as dt, hashlib, json, os, pathlib, re, subprocess, sys, urllib.parse
+import argparse, csv, datetime as dt, hashlib, json, os, pathlib, re, shutil, subprocess, sys, urllib.parse
 P = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(P))
 import gateway as gw   # noqa: E402  (fetch, _mailto: the gateway's polite HTTP pattern)
@@ -145,7 +147,7 @@ def verification(d):
     return {k: v.get(k) for k in ('summary', 'fulltext_mode', 'fulltext_cap', 'fulltext_attempted', 'fulltext_obtained', 'fulltext_not_tried_cap', 'origins', 'gateway', 'model')}
 
 
-def finish(d, T=None, plugins=(), offline=False, rw_csv=None, prisma=False, followups=False, prior_art=False):
+def finish(d, T=None, plugins=(), offline=False, rw_csv=None, prisma=False, followups=False, prior_art=False, cost_usd=None, summary=False):
     d = pathlib.Path(d).resolve(); steps, files = [], []
     receipt = d / 'state' / 'finish_run.json'
     pre = []
@@ -200,10 +202,28 @@ def finish(d, T=None, plugins=(), offline=False, rw_csv=None, prisma=False, foll
             step(name, 'ok' if c == 0 else 'problems', (' '.join(pdf_note) or o.splitlines()[-1]) if o else '', _paths(o))
     else:
         for name in ('export_report', 'export_data'): step(name, 'skipped', 'no REPORT.md')
+    # 7 follow-up run (followup.json, tools/followup.py): its report is delivered next to the parent's as FOLLOWUP-<n>.*, copies only
+    if vc.is_followup(d):
+        try:
+            meta = json.loads((d / 'followup.json').read_text(encoding='utf-8')); parent = pathlib.Path(meta['parent']); n = int(meta['n'])
+            if c1 == 0 and c2 == 0:
+                done = []
+                for ext in ('md', 'html', 'pdf'):
+                    if (d / f'REPORT.{ext}').is_file():
+                        shutil.copyfile(d / f'REPORT.{ext}', parent / f'FOLLOWUP-{n}.{ext}'); done.append(str(parent / f'FOLLOWUP-{n}.{ext}'))
+                step('followup_deliver', 'ok', f'FOLLOWUP-{n} delivered next to the parent report (the parent files are unchanged)', done)
+            else: step('followup_deliver', 'skipped', f'validation failed: FOLLOWUP-{n} not delivered')
+        except (OSError, ValueError, KeyError) as e: step('followup_deliver', 'problems', f'{type(e).__name__}: {e}')
     out = {'dir': str(d), 'validation_passed': c1 == 0 and c2 == 0, 'steps': steps, 'files': files, 'verification': verification(d)}
     receipt.write_text(json.dumps({**json.loads(receipt.read_text(encoding='utf-8')), 'finished_utc': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'),
                                    'validation_passed': out['validation_passed'], 'steps': [{k: s[k] for k in ('step', 'status')} for s in steps],
                                    'verification': out['verification']}, ensure_ascii=False, indent=1), encoding='utf-8')
+    # 8 optional (--summary, off by default): SUMMARY.md / summary.json (tools/summary.py), after the receipt: its duration ends at finished_utc
+    if summary and (d / 'REPORT.md').exists():
+        c, o = _run(['summary.py', d] + (['--cost-usd', cost_usd] if cost_usd is not None else []))
+        step('summary', 'ok' if c == 0 else 'problems', 'SUMMARY.md written' if c == 0 else o,
+             [str(d / 'SUMMARY.md'), str(d / 'summary.json')] if c == 0 else [])
+        out['summary'] = o if c == 0 else None
     return out
 
 
@@ -215,10 +235,12 @@ def main(argv=None):
     ap.add_argument('--prisma', action='store_true', help='optional: PRISMA 2020 flow diagram (tools/prisma.py), also in REPORT.html')
     ap.add_argument('--followups', action='store_true', help='optional: follow-up questions (tools/followups.py), also in REPORT.html')
     ap.add_argument('--prior-art', action='store_true', help='optional "Prior art?" mode: PRIOR-ART.md (tools/prior_art.py), validate_card --prior-art')
+    ap.add_argument('--summary', action='store_true', help='optional, off by default: SUMMARY.md / summary.json (tools/summary.py), a command-line tool not used by the skill by default')
+    ap.add_argument('--cost-usd', type=float, help='with --summary: cost of the run reported by the host, shown in SUMMARY.md (else the receipts of the nested calls)')
     a = ap.parse_args(argv)
     if not pathlib.Path(a.run_dir).is_dir(): print(f'not a directory: {a.run_dir}', file=sys.stderr); return 2
     if a.T and not re.fullmatch(r'\d{4}-\d{2}-\d{2}', a.T): ap.error(f'date expected as YYYY-MM-DD: {a.T!r}')
-    r = finish(a.run_dir, a.T, a.plugin, a.offline, a.rw_csv, prisma=a.prisma, followups=a.followups, prior_art=a.prior_art)
+    r = finish(a.run_dir, a.T, a.plugin, a.offline, a.rw_csv, prisma=a.prisma, followups=a.followups, prior_art=a.prior_art, cost_usd=a.cost_usd, summary=a.summary)
     if a.json: print(json.dumps(r, ensure_ascii=False, indent=1))
     else:
         for s in r['steps']:
@@ -230,6 +252,7 @@ def main(argv=None):
               + (f"; gateway pool {v['gateway'].get('pool')} cap {v['gateway'].get('cap')}" if v.get('gateway') else '')))
         print('validation: ' + ('passed' if r['validation_passed'] else 'FAILED (exit 1)'))
         for f in r['files']: print(f)
+        if r.get('summary'): print('--- SUMMARY.md (--summary) ---\n' + r['summary'].rstrip())
     return 0 if r['validation_passed'] else 1
 
 

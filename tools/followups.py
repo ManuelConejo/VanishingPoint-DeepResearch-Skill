@@ -68,8 +68,9 @@ def _text(p):
 
 
 def _section(md, title):
-    m = re.search(r'^## +' + re.escape(title) + r'\s*$(.*?)(?=^## |\Z)', md, re.M | re.S)
-    return m.group(1) if m else ''
+    """Body of a section by its canonical English title, whatever the language of the report (tools/report_lang.py)."""
+    import report_lang
+    return report_lang.section(md, title)
 
 
 def _ref(key):

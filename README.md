@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.5.10, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.6.0, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -138,6 +138,23 @@ every command below uses it.
 6. Export: `python3 -I "$SKILL/tools/export_report.py" <dir> [--pdf] [--open]` writes `REPORT.html` (one self-contained page, prints to PDF from any browser) and, with `--pdf`, `REPORT.pdf` through WeasyPrint, Chromium, wkhtmltopdf or pandoc when one is installed (nothing is installed, no network). Then `python3 -I "$SKILL/tools/export_data.py" <dir>` writes `studies.csv` (one row per study, criteria and verification counts) and `references.bib` / `.ris` / `.json` (CSL-JSON) for reference managers.
 
 All end steps in one command (SKILL.md section 8; `validate_card.py` run alone refuses a run whose end steps did not run on the current files, check 13, receipt `state/finish_run.json`): `python3 -I "$SKILL/tools/finish_run.py" <dir> [--T YYYY-MM-DD] [--plugin plugins/law.md] [--offline] [--rw-csv FILE] [--json] [--prisma] [--followups] [--prior-art]` runs `validate_card.py --header`, `validate_result.py`, the mechanical retraction check of the plugins (Crossref `updated-by` / `update-to`, Retraction Watch entries; `retractions.json`, `unknown` never turned into clean), `law_checks.py` for a law run, `export_report.py --pdf --open` and `export_data.py`; each step reports ok / problems / skipped and never stops the others; exit 0 only when validation passed; the produced paths are printed.
+
+In the conversation (v0.6.0; both steps below are prepared by a tool, no model call):
+
+- **Follow-up.** "Dig into point 3", "and for France?" after a delivered run: a short complementary run in `<dir>/followups/<n>/`
+  (`tools/followup.py`: same T and plugins, the parent's gateway cache and the sources already read reused, 1 to 3 angles the parent
+  did not cover), verified like any run; `finish_run.py` on it delivers `<dir>/FOLLOWUP-<n>.md` / `.html` / `.pdf`; the main report is
+  never modified. Measured once (v0.6.0 trials): all criteria met, about 1.5 USD with a Sonnet orchestrator, verification included.
+- **Resume.** "Resume the research in <dir>": `tools/resume.py` names the step to resume (frame, search, complete, write, annex, verify,
+  apply, deliver) from the files present and what is missing; the run continues with the same T, plugins and gateway counter, nothing
+  already written is redone. Measured once (v0.6.0 trials): all criteria met, at the cost of the reference run.
+
+Command-line tools, not used by the skill by default (shipped in v0.6.0, kept on a waiting list after the ergonomics trials, see
+CHANGELOG): `tools/summary.py` (`SUMMARY.md`, an end-of-run message; also `finish_run.py --summary`, off by default),
+`tools/progress.py` (a one-line progress status), `tools/parse_date.py` (a date in words -> T), `tools/new_run.py` (creates a new
+working directory), `tools/cost.py` (an estimate before an expensive option, a plan under a budget), `tools/report_lang.py` (the
+eight section titles in English, French, Spanish, German; the checks and exports accept a report written with any one of these sets,
+the skill still writes the English titles). Each prints its usage with `--help`.
 
 Update of a previous run (living review): ask "update my review of <dir>"; the skill reruns the question at today's T in a new directory, then `python3 -I "$SKILL/tools/living_diff.py" <old dir> <new dir>` writes `UPDATE.md` and `update.json` (what changed since the old T); neither report is edited by the tool.
 
@@ -276,11 +293,12 @@ no `pytest`; without it, skip `test_code_capsule.py` or install it (`python3 -m 
 SKILL.md            the engine (one file, read by the host)        plugins/     cs-ai, code, finance, biology, law, _TEMPLATE
 tools/gateway.py    date-bounded documentary access (sources: tools/sources/, one file each)   tools/verifier.py (+ verifier/ROLE.md, citation_check.py, fetch_fulltext.py, windows.py)
 tools/check_keys.py keys and mode (setup_keys.py: install + live check) tools/validate_card.py, validate_result.py   mechanical checks
-tools/finish_run.py all end steps in one command (checks, retractions, law checks, exports; SKILL.md section 8)
+tools/finish_run.py all end steps in one command (checks, retractions, law checks, exports; SKILL.md section 8; --summary optional)
+tools/followup.py, resume.py   follow-up in the conversation, resuming an interrupted run (v0.6.0)
 tools/export_report.py, export_data.py, passages.py, living_diff.py, law_checks.py   exports, cited passages, living review, legal rules
 tools/code_capsule.py, code_sources.py (library), condense_repo.py, whole_reading.py, contradictor.py   code plugin tools (capsule, Y condensation, whole reading, contradictor)
 tools/prior_art.py, prisma.py, followups.py   optional sections of SKILL.md (prior art, PRISMA flow diagram, follow-up questions)
-tools/evidence_bank.py, contradictions.py     optional command-line tools, not used by SKILL.md (quote-first writing, contradiction hunt)
+tools/evidence_bank.py, contradictions.py, summary.py, progress.py, parse_date.py, new_run.py, cost.py, report_lang.py   command-line tools, not used by the skill by default
 tools/config.json   caps, models, host command profiles             tests/  examples/  KEYS.md  ACCESS-POLICY.md  CONTRIBUTING.md  CHANGELOG.md  USAGE.md  LICENSE  NOTICE
 .claude-plugin/     plugin.json + marketplace.json: the repository as a Claude Code plugin (the skill directory needs neither)
 ```
