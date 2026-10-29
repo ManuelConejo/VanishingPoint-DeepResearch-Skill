@@ -4,8 +4,11 @@
 ok / problems / skipped; validation passes (exit 0), run.json is derived, REPORT.html and the data exports are written and printed;
 retraction check: a Crossref `updated-by` retraction (Retraction Watch source) -> retracted, a record with no notice -> none, a network
 failure -> unknown (never none), notices found through `filter=updates:` (expression of concern) -> concern, the RW CSV alone -> retracted,
---offline with an empty cache -> unknown; summary.py runs only with --summary (off by default); a broken run fails validation (exit 1) but the other steps still run; law_checks runs only for law."""
-import contextlib, io, json, pathlib, shutil, sys, tempfile, unittest, urllib.error
+--offline with an empty cache -> unknown; summary.py runs only with --summary (off by default); a broken run fails validation (exit 1) but the other steps still run; law_checks runs only for law.
+Contradictor offer: with the offer family's CLI found and no family configured, one line in the report's language ends SUMMARY.md and the
+printed block (and is printed alone without --summary); none when a family is configured, when the host is that family, when the CLI is
+missing, when contradictor.json exists, when config offer.enabled is false, or in prior-art mode."""
+import contextlib, io, json, os, pathlib, shutil, sys, tempfile, unittest, urllib.error
 P = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(P.parent / 'tools')); import finish_run as F   # noqa: E702
 FX = P / 'fixtures' / 'finish_run'
@@ -74,6 +77,56 @@ class T(unittest.TestCase):
         self.assertEqual((st['validate_card --header'], st['validate_result']), ('problems', 'problems'))
         self.assertNotEqual(st['law_checks'], 'skipped'); self.assertTrue((self.d / 'REPORT.html').is_file())
         self.assertFalse(F.law_used(self.d, ['plugins/biology.md'])); self.assertTrue(F.law_used(self.d, ['plugins/law.md']))
+
+
+class Offer(unittest.TestCase):
+    """The contradictor offer line (config contradictor.offer), environment controlled: fake CLI, empty HOME."""
+    ENV = ('VP_CONTRADICTORS', 'VP_HOST', 'VP_MODEL_COMMAND_OPENAI', 'HOME')
+
+    def setUp(self):
+        self.tmp = pathlib.Path(tempfile.mkdtemp()); self.d = self.tmp / 'run'; shutil.copytree(FX, self.d)
+        self.fetch = F.gw.fetch; F.gw.fetch = stub; self.cfg = F._config
+        self.old = {k: os.environ.get(k) for k in self.ENV}
+        for k in self.ENV: os.environ.pop(k, None)
+        os.environ['HOME'] = str(self.tmp / 'home'); (self.tmp / 'home').mkdir()
+        exe = self.tmp / 'codex'; exe.write_text('#!/bin/sh\nexit 0\n'); exe.chmod(0o755)
+        os.environ['VP_MODEL_COMMAND_OPENAI'] = json.dumps([str(exe), 'exec'])
+
+    def tearDown(self):
+        F.gw.fetch = self.fetch; F._config = self.cfg
+        for k, v in self.old.items():
+            if v is None: os.environ.pop(k, None)
+            else: os.environ[k] = v
+        shutil.rmtree(self.tmp)
+
+    def main_out(self, *a):
+        o = io.StringIO()
+        with contextlib.redirect_stdout(o): c = F.main([str(self.d), '--offline', *a])
+        return c, o.getvalue()
+
+    def test_line_in_summary(self):
+        c, out = self.main_out('--summary'); self.assertEqual(c, 0, out)
+        line = F.rl.msg(F.rl.of_run(self.d), 'contra_offer', minutes=F._config()['contradictor']['offer']['minutes'])
+        self.assertIn('contradict', line.lower()); self.assertEqual((self.d / 'SUMMARY.md').read_text().splitlines()[-1], line)
+        self.assertEqual(out.rstrip().splitlines()[-1], line); self.assertEqual(out.count(line), 1)
+        c, out = self.main_out(); self.assertEqual(out.rstrip().splitlines()[-1], line)            # without --summary: printed last
+        self.assertEqual(F.rl.msg('fr', 'contra_offer', minutes='2-4').count('contredis ce rapport'), 1)
+
+    def test_no_line(self):
+        cases = []
+        os.environ['VP_CONTRADICTORS'] = 'openai'; cases.append(('family configured', F.contradictor_offer(self.d))); del os.environ['VP_CONTRADICTORS']
+        os.environ['VP_HOST'] = 'openai'; cases.append(('host openai', F.contradictor_offer(self.d))); del os.environ['VP_HOST']
+        os.environ['VP_MODEL_COMMAND_OPENAI'] = json.dumps([str(self.tmp / 'no-such-cli')]); cases.append(('CLI missing', F.contradictor_offer(self.d)))
+        os.environ['VP_MODEL_COMMAND_OPENAI'] = json.dumps(['vp-no-such-cli-on-path']); cases.append(('CLI not on PATH', F.contradictor_offer(self.d)))
+        os.environ['VP_MODEL_COMMAND_OPENAI'] = json.dumps([str(self.tmp / 'codex')]); self.assertTrue(F.contradictor_offer(self.d))
+        (self.d / 'contradictor.json').write_text('{}'); cases.append(('already run', F.contradictor_offer(self.d))); (self.d / 'contradictor.json').unlink()
+        c = self.cfg(); c['contradictor']['offer']['enabled'] = False; F._config = lambda: c
+        cases.append(('off in config', F.contradictor_offer(self.d))); F._config = self.cfg
+        for why, v in cases: self.assertIsNone(v, why)
+        r = F.finish(self.d, offline=True, prior_art=True); self.assertIsNone(r['contradictor_offer'])
+        c, out = self.main_out('--summary'); self.assertIn('contradict', out.rstrip().splitlines()[-1])
+        os.environ['VP_CONTRADICTORS'] = 'openai'; c, out = self.main_out('--summary')
+        self.assertNotIn('contradict this report', (self.d / 'SUMMARY.md').read_text())
 
 
 if __name__ == '__main__':

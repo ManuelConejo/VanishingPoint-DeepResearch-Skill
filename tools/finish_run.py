@@ -26,12 +26,19 @@ the CSV `crossref/retraction-watch-data` when given (--rw-csv; columns OriginalP
 retracted | concern | erratum | none (Crossref answered, no notice) | unknown (no answer: offline, network, error); `unknown` is never
 turned into `none`. Network through gateway.fetch (polite User-Agent / VP_CONTACT, per-host interval, retries), cache in DIR/state/cache;
 --offline: cache only. Current state of the record, not dated at T (a retraction after T still matters for the reader).
-Import: finish(dir, T=None, plugins=(), offline=False, rw_csv=None) -> dict ; retractions(dir, offline=False, rw_csv=None) -> dict."""
+Contradictor offer (information only, never an instruction): when no contradictor family is configured (check_keys.contradictors()), the
+host profile is not the offer's own family, the offer family's CLI is found (VP_MODEL_COMMAND_<FAMILY>, else config model_command) and the
+run has no contradictor.json, one line in the report's language (report_lang msg 'contra_offer') is appended to SUMMARY.md (with --summary)
+and printed last; config.json contradictor.offer.enabled = false turns it off. Not in prior-art mode.
+Import: finish(dir, T=None, plugins=(), offline=False, rw_csv=None) -> dict ; retractions(dir, offline=False, rw_csv=None) -> dict ;
+contradictor_offer(dir) -> str | None."""
 import argparse, csv, datetime as dt, hashlib, json, os, pathlib, re, shutil, subprocess, sys, urllib.parse
 P = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(P))
 import gateway as gw   # noqa: E402  (fetch, _mailto: the gateway's polite HTTP pattern)
 import validate_card as vc   # noqa: E402  (fingerprints of the end-step inputs, check 13)
+import check_keys as ck   # noqa: E402  (contradictors(): the families configured)
+import report_lang as rl   # noqa: E402  (of_run, msg: the language of the offer line)
 
 STATE_OF = {'retraction': 'retracted', 'partial_retraction': 'retracted', 'withdrawal': 'retracted', 'removal': 'retracted',
             'expression_of_concern': 'concern', 'erratum': 'erratum', 'correction': 'erratum', 'corrigendum': 'erratum'}
@@ -147,6 +154,27 @@ def verification(d):
     return {k: v.get(k) for k in ('summary', 'fulltext_mode', 'fulltext_cap', 'fulltext_attempted', 'fulltext_obtained', 'fulltext_not_tried_cap', 'origins', 'gateway', 'model')}
 
 
+def _config():
+    try: return json.loads((P / 'config.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError): return {}
+
+
+def contradictor_offer(d):
+    """The one-line offer of a contradictor after delivery, or None (configured, same family as the host, CLI missing, already run, off)."""
+    cfg = _config()
+    o = (cfg.get('contradictor') or {}).get('offer') or {}
+    fam = str(o.get('family') or '')
+    if not o.get('enabled') or not fam or ck.contradictors() or (pathlib.Path(d) / 'contradictor.json').exists(): return None
+    if (os.environ.get('VP_HOST') or cfg.get('host') or 'claude') == fam: return None   # the same family as the author: no second family
+    try:
+        raw = os.environ.get('VP_MODEL_COMMAND_' + fam.upper())
+        exe = (json.loads(raw) if raw else ((cfg.get('model_command') or {}).get(fam) or {}).get('command') or [''])[0]
+    except (ValueError, TypeError, IndexError): return None
+    found = (os.path.isabs(exe) and os.access(exe, os.X_OK)) or bool(exe and shutil.which(exe))
+    if not found: return None
+    return rl.msg(rl.of_run(d), 'contra_offer', minutes=o.get('minutes') or '?')
+
+
 def finish(d, T=None, plugins=(), offline=False, rw_csv=None, prisma=False, followups=False, prior_art=False, cost_usd=None, summary=False):
     d = pathlib.Path(d).resolve(); steps, files = [], []
     receipt = d / 'state' / 'finish_run.json'
@@ -224,6 +252,11 @@ def finish(d, T=None, plugins=(), offline=False, rw_csv=None, prisma=False, foll
         step('summary', 'ok' if c == 0 else 'problems', 'SUMMARY.md written' if c == 0 else o,
              [str(d / 'SUMMARY.md'), str(d / 'summary.json')] if c == 0 else [])
         out['summary'] = o if c == 0 else None
+    offer = None if prior_art else contradictor_offer(d)
+    out['contradictor_offer'] = offer
+    if offer and out.get('summary'):                              # a line of SUMMARY.md, so the final message carries it (section 8)
+        with open(d / 'SUMMARY.md', 'a', encoding='utf-8') as f: f.write(offer + '\n')
+        out['summary'] = out['summary'].rstrip('\n') + '\n' + offer + '\n'
     return out
 
 
@@ -253,6 +286,7 @@ def main(argv=None):
         print('validation: ' + ('passed' if r['validation_passed'] else 'FAILED (exit 1)'))
         for f in r['files']: print(f)
         if r.get('summary'): print('--- SUMMARY.md (--summary): copy these lines as is into your final message ---\n' + r['summary'].rstrip())
+        elif r.get('contradictor_offer'): print(r['contradictor_offer'])
     return 0 if r['validation_passed'] else 1
 
 
