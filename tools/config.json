@@ -280,5 +280,11 @@
   "min_searches": 1,
   "call_cap": 20,
   "note": "Follow-up in the conversation (SKILL.md 'Follow-up in the conversation', tools/followup.py): a short complementary run in <run>/followups/<n>/ (its own scope.md, searches/, REPORT.md, card.json, result.json, verdicts.json, state/ with the parent's gateway cache linked), delivered as <run>/FOLLOWUP-<n>.md / .html / .pdf by finish_run.py; the parent's files are never written. summary_words / findings / min_searches = the bounds validate_card.py applies to a follow-up (the eight sections stay); call_cap = gateway cap of the follow-up's searches (a third of call_cap.default); the verifier keeps its own pool. Conventions for a short run, not measured."
+ },
+ "cross_source": {
+  "enabled": true,
+  "excerpt_chars": 200,
+  "skip_sections": ["Bibliography"],
+  "note": "Check 14 of validate_card.py (tools/cross_source.py): a clause that compares, ranks, counts, excludes or reports a search outcome across sources while citing a single source. enabled = false switches the check off. excerpt_chars = longest excerpt of a flagged sentence printed (a display bound). skip_sections = canonical titles of the sections not read (the bibliography holds no prose). The marker words are in tools/cross_source.py, one entry per language of tools/report_lang.py."
  }
 }

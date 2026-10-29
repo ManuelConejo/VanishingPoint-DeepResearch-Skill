@@ -798,3 +798,14 @@ Code changes from an offline analysis of 104 judge errors and 92 verifier non-FO
   verifier, 9 in full runs on a local corpus); the stronger challenger was not needed.
 - Waiting list: verification windows (no source on the default path reaches the window threshold, so no effect to measure there);
   a mechanical check of cross-source statements carrying a single `[n]` (an instruction for it was tried and rejected).
+
+## v0.6.5 - 2026-10-29 - check 14: no cross-source statement on a single citation
+
+- Adopted: `validate_card.py` check 14 (`tools/cross_source.py`, English, French, Spanish, German; parameters in `tools/config.json`)
+  flags a cited sentence that makes a cross-source statement (superlative or rank, exclusivity, count of sources, exclusion,
+  range across studies) on a single `[n]`; the run rewrites it as a stated synthesis without the citation or cites every source
+  concerned. Half of the precise-claim errors in an analysis of 104 judge errors were of this kind; an instruction-only fix was
+  tried first and rejected. Trial: on 4 cases the share of such sentences fell from 0.050 to 0.008, but the frozen threshold was
+  above the champion rate and could not be met; confirmation on 4 new cases with a frozen 50 % relative threshold: 8/144 ->
+  3/147 (-63 %), never worse in any case, volume, precise pairs and form unchanged. Extra cost: about 0.21 USD per report.
+  False positives: 2.2 % of pairs the judges held correct. Total trial cost 9.29 USD.
