@@ -234,7 +234,7 @@ class Gateway:
     def _date_filter(self, x, B, extra):
         """Date barrier of the code engines: dated >= T removed and counted (Barrier.ok); undated kept with dating "absent"."""
         if isinstance(x, list): return [y for y in (self._date_filter(i, B, extra) for i in x) if y is not None]
-        if not isinstance(x, dict): return x
+        if not isinstance(x, dict) or 'refusal' in x: return x   # a refusal of the engine itself (e.g. no visit before T) is no result
         dates = [x[k] for k in ('date', 'date_visited', 'date_registry', 'date_deps_dev') if x.get(k)]   # every date carried
         if not dates: x['dating'] = 'absent'; extra['warning'] = 'live index: results cannot be dated'
         elif not B.ok(None, *dates): return None

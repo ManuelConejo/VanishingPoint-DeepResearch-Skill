@@ -49,6 +49,9 @@ Statuses: FOUND | DISTORTED | ABSENT | SOURCE-UNAVAILABLE | INVALID (fragments n
 
 Model call: tools/config.json "model_command"[host] (host = env VP_HOST, else config "host", default claude); the command list
 can be overridden by env VP_MODEL_COMMAND_CLAUDE / VP_MODEL_COMMAND_OPENAI (a JSON list), e.g. to point at a fake executable.
+openai profile: when Codex's sandbox cannot start (every shell command fails with a marker of verifier.sandbox_failure_markers, e.g.
+"bwrap: No permissions to create a new namespace"), the model read nothing: no further model call, every claim UNVERIFIED with that
+reason, `host_problem` in the output and the --state receipt, the message on stderr, exit 3 (README, "Codex CLI", for the fallback).
 """
 import argparse, hashlib, json, os, pathlib, re, shutil, subprocess, sys, tempfile, time
 
@@ -71,6 +74,10 @@ FULLTEXT = bool(CFG.get('fulltext', False))            # full text when T is kno
 FULLTEXT_CAP = CFG.get('fulltext_cap')                  # documents fetched in full text per verification (config verifier.fulltext_cap; None = no cap)
 TIMEOUT = int(CFG.get('timeout_s', 1200))
 WIN_CFG = CFG.get('windows') or {}                      # claim windows (config verifier.windows; mode whole = no window)
+SANDBOX_MARKERS = [str(x).lower() for x in CFG.get('sandbox_failure_markers') or []]   # codex shell output of a sandbox that cannot start
+SANDBOX_MSG = ('codex sandbox unavailable: every shell command of the verifier failed before running ({detail}); the sources could not be '
+               'read, so the claims are UNVERIFIED, not judged. Fallback (README, "Codex CLI"): enable unprivileged user namespaces on the '
+               'host, or run this command with --host claude (VP_HOST=claude), or verify without script (SKILL.md section 7); never bypass the sandbox')
 
 
 def default_model(host):
@@ -204,6 +211,22 @@ def _parse_codex(stdout):
     return text, {'cost_usd': 0, 'tokens_in': tin, 'tokens_out': tout, 'turns': turns or None}
 
 
+def codex_sandbox_blocked(stdout):
+    """`codex exec --json` stream in which the sandbox could not start: at least one shell command, every one failed, and one failure
+    carries a marker of config verifier.sandbox_failure_markers (e.g. "bwrap: No permissions to create a new namespace"). Returns the
+    first line of that output, else None. A command that ran (even failing on its own) means the sandbox works: None."""
+    outs = []
+    for line in stdout.splitlines():
+        try: ev = json.loads(line) if line.strip().startswith('{') else None
+        except json.JSONDecodeError: continue
+        it = (ev or {}).get('item') or {}
+        if (ev or {}).get('type') == 'item.completed' and it.get('type') == 'command_execution':
+            outs.append((it.get('status') == 'failed', str(it.get('aggregated_output') or '')))
+    if not outs or not all(failed for failed, _ in outs): return None
+    hit = next((o for _, o in outs if any(m in o.lower() for m in SANDBOX_MARKERS)), None)
+    return (hit.strip().splitlines() or [''])[0][:200] if hit is not None else None
+
+
 def model_call(prompt, workdir, model=None, host=None):
     """One model call confined to workdir (read-only tools). claude profile: prompt after -p, tools restricted to Read/Grep/Glob;
     openai profile: prompt on stdin (codex `-`), --json event stream parsed. Returns (text, measure) or (None, {'error': ...})."""
@@ -222,6 +245,9 @@ def model_call(prompt, workdir, model=None, host=None):
     try:
         io = {'input': stdin} if stdin is not None else {'stdin': subprocess.DEVNULL}
         r = subprocess.run(argv, cwd=workdir, env=env, capture_output=True, text=True, timeout=TIMEOUT, **io)
+        blocked = codex_sandbox_blocked(r.stdout) if host != 'claude' else None
+        if blocked is not None:                                      # the model read nothing: its answer is not a verdict
+            return None, {'error': SANDBOX_MSG.format(detail=blocked), 'sandbox_unavailable': True, 'seconds': round(time.time() - t0, 1), 'cost_usd': 0, 'host': host}
         text, m = _parse_claude(r.stdout) if host == 'claude' else _parse_codex(r.stdout)
     except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError) as e:
         return None, {'error': str(e)[:300], 'seconds': round(time.time() - t0, 1), 'cost_usd': 0, 'host': host}
@@ -561,8 +587,14 @@ def main():
     repos = _code.run_repos(run_dir, a.repo or ())
     sources = load_sources(card, a.sources, gateway, fulltext, T=a.T, fulltext_cap=FULLTEXT_CAP, repos=repos, run_dir=run_dir,
                            out_dir=a.sources or (pathlib.Path(a.work) / 'sources' if a.work else pathlib.Path(a.out).resolve().parent / 'sources'))
-    engine = lambda prompt, workdir: model_call(prompt, workdir, a.model, a.host)
+    blocked = []                                                     # first sandbox failure: no further model call (each would fail the same way)
+    def engine(prompt, workdir):
+        if blocked: return None, dict(blocked[0], seconds=0)
+        text, m = model_call(prompt, workdir, a.model, a.host)
+        if m.get('sandbox_unavailable'): blocked.append(m)
+        return text, m
     res = verify(card, sources, engine, a.work, a.mode, windows=dict(WIN_CFG, mode=a.windows) if a.windows else None)
+    if blocked: res['host_problem'] = blocked[0]['error']
     res['sources_read'] = dict(sources_read(sources), fulltext_mode=bool(fulltext), fulltext_cap=FULLTEXT_CAP)
     if gateway is not None: res['sources_read']['gateway'] = {'pool': gateway.pool, 'cap': gateway.cap, 'run': gateway.run}
     if a.filter: res['filter'] = filter_claims(res)
@@ -571,8 +603,11 @@ def main():
         st = pathlib.Path(a.state); st.mkdir(parents=True, exist_ok=True)
         (st / 'verifier.json').write_text(json.dumps({'out': str(pathlib.Path(a.out).resolve()), 'summary': res['summary'], 'cost_usd': res['cost_usd'],
                                                       'model': a.model if a.model is not None else default_model(host_name(a.host)), 'host': host_name(a.host),
-                                                      **res['sources_read'], 'windows': receipt_windows(res['windows'])}, ensure_ascii=False, indent=1))
+                                                      **res['sources_read'], 'windows': receipt_windows(res['windows']),
+                                                      **({'host_problem': res['host_problem']} if blocked else {})}, ensure_ascii=False, indent=1))
     print(json.dumps(res['summary'], ensure_ascii=False))
+    if blocked:                                                      # never a silent UNVERIFIED: message on stderr, exit 3 (outputs written)
+        print('verifier.py: ' + res['host_problem'], file=sys.stderr); sys.exit(3)
 
 
 if __name__ == '__main__':

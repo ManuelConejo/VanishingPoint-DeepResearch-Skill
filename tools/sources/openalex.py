@@ -2,7 +2,7 @@
 """OpenAlex: search-openalex (Crossref fallback when OpenAlex fails), related works and reference lists for the DOI chaining.
 Optional OPENALEX_KEY (api_key=, own budget instead of the per-IP one)."""
 import urllib.error, urllib.parse, urllib.request
-from sources._common import jget, live_key
+from sources._common import CFG, jget, live_key
 from sources.crossref import crossref_deposit, search_crossref
 import code_sources as sc
 from sources._common import STATE
@@ -32,11 +32,21 @@ def search_openalex(q, n, B, filt=''):
 
 
 def _search_openalex(q, n, B, filt=''):
+    """Pages until n works pass the local barrier (date, forbidden DOI/title, Crossref deposit recheck) or OpenAlex is exhausted,
+    at most oversample.openalex_extra_pages pages beyond the first (config.json): the barrier filters after paging, so one page of n
+    usually yields fewer than n."""
     since = f',from_publication_date:{B.start}' if B.since else ''
-    url = (f'https://api.openalex.org/works?per_page={n}&select={OASEL}&filter=to_publication_date:{B.eve}{since}{filt}'
-           + ('&search=' + urllib.parse.quote(q) if q else '') + oa_key())
-    r = jget(url)
-    return crossref_deposit([x for x in (oa_item(w, B) for w in r.get('results', [])) if x], B), r.get('meta', {}).get('count')
+    base = (f'https://api.openalex.org/works?per_page={n}&select={OASEL}&filter=to_publication_date:{B.eve}{since}{filt}'
+            + ('&search=' + urllib.parse.quote(q) if q else '') + oa_key())
+    out, seen, total = [], set(), None
+    for page in range(1, 2 + max(0, int(CFG['oversample']['openalex_extra_pages']))):
+        r = jget(base + (f'&page={page}' if page > 1 else ''))   # page 1 keeps the v0.6.0 URL (cache and fixtures unchanged)
+        total = r.get('meta', {}).get('count') if total is None else total
+        works = r.get('results', [])
+        for x in crossref_deposit([x for x in (oa_item(w, B) for w in works) if x], B):
+            if x['id'] not in seen: seen.add(x['id']); out.append(x)
+        if len(out) >= n or len(works) < n or (total is not None and page * n >= total): break
+    return out[:n], total
 
 
 def oa_work(ident):

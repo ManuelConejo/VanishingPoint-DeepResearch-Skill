@@ -312,11 +312,45 @@ class Provenance:
 
     def origins(self, q, limit=5): return self._json(SWH + 'api/1/origin/search/' + quote(q, safe='') + '/?' + urlencode({'limit': limit}))
 
-    def visit(self, origin):
+    def visit(self, origin, T=None):
+        """Visit of an origin: without T the latest one with a snapshot; with T (date of the question) the last visit with a snapshot
+        dated before T (visit_before), never a later one."""
         refuse(not re.fullmatch(ORIGIN, origin), 'origin')
+        if T is not None: return self.visit_before(origin, str(T)[:10])
         d = self._json(SWH + 'api/1/origin/' + quote(origin, safe='') + '/visit/latest/?require_snapshot=true')
+        return self._visit_out(origin, d)
+
+    @staticmethod
+    def _visit_out(origin, d):
         snp = 'swh:1:snp:' + d['snapshot'] if d.get('snapshot') else None
         return dict(origin=origin, swhid=snp, date_visited=d.get('date'), status=d.get('status'), permanent_url=SWH + (snp or ''))
+
+    def visit_before(self, origin, T):
+        """Last visit with a snapshot dated before T (YYYY-MM-DD). The visit list is served newest first, software_heritage.visits_per_page
+        per request, `last_visit=k` = the visits numbered below k: the first page, then a bisection on the visit number (visit dates grow
+        with the number), at most software_heritage.visit_requests requests (config.json). None found -> refusal 'unavailable before T'."""
+        cfg = CFG['software_heritage']; per, budget = int(cfg['visits_per_page']), int(cfg['visit_requests'])
+        base = SWH + 'api/1/origin/' + quote(origin, safe='') + '/visits/?'
+        page = lambda last: (lambda r: r if isinstance(r, list) else [])(self._json(base + urlencode(dict(per_page=per, **({'last_visit': last} if last else {})))))
+        before = lambda v: bool(v.get('date')) and str(v['date'])[:10] < T
+        best = lambda vs: next((v for v in vs if v.get('snapshot') and before(v)), None)   # newest first: the first match is the last before T
+        newer = lambda a, b: b if a is None or (b is not None and b['visit'] > a['visit']) else a
+        vs = page(None); n, cand, exact = 1, best(vs) if vs else None, True
+        if not cand and len(vs) >= per:                                     # every visit of the first page is at/after T (or has no snapshot)
+            lo, hi = 1, vs[-1]['visit']                                     # the answer is a visit numbered in [lo, hi)
+            while lo < hi and n < budget:
+                m = (lo + hi) // 2; vs = page(m + 1); n += 1                # visits numbered m and below, newest first
+                if not vs: lo = m + 1; continue
+                b = best(vs)
+                if before(vs[0]): cand, lo = newer(cand, b), m + 1          # the page is before T: a later one may sit in (m, hi)
+                elif b: cand, lo = newer(cand, b), hi                       # the page straddles T: its last visit before T is the answer
+                else: hi = vs[-1]['visit']
+            exact = lo >= hi
+        if not cand:
+            return {'refusal': f'unavailable before T: no Software Heritage visit with a snapshot dated before {T} found'
+                               + ('' if exact else f' within {budget} visit-list requests (software_heritage.visit_requests)')}
+        return dict(self._visit_out(origin, cand), visit=cand.get('visit'), selected='last visit with a snapshot before T'
+                    + ('' if exact else f' found within {budget} requests (a later one before T may exist)'))
 
     def resolve(self, swhid):
         refuse(not re.fullmatch(SWHID, swhid), 'swhid')

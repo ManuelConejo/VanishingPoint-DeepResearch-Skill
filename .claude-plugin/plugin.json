@@ -1,7 +1,7 @@
 {
   "name": "vanishingpoint",
   "displayName": "VanishingPoint - Deep Research Skill",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Deep research on demand, sourced and verified: a date-bounded gateway over open scholarly, legal, financial and code sources, a report in argued prose with a numbered bibliography, then a separate verification of the claims that carry a decision. Disciplines are text plugins (cs-ai, code, finance, biology, law).",
   "author": {
     "name": "Manuel Conejo",

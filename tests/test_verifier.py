@@ -4,7 +4,7 @@
 statuses FOUND / DISTORTED / ABSENT / INVALID / SOURCE-UNAVAILABLE / UNVERIFIED, single retry, split per source, sources through
 the gateway (abstract), downstream filter rule, model_call for both host profiles (claude: argv after -p, tool restrictions,
 JSON output; openai: prompt on stdin, JSONL event stream), config dir guard. Fixture texts are data (French figures kept as data)."""
-import json, os, pathlib, stat, sys, tempfile, unittest
+import json, os, pathlib, stat, subprocess, sys, tempfile, unittest
 P = pathlib.Path(__file__).resolve().parent
 TOOLS = P.parent / 'tools'
 sys.path.insert(0, str(TOOLS)); import verifier as V   # noqa: E702
@@ -34,6 +34,22 @@ for ev in [{"type": "thread.started", "thread_id": "t1"}, {"type": "turn.started
            {"type": "turn.completed", "usage": {"input_tokens": 20, "cached_input_tokens": 4, "output_tokens": 9}}]:
     print(json.dumps(ev))
 '''
+
+FAKE_CODEX_NO_SANDBOX = '''import json, os, sys
+sys.stdin.read()
+with open(os.environ["VP_FAKE_RECORD"], "a") as f: f.write("call\\n")
+bw = "bwrap: No permissions to create a new namespace, likely because the kernel does not allow non-privileged user namespaces."
+for ev in [{"type": "thread.started", "thread_id": "t1"}, {"type": "turn.started"},
+           {"type": "item.completed", "item": {"id": "i1", "type": "command_execution", "command": "bash -lc 'cat card.json'", "aggregated_output": bw + "\\n", "exit_code": 1, "status": "failed"}},
+           {"type": "item.completed", "item": {"id": "i2", "type": "command_execution", "command": "bash -lc 'ls sources'", "aggregated_output": bw + "\\n", "exit_code": 1, "status": "failed"}},
+           {"type": "item.completed", "item": {"id": "i3", "type": "agent_message", "text": "{\\"card_id\\": \\"C1\\", \\"verdicts\\": [{\\"id\\": \\"A1\\", \\"verdict\\": \\"ABSENT\\"}]}"}},
+           {"type": "turn.completed", "usage": {"input_tokens": 20, "cached_input_tokens": 4, "output_tokens": 9}}]:
+    print(json.dumps(ev))
+'''
+
+
+def codex_stream(*items):
+    return '\n'.join(json.dumps(x) for x in [{'type': 'turn.started'}] + [{'type': 'item.completed', 'item': i} for i in items])
 
 
 def answer(verdicts): return json.dumps({'card_id': 'C1', 'verdicts': verdicts})
@@ -175,6 +191,42 @@ class Test(unittest.TestCase):
         self.assertEqual(pathlib.Path(r['cwd']).resolve(), work.resolve()); self.assertIsNone(r['anthropic'])
         os.environ['VP_HOST'] = 'openai'
         self.assertEqual(V.model_call('p2', str(work), 'm')[1]['host'], 'openai')
+
+    def test_codex_sandbox_blocked_detection(self):
+        bw = 'bwrap: No permissions to create a new namespace, likely because ...\nmore'
+        cmd = lambda out, st='failed': {'type': 'command_execution', 'aggregated_output': out, 'status': st, 'exit_code': 1 if st == 'failed' else 0}
+        msg = {'type': 'agent_message', 'text': '{}'}
+        self.assertEqual(V.codex_sandbox_blocked(codex_stream(cmd(bw), cmd(bw), msg)), 'bwrap: No permissions to create a new namespace, likely because ...')
+        self.assertEqual(V.codex_sandbox_blocked(codex_stream(cmd('Error: Landlock ruleset not enforced'), msg)), 'Error: Landlock ruleset not enforced')
+        self.assertIsNone(V.codex_sandbox_blocked(codex_stream(cmd(bw), cmd('A1 text', 'completed'), msg)))   # one command ran: the sandbox works
+        self.assertIsNone(V.codex_sandbox_blocked(codex_stream(cmd('grep: sources/x: No such file'), msg)))  # an ordinary failure
+        self.assertIsNone(V.codex_sandbox_blocked(codex_stream(msg)))                                        # no command at all
+        self.assertIsNone(V.codex_sandbox_blocked('not json\n{broken'))
+        self.assertTrue(V.SANDBOX_MARKERS and all(m == m.lower() for m in V.SANDBOX_MARKERS))                  # from config, not the code
+
+    def test_codex_without_sandbox_is_reported_not_silent(self):
+        rec = pathlib.Path(self.tmp.name) / 'calls.txt'; os.environ['VP_FAKE_RECORD'] = str(rec)
+        os.environ['VP_MODEL_COMMAND_OPENAI'] = json.dumps(self.fake('fake-codex-nosb.py', FAKE_CODEX_NO_SANDBOX) + ['exec', '-m', '{model}', '-s', 'read-only', '--json', '-'])
+        work = pathlib.Path(self.tmp.name) / 'work'; work.mkdir()
+        text, m = V.model_call('p', str(work), 'm', host='openai')
+        self.assertIsNone(text); self.assertTrue(m['sandbox_unavailable']); self.assertIn('codex sandbox unavailable', m['error'])
+        self.assertIn('bwrap: No permissions', m['error']); self.assertIn('--host claude', m['error'])  # the ABSENT verdict of a blind model is discarded
+        d = pathlib.Path(self.tmp.name)
+        (d / 'card.json').write_text(json.dumps(CARD)); src = d / 'src'; src.mkdir()
+        for k in ('S1', 'S2'): (src / f'{k}.txt').write_text(SRC[k]['text'])
+        rec.write_text('')
+        env = dict(os.environ, VP_HOST='openai')
+        r = subprocess.run([sys.executable, '-I', str(TOOLS / 'verifier.py'), 'verify', '--card', str(d / 'card.json'), '--sources', str(src),
+                            '--out', str(d / 'verdicts.json'), '--mode', 'source', '--work', str(d / 'w'), '--state', str(d / 'state')],
+                           capture_output=True, text=True, env=env)
+        self.assertEqual(r.returncode, 3, r.stderr); self.assertIn('codex sandbox unavailable', r.stderr); self.assertNotIn('Traceback', r.stderr)
+        self.assertEqual(rec.read_text().count('call'), 1)                                  # stopped after the first failed call (2 sources)
+        out = json.loads((d / 'verdicts.json').read_text())
+        self.assertIn('codex sandbox unavailable', out['host_problem'])
+        st = {c['id']: (c['status'], c['discrepancy']) for c in out['claims']}
+        self.assertEqual({k: v[0] for k, v in st.items()}, {'A1': 'UNVERIFIED', 'A2': 'UNVERIFIED', 'A3': 'UNVERIFIED', 'A4': 'UNVERIFIED', 'A5': 'SOURCE-UNAVAILABLE'})
+        self.assertTrue(all('codex sandbox unavailable' in v[1] for k, v in st.items() if k != 'A5'))
+        self.assertIn('codex sandbox unavailable', json.loads((d / 'state' / 'verifier.json').read_text())['host_problem'])
 
     def test_model_call_failure_is_reported_not_raised(self):
         os.environ['VP_MODEL_COMMAND_CLAUDE'] = json.dumps(self.fake('fake-bad.py', 'print("not json")\n') + ['-p'])

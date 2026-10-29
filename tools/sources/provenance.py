@@ -8,7 +8,7 @@ ORIGIN_FORM_MSG = 'expected form <origin https://... | swh:1:...>'
 
 def run_provenance(g, arg, n, opt, B, extra):
     c = g.client
-    return sc.Provenance(c).resolve(arg) if arg.startswith('swh:1:') else sc.Provenance(c).visit(arg)
+    return sc.Provenance(c).resolve(arg) if arg.startswith('swh:1:') else sc.Provenance(c).visit(arg, B.T)   # last visit before T
 
 
 def run_code_file(g, arg, n, opt, B, extra):
@@ -33,7 +33,8 @@ SOURCE = {
     'plugins': ('code',), 'access': 'api',
     'hosts': {'archive.softwareheritage.org': {}},                            # config.json code_intervals: 6 s, 3 s with the token
     'terms': 'Software Heritage API terms of use; token optional (rate limit)',
-    'barrier': 'visit date (or object date) < T, else refused (Gateway._date_filter)',
+    'barrier': 'origin: the last visit with a snapshot dated before T (visit list, never the latest visit), none -> refusal "unavailable before T"; '
+               'visit date (or object date) < T, else refused (Gateway._date_filter)',
     'key': {'vars': ('SWH_TOKEN',), 'send': 'bearer', 'hosts': ('archive.softwareheritage.org',), 'without': 'degraded',
             'source': 'software-heritage', 'engine': 'provenance',
             'reason': '120 req/h instead of 1,200 (interval 6 s instead of 3 s)', 'free': 'free, account',

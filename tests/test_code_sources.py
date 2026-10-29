@@ -63,7 +63,7 @@ def fake_get(F, calls=None):
         if h == 'huggingface.co':
             return json.dumps(F['paper'] if '/papers/' in p else F['hf_models'] if '/models' in p else []).encode()
         if h == 'archive.softwareheritage.org':
-            return json.dumps(F['visit'] if 'visit/latest' in p else F['resolve']).encode()
+            return json.dumps(F['visit'] if 'visit/latest' in p else [dict(F['visit'], visit=1)] if p.endswith('/visits/') else F['resolve']).encode()
         raise AssertionError('unexpected URL host ' + str(h))
     return get
 
@@ -339,8 +339,8 @@ class CodeSources(unittest.TestCase):
         self.assertEqual((r['excluded_post_T_or_forbidden'], r['results']['repos'][0]['date'], r['results']['arxiv']), (1, '2025-07-25', '2507.19457'))
         r = self.gateway(T='2025-07-25', run='t4').call('paper-code', '2507.19457')
         self.assertEqual(r['results'], {'refusal': 'after T'})
-        r = self.gateway(T='2026-01-01', run='t5').call('provenance', 'https://github.com/o/r')
-        self.assertEqual((r['results'], r['excluded_post_T_or_forbidden']), ({'refusal': 'after T'}, 1))
+        r = self.gateway(T='2026-01-01', run='t5').call('provenance', 'https://github.com/o/r')   # the only visit is on T: none before T
+        self.assertTrue(r['results']['refusal'].startswith('unavailable before T'), r); self.assertNotIn('warning', r)
         r = self.gateway(T='2026-01-02', run='t6').call('provenance', 'https://github.com/o/r')
         self.assertEqual((r['results']['swhid'], r['results']['date_visited']), ('swh:1:snp:' + 'b' * 40, '2026-01-01'))
         for arg in ('ftp://x/y', 'http://github.com/o/r', 'github.com/o/r', 'swh:2:x', 'swh:1:bad', 'swh:1:rev:' + 'c' * 39,

@@ -92,6 +92,34 @@ class Test(unittest.TestCase):
         self.assertIn(NOW, items[0]['dating']); self.assertEqual(len(self.calls), 2)   # the dataset with 0 matching series is not opened
         self.assertIn('q=hicp+euro+area', self.calls[1]); self.assertIn('observations=0', self.calls[1])
 
+    def test_dbnomics_search_relevance(self):
+        """v0.6.1: DBnomics orders datasets by number of matching series; the engine re-ranks a pool of dbnomics_candidates datasets by the
+        query words in their names (coverage, then specificity, then share of matching series), merges case duplicates, re-ranks the series
+        of each opened dataset by their names and interleaves the datasets. Same number of requests (1 + dbnomics_datasets)."""
+        cfg = gw.DATA_CFG
+        docs = [{'provider_code': 'ECB', 'code': 'CSEC', 'name': 'CSEC', 'nb_matching_series': 23959, 'nb_series': 738819},             # huge, says nothing
+                {'provider_code': 'OECD', 'code': 'TAX', 'name': 'Participation tax rate for parents claiming unemployment benefits', 'nb_matching_series': 4320, 'nb_series': 162000},
+                {'provider_code': 'ILO', 'code': 'UNE_RT', 'name': 'Unemployment rate by sex and age (%)', 'nb_matching_series': 261, 'nb_series': 41505},
+                {'provider_code': 'Eurostat', 'code': 'UNE_M', 'name': 'Unemployment rate by sex and age - monthly data', 'nb_matching_series': 50, 'nb_series': 900},
+                {'provider_code': 'Eurostat', 'code': 'une_m', 'name': 'Unemployment rate by sex and age - monthly data', 'nb_matching_series': 50, 'nb_series': 900}]
+        series = {'ILO/UNE_RT': [('BEL.T', 'Belgium – Total – Annual'), ('FRA.T', 'France – Total – Annual')],
+                  'Eurostat/UNE_M': [('DE.T', 'Monthly – Total – Germany'), ('FR.T', 'Monthly – Total – France'), ('FR.Y', 'Monthly – Less than 25 years – France')]}
+        def route(url):
+            u = urllib.parse.urlsplit(url); q = urllib.parse.parse_qs(u.query)
+            if u.path.endswith('/v22/search'):
+                self.assertEqual(q['limit'], [str(cfg['dbnomics_candidates'])]); return 200, {'results': {'num_found': 219, 'docs': docs}}
+            key = '/'.join(u.path.split('/')[-2:])
+            self.assertEqual((q['limit'], q['observations'], q['q']), ([str(cfg['dbnomics_series_pool'])], ['0'], ['unemployment rate france']))
+            pv, ds = key.split('/')
+            return 200, {'series': {'docs': [{'provider_code': pv, 'dataset_code': ds, 'series_code': c, 'series_name': nm} for c, nm in series.get(key, [('X', 'Other')])]}}
+        self.route = route; B = gw.Barrier(T, [], [])
+        items, total = gw.search_dbnomics('unemployment rate france', 4, B)
+        opened = [urllib.parse.urlsplit(c).path.split('/v22/series/')[1] for c in self.calls[1:]]
+        self.assertEqual(opened[:2], ['ILO/UNE_RT', 'Eurostat/UNE_M'])            # name coverage, then the more specific name; CSEC not first
+        self.assertNotIn('ECB/CSEC', opened[:2]); self.assertEqual(len(self.calls), 1 + min(cfg['dbnomics_datasets'], 4))   # duplicate une_m merged
+        self.assertEqual([x['id'] for x in items][:2], ['dbnomics:ILO/UNE_RT/FRA.T', 'dbnomics:Eurostat/UNE_M/FR.T'])   # France first, interleaved
+        self.assertEqual(total, 219); self.assertEqual(len(items), 4)
+
     def test_fred_without_key_zero_request(self):
         self.route = lambda url: self.fail('no request without a key')
         g = self.gate()
