@@ -53,7 +53,7 @@ class T(unittest.TestCase):
     def test_summary_option(self):
         c, out = self.run_main('--summary')                                                            # optional step 8, off by default
         self.assertEqual(c, 0, out); self.assertIn('--- SUMMARY.md (--summary)', out)
-        self.assertTrue((self.d / 'SUMMARY.md').is_file()); self.assertIn('**Verification**', (self.d / 'SUMMARY.md').read_text())
+        self.assertTrue((self.d / 'SUMMARY.md').is_file()); self.assertIn('**Citations confirmed**', (self.d / 'SUMMARY.md').read_text())
         r = F.finish(self.d, summary=True); self.assertEqual(r['steps'][-1]['step'], 'summary'); self.assertEqual(r['steps'][-1]['status'], 'ok')
 
     def test_states(self):

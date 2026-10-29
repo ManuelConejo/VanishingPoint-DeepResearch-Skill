@@ -886,3 +886,22 @@ Code changes from an offline analysis of 104 judge errors and 92 verifier non-FO
 - Waiting list: quote-first with a minimum quote bank (1 of 2 cases), the contradictor on by default when Codex is present
   (reports improved, +3 and +1 net, but 21-41 % more time and 20-34 % more cost), C19 and C20, a model-independent cost
   calibration. Trial costs: 1.10 + 2.67 + 5.04 USD.
+
+## v0.6.12 - 2026-10-29 - honest end message, one study counted once
+
+From an external audit by three model families (Codex, Gemini, Kimi) and a VanishingPoint run on the state of the art.
+
+- Changed: the end-of-run message no longer shows a "confidence" level, which measured only the share of citations confirmed.
+  It now says what is measured: "Citations confirmed: X of N checked (Z %); removed after verification", then the coverage of
+  the framing angles reached by a retained source and the number of distinct studies. In English, French, Spanish and German.
+- New: `tools/study_family.py` groups the versions of one study (preprint, journal article, registry record, follow-ups):
+  same identifier, a version relation recorded in the card, the same registry number, or a close title with the same first
+  author (thresholds in `tools/config.json` `study_family`). `validate_card.py` check 14 and the end message count studies,
+  not records: a cross-source statement citing only versions of one study, or "three trials [1][2][3]" covering two, is
+  flagged. Replay on 45 cards of our benches: 9 pairs found, all true on reading; no statement changed. No version relation is
+  fetched online (it could leak documents after T).
+- Docs: USAGE.md said the contradictor was for the code plugin only; it covers every plugin since v0.6.10.
+- Waiting list, measured tonight: a second reading before an ABSENT removes a claim (most of its gain already comes from the
+  record header kept since v0.6.2; the rest is 4 right against 4 wrong, at +18 % verifier cost), and a re-read of the
+  "seen but not kept" documents to raise recall (+3.2 points on one review, -5.6 on another). Next lever on recall: at least
+  one call per engine declared by the plugin. Trial costs: 1.82 + 9.10 USD.

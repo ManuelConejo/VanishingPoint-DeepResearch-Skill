@@ -282,9 +282,9 @@
  "summary": {
   "answer_sentences": 3,
   "answer_chars": 500,
-  "confidence": {"high": 0.9, "medium": 0.75},
   "min_sources": 10,
-  "note": "SUMMARY.md / summary.json (tools/summary.py, run by finish_run.py): the message the assistant copies at the end of a run. answer_sentences / answer_chars = the first sentences of the Executive Summary shown as the answer (citations [n] removed), cut at a word. confidence = level from the share of FOUND among all the claims the verifier judged, read on its raw output before the removals of section 7 (state/verifier.json `summary`; never the edited verdicts.json alone; the number removed afterwards is shown on the Verification line): >= high -> high, >= medium -> medium, else low; lowered one level when fewer than min_sources bibliography entries carry the report (SKILL.md section 5 asks to say so). A reading convention for one line of chat, not a measured calibration: the report's verdicts and the Methodology Appendix remain the reference."
+  "angle_header_lines": 5,
+  "note": "SUMMARY.md / summary.json (tools/summary.py, run by finish_run.py): the message the assistant copies at the end of a run. answer_sentences / answer_chars = the first sentences of the Executive Summary shown as the answer (citations [n] removed), cut at a word. No confidence level (external audit of 2026-10-29: a level drawn from the FOUND share measures attribution, not coverage nor certainty). Line 'Citations confirmed': the FOUND among all the claims the verifier judged, read on its raw output before the removals of section 7 (state/verifier.json `summary`; never the edited verdicts.json alone), the other statuses and the number removed afterwards. Line 'Coverage': the research angles of scope.md reached by a kept source (a searches/<n>.md naming the angle in its first angle_header_lines lines holds the identifier of a card.json source; not shown when it cannot be counted), the distinct studies of the bibliography (tools/study_family.py), 'fewer than min_sources distinct studies' when it applies (SKILL.md section 5 asks to say so), the finding verdicts. Counts read on the run files, not a calibration: the report's verdicts and the Methodology Appendix remain the reference."
  },
  "new_run": {
   "prefix": "vp",
@@ -300,6 +300,33 @@
   "min_searches": 1,
   "call_cap": 20,
   "note": "Follow-up in the conversation (SKILL.md 'Follow-up in the conversation', tools/followup.py): a short complementary run in <run>/followups/<n>/ (its own scope.md, searches/, REPORT.md, card.json, result.json, verdicts.json, state/ with the parent's gateway cache linked), delivered as <run>/FOLLOWUP-<n>.md / .html / .pdf by finish_run.py; the parent's files are never written. summary_words / findings / min_searches = the bounds validate_card.py applies to a follow-up (the eight sections stay); call_cap = gateway cap of the follow-up's searches (a third of call_cap.default); the verifier keeps its own pool. Conventions for a short run, not measured."
+ },
+ "study_family": {
+  "enabled": true,
+  "title_min_similarity": 0.6,
+  "title_only_min_similarity": 0.9,
+  "title_min_words": 4,
+  "year_gap_max": 2,
+  "min_token_chars": 3,
+  "distinct_words": ["pilot", "feasibility"],
+  "title_link_kinds": ["doi", "pmid", "pmcid", "arxiv", "biorxiv", "medrxiv", "hal", "openreview", "zenodo", "nct", "acl", "pmlr", "cvf", "dblp", "econbiz", "isidore", "thesesfr"],
+  "not_authors": ["local", "document", "anonymous", "anon", "unknown", "authors", "auteurs", "autores", "autoren", "various", "collective"],
+  "author_words_max": 4,
+  "extra_stopwords": ["study", "trial", "analysis", "results", "using", "based", "versus", "via", "among", "within", "new", "report"],
+  "relation_types": ["is-preprint-of", "has-preprint", "is-version-of", "has-version", "is-identical-to", "is-manifestation-of", "has-manifestation"],
+  "registry_patterns": {
+   "clinicaltrials.gov": "\\bNCT\\d{8}\\b",
+   "isrctn": "\\bISRCTN\\s?\\d{8}\\b",
+   "eudract_ctis": "\\b(?:19|20)\\d{2}-\\d{6}-\\d{2}(?:-\\d{2})?\\b",
+   "anzctr": "\\bACTRN\\d{14}\\b",
+   "chictr": "\\bChiCTR-?[A-Z]{0,4}-?\\d{6,}\\b",
+   "drks": "\\bDRKS\\d{8}\\b",
+   "ctri": "\\bCTRI/\\d{4}/\\d{2,3}/\\d{6}\\b",
+   "jrct_umin": "\\b(?:jRCT[a-z]?\\d{7,10}|UMIN\\d{9})\\b",
+   "irct_pactr_kct": "\\b(?:IRCT\\d{8,}N?\\d*|PACTR\\d{15}|KCT\\d{7})\\b",
+   "prospero": "\\bCRD\\d{11}\\b"
+  },
+  "note": "tools/study_family.py: the bibliography entries of one run that are one study under several forms (preprint and article, versions, registry record and report), grouped mechanically so that check 14 (tools/cross_source.py) and the source count of tools/summary.py count studies, not documents (SKILL.md section 0 'Identity of sources', section 4 'Triangulate'). Links: same normalised identifier; a recorded Crossref-style relation of relation_types (card.json `relation` or `related`); same registration number (registry_patterns, regular expressions, case-insensitive); title word overlap (Jaccard of the words of min_token_chars letters or more, numbers excluded, minus the frequent words of tools/report_lang.py and extra_stopwords; 0 when a title has fewer than title_min_words such words or when a word of distinct_words is in one title only) >= title_min_similarity with the same first author of the bibliography line (read in its first author_words_max words; not_authors are placeholders, not names), or >= title_only_min_similarity when a first author is missing; title links only between entries at most year_gap_max years apart (preprint to article, full report to journal article, follow-up publication). title_link_kinds = the identifier kinds of scholarly records between which a title link is allowed (court decisions, statutes, data series, code and local documents repeat their title words by construction: in the replay, seven Conseil d'Etat decisions and two sites of one local field trial would have been merged). Replay of the 29/10 cards: the pairs found at 0.6 are true (Martineau BMJ 2017 / HTA 2019 at 0.62 to 0.71; Carter 12 / 24 months at 0.67); the false links seen at lower settings (a pilot trial at 0.54 and 0.64, two sites of one local evaluation, BrowseComp / BrowseComp-Plus, two papers on emergent abilities at 0.83 without a first author) are refused by title_min_words, distinct_words and title_only_min_similarity. The thresholds were set on the constructed cases of tests/test_study_family.py and on the replay of the 29/10 cards (skill-vp/essai-auditfix-29-10): conventions, not a measured F1 per pair. enabled = false makes every entry its own study (the former behaviour)."
  },
  "cross_source": {
   "enabled": true,

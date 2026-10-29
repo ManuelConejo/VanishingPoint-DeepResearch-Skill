@@ -71,7 +71,7 @@ class T(unittest.TestCase):
         self.assertFalse((c / 'SUMMARY.md').exists())
         with contextlib.redirect_stdout(io.StringIO()): r = F.finish(c, offline=True, summary=True)          # optional step 8 (--summary)
         self.assertEqual((self.p / 'FOLLOWUP-1.md').read_text(), child_report(1)); self.assertTrue((self.p / 'FOLLOWUP-1.html').is_file())
-        summ = (c / 'SUMMARY.md').read_text(); self.assertIn('**Complément 1**', summ); self.assertIn(str((self.p / 'FOLLOWUP-1.html').resolve()), summ)
+        summ = (c / 'SUMMARY.md').read_text(); self.assertIn('**Complément 1 — Réponse**', summ); self.assertIn(str((self.p / 'FOLLOWUP-1.html').resolve()), summ)
         self.assertEqual(tree_hash(self.p, ('followups', 'FOLLOWUP-')), before)
         self.assertEqual(V.problems(self.p) + V.end_problems(self.p), [])
         self.assertEqual(FW.prepare(self.p, 'and for France?')['n'], 2)

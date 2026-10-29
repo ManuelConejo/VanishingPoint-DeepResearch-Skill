@@ -14,7 +14,8 @@ a follow-up run, marked by followup.json, uses the bounds of config.json `follow
 flagged; 8 result.json valid (validate_result); 9 run.json consistent with the journal; 10 "Source coverage" block present (in the methodology
 appendix), with its active and skipped lines; 11 each [n] of the text is in the bibliography and each [n] entry is cited; 12 prose >= 80 % (bullet lines <= 20 %);
 14 no cross-source statement on a single citation: a clause that compares, ranks, counts, excludes or reports a search outcome across sources
-("the largest series [5]", "excluded [12]", "no later ruling was found [13]") and cites one source only (tools/cross_source.py; config.json
+("the largest series [5]", "excluded [12]", "no later ruling was found [13]") and cites one source only, or only versions of one study
+(preprint and article, registry record and report: tools/study_family.py, config.json `study_family`) (tools/cross_source.py; config.json
 `cross_source`): the fact of the source in its own sentence with its [n], the comparison as the writer's synthesis without [n], or every
 source compared cited;
 13 (command line, runs with a gateway journal only) end steps done on the current files: state/finish_run.json, written by tools/finish_run.py,
@@ -28,6 +29,7 @@ from validate_result import problems as pb_result
 import sources as _reg   # noqa: E402  (source registry)
 import report_lang as RL   # noqa: E402  (titles of the eight sections, one version per language)
 import cross_source as CS   # noqa: E402  (check 14)
+import study_family as SF   # noqa: E402  (check 14: versions of one study count as one source)
 
 IDS = tuple(i['field'] for i in _reg.IDS if i['card'])   # card identifier fields, from the source declarations (tools/sources/): code = `<path>@<SHA>` or `local:<path>@<SHA>`; the others: ids served by the gateway engines (SKILL.md section 0 "Identity of sources")
 MISFILED = re.compile(r'([a-z][a-z0-9]*):\S+')   # check 2: a gateway identifier (doi:, celex:, localdoc:...) written in the `code` field
@@ -57,9 +59,10 @@ def sections(t):
     return RL.sections(t)
 
 
-def report_problems(t, followup=False):
+def report_problems(t, followup=False, families=None):
     """Checks 6, 10, 11, 12, 14 on the text of REPORT.md (output contract, SKILL.md section 5). The eight titles are those of one language of
-    tools/report_lang.py (all eight in the same language). followup=True: the bounds of a follow-up report (config.json `followup`)."""
+    tools/report_lang.py (all eight in the same language). followup=True: the bounds of a follow-up report (config.json `followup`).
+    families = {n: family} of tools/study_family.py (check 14 counts studies, not documents); None: each [n] is its own study."""
     pb = []; raw = RL.raw_sections(t); lang = RL.title_language([s for s, _ in raw]); expected = RL.LANGS[lang]['sections']
     titles = [s for s, _ in raw]
     words = tuple(FOLLOWUP.get('summary_words') or SUMMARY_WORDS) if followup else SUMMARY_WORDS
@@ -97,7 +100,7 @@ def report_problems(t, followup=False):
     bullets = [l for l in lines if re.match(r'^\s*([-*+]|\d+[.)])\s', l)]
     if lines and len(bullets) / len(lines) > BULLETS_MAX: pb.append(f'12 REPORT.md: {len(bullets)} bullet lines out of {len(lines)} ({100*len(bullets)/len(lines):.0f} %), prose >= 80 % expected')
     # 14 cross-source statements carrying a single citation
-    pb += CS.problems(t, lang)
+    pb += CS.problems(t, lang, families)
     return pb
 
 
@@ -199,7 +202,7 @@ def problems(folder, prior_art=False):
     elif not (d / 'REPORT.md').exists(): pb.append('6 REPORT.md: missing')
     else:
         t = (d / 'REPORT.md').read_text(encoding='utf-8', errors='replace')
-        pb += report_problems(t, followup=fu)
+        pb += report_problems(t, followup=fu, families=SF.by_number(SF.families(f if isinstance(f, dict) else {}, t)))
         if PLACEHOLDER.search(t): pb.append(f'3 REPORT.md: placeholder {PLACEHOLDER.search(t).group(0)!r}')
         if unverified and not UNVERIFIED.search(t): pb.append(f'7 REPORT.md: {len(unverified)} unverified claim(s) not flagged')
     # 8 result.json
