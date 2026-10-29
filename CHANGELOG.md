@@ -905,3 +905,18 @@ From an external audit by three model families (Codex, Gemini, Kimi) and a Vanis
   record header kept since v0.6.2; the rest is 4 right against 4 wrong, at +18 % verifier cost), and a re-read of the
   "seen but not kept" documents to raise recall (+3.2 points on one review, -5.6 on another). Next lever on recall: at least
   one call per engine declared by the plugin. Trial costs: 1.82 + 9.10 USD.
+
+## v0.6.13 - 2026-10-29 - the contradictor offered at the end of a run
+
+- Adopted: when no contradictor family is configured and the Codex CLI is installed, `finish_run.py` adds one line to the end
+  message, for instance "Codex is available: ask "contradict this report" for a second-family review (about 2-4 min, no API
+  cost)" (in the report's language; `contradictor.offer` in `tools/config.json`, `enabled: false` turns it off). On that
+  request, the contradictor runs on the existing run without a new search, and only the claims it adds or changes are verified.
+  Measured on 2 runs (cs-ai French, biology English): the offer line is copied as is, with no change in time or cost (within
+  1.7 %); on request, 2 false claims detected and 3 misses verified on each run, the search not rerun, the additions all FOUND;
+  0.60 to 0.88 USD per request (Codex at no API cost). Known limit: `SUMMARY.md` does not count the added claims yet.
+- Measured, waiting list: the contradictor on by default (better reports, +1 to +4 net corrections with no added error, but
+  21-80 % more time); a second reading before an ABSENT; a tolerant recheck of corrections; a judge of the corrections from
+  another family (all 159 false corrections rejected and no swapped arms accepted, but 76 % of the right ones accepted against
+  85 % required: the judge saw only the source of the claim, not every source a correction cites); three recall levers on a
+  Cochrane bench (+2 to +3 points each).

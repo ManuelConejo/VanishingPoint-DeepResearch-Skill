@@ -56,6 +56,7 @@ LANGS = {
             'pdf': 'PDF', 'followup': 'Follow-up {n}',
             'no_report': 'no REPORT.md in this directory',
             'colon': ': ',
+            'contra_offer': "Codex is available: ask \"contradict this report\" for a review by a second model family (about {minutes} min; Codex adds no API cost, the rereads use your host model).",
         },
     },
     'fr': {
@@ -98,6 +99,7 @@ LANGS = {
             'pdf': 'PDF', 'followup': 'Complément {n}',
             'no_report': 'pas de REPORT.md dans ce dossier',
             'colon': ' : ',
+            'contra_offer': "Codex est disponible : demandez « contredis ce rapport » pour une relecture par une seconde famille de modèles (environ {minutes} min ; Codex n'ajoute aucun coût d'API, les relectures utilisent votre modèle hôte).",
         },
     },
     'es': {
@@ -139,6 +141,7 @@ LANGS = {
             'pdf': 'PDF', 'followup': 'Complemento {n}',
             'no_report': 'no hay REPORT.md en este directorio',
             'colon': ': ',
+            'contra_offer': "Codex está disponible: pida «contradice este informe» para una revisión por una segunda familia de modelos (unos {minutes} min; Codex no añade coste de API, las relecturas usan su modelo anfitrión).",
         },
     },
     'de': {
@@ -180,6 +183,7 @@ LANGS = {
             'pdf': 'PDF', 'followup': 'Ergänzung {n}',
             'no_report': 'kein REPORT.md in diesem Verzeichnis',
             'colon': ': ',
+            'contra_offer': "Codex ist verfügbar: Bitten Sie „widersprich diesem Bericht“ um eine Prüfung durch eine zweite Modellfamilie (etwa {minutes} Min.; Codex verursacht keine API-Kosten, die Nachprüfungen nutzen Ihr Host-Modell).",
         },
     },
 }
