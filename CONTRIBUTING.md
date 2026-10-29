@@ -121,5 +121,8 @@ Run the suite as a normal user (not root), offline, from the skill directory:
 for t in tests/test_*.py; do python3 -I "$t"; done        # unittest, offline (test_code_capsule.py also runs under pytest)
 ```
 
+Code and tests must run on Python >= 3.9 (standard library only): `tests/test_py39_compat.py` parses every `.py` with the 3.9 grammar
+and refuses a few 3.10+ runtime names (`zip(strict=)`, `datetime.UTC`, an unguarded `import tomllib`...); run the suite on 3.9 too when you can.
+
 Tests must not create anything inside the skill directory. Use `tempfile` and set `gateway.STATE` (or pass `state=` to `Gateway`).
 Setting `gateway.fetch`, `gateway.STATE`, `gateway.piste_http` or `gateway._PISTE_OPENER` in a test reaches every source module.

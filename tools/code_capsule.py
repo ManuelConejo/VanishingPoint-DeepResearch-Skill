@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Context capsule of a local git repository X pinned at one commit SHA (plugins/code.md). Reads the tree at that
 SHA only (git ls-tree / show / grep on the commit, never the working copy) and never imports or executes any code of X: every
-parser is lexical (regex, tomllib, json). Writes <dir>/capsule-<X>@<sha12>.md (bounded) and .json (complete up to element caps);
+parser is lexical (regex, tomllib or its fallback, json). Writes <dir>/capsule-<X>@<sha12>.md (bounded) and .json (complete up to element caps);
 intention, refusals and target seam are left to the owner. With --auto (plugins/code.md, "Capsule built from the request"), X is the given
 path or its nearest parent holding .git, the SHA defaults to HEAD (frozen), the intention is the request itself ("inferred from the request"),
 1 to 3 seams are proposed from the module map ("proposed, not reviewed"), refusals stay empty ("none recorded: implicit authorisation"), Y is
@@ -17,7 +17,198 @@ import pathlib
 import re
 import subprocess
 import sys
-import tomllib
+
+try:  # Python >= 3.11
+    import tomllib as _toml
+    TOML_PARSER = "tomllib"
+except ImportError:  # Python 3.9-3.10: tomli if installed (same API), else the minimal parser below; never a required dependency
+    try:
+        import tomli as _toml
+        TOML_PARSER = "tomli"
+    except ImportError:
+        _toml, TOML_PARSER = None, "minimal"
+TOML_MINIMAL_LIMIT = ("minimal TOML parser (Python < 3.11 without tomli): strings, numbers, booleans, arrays, tables and inline tables only; "
+                      "any other construct (a datetime with a space...) sends the file to the lexical fallback")
+
+
+class _MiniToml:
+    """Subset of TOML 1.0, enough for pyproject.toml ([project]: name, version, dependencies, license, scripts, entry-points...):
+    tables, arrays of tables, dotted and quoted keys, basic/literal/multi-line strings, integers, floats, booleans, arrays,
+    inline tables; a date or time is kept as its text. Anything else, or a truncated text, raises ValueError (as the standard parser does)."""
+    ESC = {"b": "\b", "t": "\t", "n": "\n", "f": "\f", "r": "\r", '"': '"', "\\": "\\"}
+    ESC_RE = re.compile(r"\\(?:u([0-9A-Fa-f]{4})|U([0-9A-Fa-f]{8})|([ \t]*\r?\n[ \t\r\n]*)|(.))", re.S)
+    BARE = re.compile(r"[A-Za-z0-9_-]+")
+    SCALAR = re.compile(r"[A-Za-z0-9_+.:-]+")
+    DATE = re.compile(r"\d{4}-\d{2}-\d{2}([Tt]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})?)?|\d{2}:\d{2}:\d{2}(\.\d+)?")
+
+    def __init__(self, text):
+        self.s, self.i = text, 0
+
+    def err(self, what):
+        raise ValueError(f"minimal TOML parser: {what} at offset {self.i}")
+
+    def ws(self, newlines=False):
+        s = self.s
+        while self.i < len(s) and (s[self.i] in " \t#" or (newlines and s[self.i] in "\r\n")):
+            if s[self.i] == "#":
+                while self.i < len(s) and s[self.i] != "\n":
+                    self.i += 1
+            else:
+                self.i += 1
+
+    def expect(self, tok):
+        self.ws()
+        if not self.s.startswith(tok, self.i):
+            self.err(f"{tok!r} expected")
+        self.i += len(tok)
+
+    def eol(self):
+        self.ws()
+        if self.i < len(self.s) and self.s[self.i] not in "\r\n":
+            self.err("end of line expected")
+
+    def key(self):
+        parts = []
+        while True:
+            self.ws()
+            if self.s[self.i:self.i + 1] in ('"', "'"):
+                parts.append(self.string())
+            else:
+                m = self.BARE.match(self.s, self.i)
+                if not m:
+                    self.err("key expected")
+                parts.append(m.group())
+                self.i = m.end()
+            self.ws()
+            if self.s[self.i:self.i + 1] != ".":
+                return parts
+            self.i += 1
+
+    def unescape(self, m):
+        if m.group(1) or m.group(2):
+            return chr(int(m.group(1) or m.group(2), 16))
+        if m.group(3) is not None:  # line-ending backslash (only reachable in a multi-line string)
+            return ""
+        if m.group(4) not in self.ESC:
+            self.err("invalid escape")
+        return self.ESC[m.group(4)]
+
+    def string(self):
+        s, q = self.s, self.s[self.i]
+        multi = s.startswith(q * 3, self.i)
+        delim = q * 3 if multi else q
+        j = start = self.i + len(delim)
+        while True:
+            if j >= len(s) or (not multi and s[j] == "\n"):
+                self.err("unterminated string")
+            if q == '"' and s[j] == "\\":
+                j += 2
+            elif s.startswith(delim, j):
+                break
+            else:
+                j += 1
+        for _ in range(2):  # a multi-line string may end with one or two quotes just before its closing delimiter
+            if multi and s.startswith(q, j + 3):
+                j += 1
+        raw, self.i = s[start:j], j + len(delim)
+        if multi and raw.startswith("\r\n"):
+            raw = raw[2:]
+        elif multi and raw.startswith("\n"):
+            raw = raw[1:]
+        return raw if q == "'" else self.ESC_RE.sub(self.unescape, raw)
+
+    def value(self):
+        self.ws()
+        c = self.s[self.i:self.i + 1]
+        if c in ('"', "'"):
+            return self.string()
+        if c in ("[", "{"):  # array (may span lines, trailing comma allowed) or inline table (one line, no trailing comma)
+            self.i += 1
+            arr = c == "["
+            out, close = ([], "]") if arr else ({}, "}")
+            while True:
+                self.ws(arr)
+                if self.s[self.i:self.i + 1] == close and (arr or not out):
+                    self.i += 1
+                    return out
+                if arr:
+                    out.append(self.value())
+                else:
+                    k = self.key()
+                    self.expect("=")
+                    self.put(out, k, self.value())
+                self.ws(arr)
+                nxt = self.s[self.i:self.i + 1]
+                self.i += 1
+                if nxt == close:
+                    return out
+                if nxt != ",":
+                    self.err(f"',' or {close!r} expected")
+        m = self.SCALAR.match(self.s, self.i)
+        if not m:
+            self.err("value expected")
+        self.i, t = m.end(), m.group()
+        if t in ("true", "false"):
+            return t == "true"
+        if self.DATE.fullmatch(t):
+            return t
+        try:
+            return int(t.replace("_", ""), 0)
+        except ValueError:
+            pass
+        try:
+            return float(t.replace("_", ""))
+        except ValueError:
+            self.err(f"unsupported value {t!r}")
+
+    def put(self, table, keys, val):
+        for k in keys[:-1]:
+            table = table.setdefault(k, {})
+            if not isinstance(table, dict):
+                self.err("key redefined")
+        if keys[-1] in table:
+            self.err("duplicate key")
+        table[keys[-1]] = val
+
+    def walk(self, table, keys):
+        for k in keys:
+            table = table.setdefault(k, {})
+            if isinstance(table, list) and table:
+                table = table[-1]
+            if not isinstance(table, dict):
+                self.err("not a table")
+        return table
+
+    def parse(self):
+        root = cur = {}
+        while True:
+            self.ws(True)
+            if self.i >= len(self.s):
+                return root
+            if self.s.startswith("[[", self.i):
+                self.i += 2
+                keys = self.key()
+                self.expect("]]")
+                arr = self.walk(root, keys[:-1]).setdefault(keys[-1], [])
+                if not isinstance(arr, list):
+                    self.err("not an array of tables")
+                arr.append({})
+                cur = arr[-1]
+            elif self.s.startswith("[", self.i):
+                self.i += 1
+                keys = self.key()
+                self.expect("]")
+                cur = self.walk(root, keys)
+            else:
+                keys = self.key()
+                self.expect("=")
+                self.put(cur, keys, self.value())
+            self.eol()
+
+
+def toml_loads(text):
+    """The standard TOML parser (tomllib, else tomli), else _MiniToml; invalid or unsupported text raises ValueError (TOMLDecodeError is one)."""
+    return _toml.loads(text) if _toml is not None else _MiniToml(text).parse()
 
 OWNER, SHA_RE = "TO BE FILLED BY THE OWNER", re.compile(r"^[0-9a-f]{40}$")
 MAX_FILE_BYTES, MAX_REGISTRY_LINES = 4096, 500  # bound on any text read from X; line cap of the registry
@@ -89,16 +280,18 @@ def map_entry_points(repo, sha, blobs):
         text, parsed = git(repo, "show", f"{sha}:{path}").stdout[:MAX_FILE_BYTES].decode("utf-8", "replace"), None  # bounded blob text at the SHA; the working copy is never read
         if size > MAX_FILE_BYTES:
             limits.append(f"{path}: read truncated at {MAX_FILE_BYTES} bytes")
+        if base == "pyproject.toml" and TOML_PARSER == "minimal":
+            limits.append(f"{path}: {TOML_MINIMAL_LIMIT}")
         lines = text.splitlines()
         try:
             if base == "pyproject.toml":
-                proj = tomllib.loads(text).get("project", {})
+                proj = toml_loads(text).get("project", {})
                 parsed = {"scripts": proj.get("scripts", {}), **proj.get("entry-points", {})}
             elif base == "package.json":
                 pkg = json.loads(text)
                 parsed = {"scripts": pkg.get("scripts", {}), "bin": pkg["bin"] if isinstance(pkg.get("bin"), dict) else
                           {pkg.get("name", "bin"): pkg["bin"]} if "bin" in pkg else {}}
-        except (tomllib.TOMLDecodeError, ValueError, TypeError, AttributeError):  # invalid, truncated, or not a table
+        except (ValueError, TypeError, AttributeError):  # invalid, truncated, or not a table
             limits.append(f"{path}: not parsed (truncated or invalid), lexical fallback only")
         for group, table in (parsed or {}).items():
             for name, target in (table.items() if isinstance(table, dict) else ()):
@@ -141,8 +334,8 @@ def map_license(repo, sha, blobs):
     for path in (p for p in ("pyproject.toml", "package.json") if p in root):
         text = git(repo, "show", f"{sha}:{path}").stdout[:MAX_FILE_BYTES].decode("utf-8", "replace")
         try:  # top-level key only: a nested "license" (dependencies...) is not the package licence
-            val = (tomllib.loads(text).get("project", {}) if path == "pyproject.toml" else json.loads(text)).get("license")
-        except (tomllib.TOMLDecodeError, ValueError, TypeError, AttributeError):  # truncated or invalid: lexical fallback
+            val = (toml_loads(text).get("project", {}) if path == "pyproject.toml" else json.loads(text)).get("license")
+        except (ValueError, TypeError, AttributeError):  # truncated or invalid: lexical fallback
             val = path == "pyproject.toml" and (m := LICENSE_KEY_RE.search(text)) and m.group(1)
         if val:
             return {"file": path, "first_line": str(val)[:200], "spdx_guess": guess_spdx(str(val))}
@@ -255,7 +448,7 @@ def auto_fields(repo, doc, blobs, sha, question, y, request_date):
         raise Refusal("question_missing", detail="--auto needs --question: the request, word for word")
     doc.update({"target_seam": propose_seams(repo, doc, blobs, sha, q), "target_seam_status": AUTO_SEAM, "intention": q, "intention_status": AUTO_INTENT,
                 "refusals": [], "refusals_status": AUTO_REFUSALS, "reviewed_by_owner": "no", "built_by": AUTO_BUILT,
-                "request_date": request_date or dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
+                "request_date": request_date or dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
                 "mode": "Y given" if y else "need only", "Y": y or "none (need only)"})
     return doc
 
@@ -269,7 +462,7 @@ def build(repo_arg, sha, registry, max_modules, max_bytes=65536):
                         "commit_date": git(repo, "show", "-s", "--format=%cI", sha).stdout.decode().strip()},
            "license": map_license(repo, sha, blobs), "modules": map_modules(blobs, max_modules),
            "entry_points": map_entry_points(repo, sha, blobs), "tests": map_tests(blobs), "registry": reg,
-           "meta": {"generated_utc": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"), "tool": "code_capsule.py"}}
+           "meta": {"generated_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "tool": "code_capsule.py", "toml_parser": TOML_PARSER}}
     return doc, raw_lines
 
 def render_markdown(doc, raw_lines, max_bytes):

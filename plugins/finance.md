@@ -141,4 +141,4 @@ Level 1 (`tools/verifier/ROLE.md`, the level-1 verifier role; fragments checked 
 
 ## Contradictor (optional, never by default)
 
-When SKILL.md "Contradictor" is switched on, the general mode runs once after the verification (section 7) and before `finish_run.py`: `python3 -I tools/contradictor.py <run dir> --plugin plugins/finance.md`; the bias section above joins its material, and its status line is applied as SKILL.md says (measured on 6 reports of biology, cs-ai and law, 2026-10-29).
+When SKILL.md "Contradictor" is switched on, the general mode runs once after the verification (section 7) and before `finish_run.py`: `python3 -I tools/contradictor.py <run dir> --plugin plugins/finance.md`; the bias section above joins its material, and its status line is applied as SKILL.md says (measured on 6 reports of biology, cs-ai and law, and on 2 finance reports of fictitious local corpora with Codex, 2026-10-29).

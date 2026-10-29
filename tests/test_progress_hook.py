@@ -41,7 +41,9 @@ class T(unittest.TestCase):
         (self.d / 'scope.md').write_text(SCOPE)
         self.assertEqual(G.hook(self.ev('Write', self.d / 'scope.md')), 'VP: framing done, 5 research angles, T = 2026-10-28.')
         self.assertIsNone(G.hook(self.ev('Write', self.d / 'scope.md')))                     # same step: shown once
-        (self.d / 'searches').mkdir(); shutil.copy(FX / 'searches' / '1.md', self.d / 'searches' / '1.md'); self.calls(self.journal[:2])
+        (self.d / 'searches').mkdir(); self.calls(self.journal[:1])
+        self.assertIsNone(G.hook(self.ev('Bash', command=f'ls {self.d}/searches')))         # calls under way, no searcher file: no "0 file(s)" line
+        shutil.copy(FX / 'searches' / '1.md', self.d / 'searches' / '1.md'); self.calls(self.journal[1:2])
         t = G.hook(self.ev('Read', self.d / 'searches' / '1.md')); self.assertIn('VP: searches, 1 searcher file(s); since last update 2 gateway call(s)', t)
         self.assertIsNone(G.hook(self.ev('Read', self.d / 'searches' / '1.md')))
         for n in (2, 3): shutil.copy(FX / 'searches' / f'{n}.md', self.d / 'searches' / f'{n}.md')

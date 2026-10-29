@@ -226,8 +226,11 @@ def command(host, model):
     base = json.loads(env_cmd) if env_cmd else CFG['model_command'][host]['command']
     argv = [str(x).replace('{model}', model) for x in base]
     if not model:                                                   # the host CLI's own default model
-        argv = [x for i, x in enumerate(argv) if not (x in ('--model', '-m') and i + 1 < len(argv) and argv[i + 1] == '')]
-        argv = [x for i, x in enumerate(argv) if not (x == '' and i > 0 and argv[i - 1] in ('--model', '-m'))]
+        out, i = [], 0                                              # drop the flag and its empty value together
+        while i < len(argv):
+            if argv[i] in ('--model', '-m') and i + 1 < len(argv) and argv[i + 1] == '': i += 2; continue
+            out.append(argv[i]); i += 1
+        argv = out
     if argv and not os.path.isabs(argv[0]) and not shutil.which(argv[0]):  # Codex's login shell may drop ~/.npm-global/bin from PATH
         home = pathlib.Path(os.environ.get('HOME') or '~').expanduser()
         for d in (home / '.npm-global' / 'bin', home / '.local' / 'bin', pathlib.Path('/usr/local/bin')):

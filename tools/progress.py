@@ -97,7 +97,7 @@ def run_dir(event):
 
 def hook(event):
     """Claude Code PostToolUse: the progress line to show, or None. Shows a step once, in order (config `progress.steps`);
-    during the searches, again when a new searcher file appears. Never raises."""
+    during the searches, from the first searcher file, again when a new one appears. Never raises."""
     try:
         if not isinstance(event, dict) or event.get('agent_id') or event.get('tool_name') not in (CFG.get('hook_tools') or []): return None
         d = run_dir(event)
@@ -108,6 +108,7 @@ def hook(event):
         last = _last(d); rank, prev = steps.index(kind), last.get('hook_step')
         prev_rank = steps.index(prev) if prev in steps else -1
         files = len(s['searches'])
+        if kind == 'searches' and not files: return None   # calls under way, no searcher file yet: wait for the first one
         if rank < prev_rank or (rank == prev_rank and not (kind == 'searches' and files > int(last.get('hook_files') or 0))): return None
         _save(d, totals, hook_step=kind, hook_files=files)
         try:
