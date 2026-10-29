@@ -842,3 +842,17 @@ Code changes from an offline analysis of 104 judge errors and 92 verifier non-FO
   into the final message (answer, confidence from the verifier's raw output, claims removed after verification, cost, duration).
   2 complete runs with the exact wording: the 6 lines copied verbatim, counts matching the verifier.
 - Trial costs: 4.65 + 4.67 + 3.04 + 1.85 USD.
+
+## v0.6.9 - 2026-10-29 - progress lines shown by the host; local documents no longer lost by the verifier
+
+- Adopted: progress lines. On Claude Code, a `PostToolUse` hook declared in the header of `SKILL.md` runs
+  `tools/progress.py --hook` after each tool call of the orchestrator; when the run reaches a new step (framing, searches,
+  report, verification, end) the host itself shows one line `VP: ...`, also kept in `state/progress.log`. The model no longer
+  has to run or copy anything (Claude Code folds tool output, so a line printed by a tool alone is not seen). The hook does
+  nothing outside a run directory, never blocks a tool call, and always exits 0. 2 Sonnet runs on new questions: 7 and 5 lines,
+  every step shown, cost 0.63x and 0.76x the reference. Codex: no progress line.
+- Fixed: a local document cited as `localdoc:...@local` but filed by the annex in the `code` field was unavailable to the
+  verifier (17 of 17 claims SOURCE-UNAVAILABLE in one bench run). `tools/verifier.py` now reads a misfiled identifier, and
+  `tools/validate_card.py` check 2 reports it. Offline replay of that card: 5 of 5 sources read, against 0 of 5 before.
+- Waiting list: a "small corpus" rule (the pipeline skip seen earlier did not recur on v0.6.8 in 2 new cases), the
+  quote-first and contradiction sections, C19 and C20 (see the bench notes). Trial costs: 4.39 + 4.60 + 3.60 USD.

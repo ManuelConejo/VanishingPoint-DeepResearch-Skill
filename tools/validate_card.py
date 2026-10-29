@@ -30,6 +30,7 @@ import report_lang as RL   # noqa: E402  (titles of the eight sections, one vers
 import cross_source as CS   # noqa: E402  (check 14)
 
 IDS = tuple(i['field'] for i in _reg.IDS if i['card'])   # card identifier fields, from the source declarations (tools/sources/): code = `<path>@<SHA>` or `local:<path>@<SHA>`; the others: ids served by the gateway engines (SKILL.md section 0 "Identity of sources")
+MISFILED = re.compile(r'([a-z][a-z0-9]*):\S+')   # check 2: a gateway identifier (doi:, celex:, localdoc:...) written in the `code` field
 STATUSES = {'FOUND', 'DISTORTED', 'ABSENT', 'SOURCE-UNAVAILABLE', 'INVALID', 'UNVERIFIED'}
 UNHANDLED = {'ABSENT', 'INVALID'}
 PLACEHOLDER = re.compile(r'TODO|TBD|FIXME|to be completed|lorem ipsum|XXX|<[a-z ]{3,30}>|\[\.\.\.\]|\?\?\?', re.I)
@@ -166,6 +167,8 @@ def problems(folder, prior_art=False):
         for c in sorted(keys_cited):
             if c not in table: pb.append(f'2 source key cited but missing from card.sources: {c}')
             elif not any((table[c] or {}).get(k) for k in IDS): pb.append(f'2 source {c}: no identifier among {"/".join(IDS)}')
+            elif (m := MISFILED.fullmatch(str((table[c] or {}).get('code') or '').strip())) and m.group(1) in IDS and m.group(1) not in ('code', 'local'):
+                pb.append(f'2 source {c}: field code holds a {m.group(1)} identifier, not <path>@<SHA>: write {{"{m.group(1)}": "<identifier without the {m.group(1)}: prefix>"}}')
         for m in PLACEHOLDER.finditer(json.dumps(f, ensure_ascii=False)):
             pb.append(f'3 card.json: placeholder {m.group(0)!r}'); break
     # 4 searches

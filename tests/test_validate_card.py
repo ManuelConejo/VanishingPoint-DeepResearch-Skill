@@ -75,6 +75,16 @@ class Test(unittest.TestCase):
             with tempfile.TemporaryDirectory() as t:
                 self.assertFalse([x for x in V.problems(folder(t, **{'card.json': c})) if x.startswith('2 ')], k)
 
+    def test_identifier_misfiled_in_code_field(self):
+        """Check 2 names a gateway identifier written in the `code` field (an annex template slip) and the field to use instead."""
+        c = json.loads(json.dumps(CARD)); c['sources'] = {'S1': {'code': 'doi:10.1/a@local', 'title': 'A'}}
+        with tempfile.TemporaryDirectory() as t:
+            pb = [x for x in V.problems(folder(t, **{'card.json': c})) if x.startswith('2 ')]
+        self.assertEqual(len(pb), 1); self.assertIn('field code holds a doi identifier', pb[0])
+        c['sources'] = {'S1': {'code': 'src/a.py@0123abc', 'title': 'A'}}
+        with tempfile.TemporaryDirectory() as t:
+            self.assertFalse([x for x in V.problems(folder(t, **{'card.json': c})) if x.startswith('2 ')])
+
     def test_each_check(self):
         c2 = json.loads(json.dumps(CARD)); c2['claims'][1]['source'] = {'key': 'S9'}; c2['claims'][0]['text'] = 'TODO'
         d = folder(self.tmp.name, **{'card.json': c2, 'verdicts.json': {'claims': [{'id': 'A1', 'status': 'ABSENT'}, {'id': 'A2', 'status': 'WEIRD'}]},

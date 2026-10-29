@@ -162,6 +162,22 @@ class Test(unittest.TestCase):
         self.assertEqual({k: v['origin'] for k, v in s.items()}, {'S1': 'abstract', 'S2': 'fulltext', 'S3': 'missing'})
         self.assertEqual(s['S1']['text'], 'T\n\ndated abstract'); self.assertEqual(s['S3']['note'], 'after T or forbidden')
 
+    def test_identifier_misfiled_in_code_field_is_read_through_the_gateway(self):
+        """An annex that writes a gateway identifier in the `code` field (`"code": "doi:10.1/a@local"`) does not make the source
+        SOURCE-UNAVAILABLE: it is read as that identifier (suffix that is not a SHA dropped first); a real code source keeps its route."""
+        seen = []
+        class Fake:
+            def read(self, ident):
+                seen.append(ident)
+                return {'results': {'title': 'T', 'abstract': 'dated abstract'}} if ident == 'doi:10.1/a' else {'refusal': 'unknown'}
+        card = {'card_id': 'c', 'claims': [{'id': 'A1', 'text': 'x', 'source': {'key': 'S1'}}], 'sources': {'S1': {'code': 'doi:10.1/a@local'}}}
+        s = V.load_sources(card, gateway=Fake(), out_dir=pathlib.Path(self.tmp.name) / 'sources')
+        self.assertEqual((s['S1']['origin'], s['S1']['text'], seen), ('abstract', 'T\n\ndated abstract', ['doi:10.1/a']))
+        self.assertEqual(V.misfiled_ident({'code': 'doi:10.1/b'}), ['doi:10.1/b'])
+        self.assertEqual(V.misfiled_ident({'code': 'doi:10.1/b@local'}), ['doi:10.1/b', 'doi:10.1/b@local'])
+        for code in ('src/a.py@0123abc', 'local:src/a.py@0123abc', 'notaprefix:x', ''):
+            self.assertEqual(V.misfiled_ident({'code': code}), [], code)
+
     def test_gateway_readings_saved_for_every_identifier_and_checkable(self):
         """--T: each reading through the gateway is saved under sources/<key>/ (record.json + source.txt), law or not; read back as
         "record + abstract" (never as a full text); `check` accepts the verify output (`claims`) and the older `verdicts` files."""
