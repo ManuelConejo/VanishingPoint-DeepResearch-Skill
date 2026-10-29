@@ -338,6 +338,59 @@ class Related(Base):
         for f in (gw.citing, gw.references): self.assertIn('not served', f('pep:1', 20, B)[1])
 
 
+# ---------------------------------------------------------------- search-openalex fills n under the barrier (v0.6.1)
+
+class OpenAlexFill(Base):
+    """The local barrier filters after paging: search-openalex pages on until n works pass, OpenAlex is exhausted, or
+    oversample.openalex_extra_pages pages beyond the first were read (config.json)."""
+    def table(self, pages):
+        def search(url):
+            m = re.search(r'[&?]page=(\d+)', url); k = int(m.group(1)) if m else 1
+            return {'meta': {'count': sum(len(x) for x in pages)}, 'results': pages[k - 1] if k <= len(pages) else []}
+        ok = {w['doi'][16:]: ('2023-01-01', '2023-01-01') for pg in pages for w in pg if w['doi'] and w['publication_date'] < str(T)}
+        return [(r'api\.openalex\.org/works\?', search), (r'api\.crossref\.org/works\?', crossref(ok))]
+
+    def pages(self, k, size=4):
+        """Page j: one work before T with a DOI, one after T, one without DOI, one forbidden -> 1 of 4 passes."""
+        return [[oa(f'W{j}a', '2023-01-01', f'10.1/p{j}'), oa(f'W{j}b', F, f'10.1/q{j}'), oa(f'W{j}c', '2023-01-01'), oa(f'W{j}d', '2023-01-01', '10.1/forbid')][:size]
+                for j in range(1, k + 1)]
+
+    def cfg(self): return sys.modules['sources._common'].CFG['oversample']
+
+    def test_pages_until_n_pass(self):
+        saved = dict(self.cfg()); self.cfg()['openalex_extra_pages'] = 5
+        try:
+            self.route(self.table(self.pages(8))); B = barrier()
+            out, tot = gw.search_openalex('widgets', 3, B)
+            # n=3 asks per_page=3: each page holds W?a (passes), W?b (after T), W?c (no DOI) -> one per page, three pages
+            self.assertEqual([o['id'] for o in out], ['doi:10.1/p1', 'doi:10.1/p2', 'doi:10.1/p3'])
+            oa_urls = [u for u in self.urls if 'api.openalex.org' in u]
+            self.assertEqual(len(oa_urls), 3); self.assertNotIn('&page=', oa_urls[0]); self.assertIn('&page=3', oa_urls[2])
+            self.assertEqual(tot, 32); self.assertGreaterEqual(B.excluded, 6)
+            self.assertTrue(all('to_publication_date:' + V in u for u in oa_urls))          # the provider-side barrier stays on every page
+        finally: self.cfg().update(saved)
+        self.clean()
+
+    def test_bounded_and_exhausted(self):
+        saved = dict(self.cfg())
+        try:
+            self.cfg()['openalex_extra_pages'] = 1
+            self.route(self.table(self.pages(8))); out, _ = gw.search_openalex('widgets', 3, barrier())
+            self.assertEqual((len(out), len([u for u in self.urls if 'api.openalex.org' in u])), (2, 2))   # 1 + 1 extra page, fewer than n
+            self.cfg()['openalex_extra_pages'] = 0; self.urls.clear()
+            out, _ = gw.search_openalex('widgets', 3, barrier())
+            self.assertEqual((len(out), len([u for u in self.urls if 'api.openalex.org' in u])), (1, 1))   # 0 = the v0.6.0 single page
+            self.cfg()['openalex_extra_pages'] = 9; self.urls.clear()
+            self.route(self.table(self.pages(2))); out, _ = gw.search_openalex('widgets', 3, barrier())
+            self.assertEqual((len(out), len([u for u in self.urls if 'api.openalex.org' in u])), (2, 3))   # 3rd page empty: exhausted, stop
+        finally: self.cfg().update(saved)
+
+    def test_no_duplicates_across_pages(self):
+        pg = self.pages(1)[0]
+        self.route(self.table([pg, pg, pg])); out, _ = gw.search_openalex('widgets', 4, barrier())
+        self.assertEqual([o['id'] for o in out], ['doi:10.1/p1'])
+
+
 # ---------------------------------------------------------------- plugin declaration and id kinds
 
 class Declared(unittest.TestCase):

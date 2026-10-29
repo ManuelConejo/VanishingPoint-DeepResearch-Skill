@@ -271,7 +271,7 @@ class SwhToken(Base):
             seen.append((url, dict(headers)))
             if status != 200 and 'Authorization' in headers:
                 raise urllib.error.HTTPError(url, status, 'Forbidden', {}, io.BytesIO(b'{"exception":"AuthenticationFailed","reason":"invalid_grant"}'))
-            return 200, json.dumps(self.VISIT).encode()
+            return 200, json.dumps([dict(self.VISIT, visit=1)] if '/visits/' in url else self.VISIT).encode()
         c._send = send; return c
 
     def test_token_sent_only_to_swh_with_its_interval(self):
@@ -318,6 +318,74 @@ class SwhToken(Base):
         c = self.client(seen); c.cache_dir = st
         sc.Provenance(c).visit('https://github.com/o/r')
         self.assertNotIn('Authorization', seen[-1][1]); self.assertEqual(sc.invalid_keys(st), {'SWH_TOKEN'})
+
+
+class SwhVisitBeforeT(Base):
+    """provenance <origin> reads the last visit WITH a snapshot dated before T (visit list, bisection on the visit number, at most
+    software_heritage.visit_requests requests), never the latest visit; none -> refusal 'unavailable before T' (v0.6.1)."""
+    def history(self, n, no_snapshot=()):
+        """Visits 1..n, one per 3 days from 2020-01-01 (dates grow with the number); the numbers in no_snapshot failed (no snapshot)."""
+        d0 = dt.date(2020, 1, 1)
+        return {k: {'origin': 'https://github.com/o/r', 'visit': k, 'date': (d0 + dt.timedelta(days=3 * (k - 1))).isoformat() + 'T08:00:00+00:00',
+                    'status': 'failed' if k in no_snapshot else 'full', 'snapshot': None if k in no_snapshot else f'{k:040x}'} for k in range(1, n + 1)}
+
+    def client(self, hist, seen):
+        self.k = getattr(self, 'k', 0) + 1                                  # a fresh cache per client: one history each
+        c = sc.CodeClient(cache_dir=self.d / f'swh{self.k}'); c.sleep = lambda s: None; c.clock = lambda: 0.0
+        def send(url, headers, body=None):
+            seen.append(url); q = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
+            self.assertIn('/visits/', url); self.assertNotIn('visit/latest', url)
+            per = int(q['per_page'][0]); last = int(q['last_visit'][0]) if 'last_visit' in q else max(hist) + 1
+            return 200, json.dumps([hist[k] for k in sorted(hist, reverse=True) if k < last][:per]).encode()
+        c._send = send; return c
+
+    def date_of(self, hist, k): return hist[k]['date']
+
+    def test_last_visit_before_T_by_bisection(self):
+        cfg = sc.CFG['software_heritage']; hist = self.history(1000)          # visit 1000 = 2028-03-..: the latest is far after T
+        for target in (1, 2, 99, 500, 901, 999, 1000):
+            seen = []; T_ = dt.date.fromisoformat(self.date_of(hist, target)[:10]) + dt.timedelta(days=1)   # T = the day after visit `target`
+            v = sc.Provenance(self.client(hist, seen)).visit('https://github.com/o/r', T_)
+            self.assertEqual((v['visit'], v['swhid'], v['date_visited']), (target, 'swh:1:snp:' + f'{target:040x}', self.date_of(hist, target)), target)
+            self.assertLess(v['date_visited'][:10], T_.isoformat()); self.assertNotIn('found within', v['selected'])
+            self.assertLessEqual(len(seen), cfg['visit_requests'], target)
+            self.assertTrue(all(f'per_page={cfg["visits_per_page"]}' in u for u in seen))
+
+    def test_visits_without_snapshot_are_skipped(self):
+        hist = self.history(300, no_snapshot=(248, 249, 250)); seen = []
+        T_ = dt.date.fromisoformat(self.date_of(hist, 250)[:10]) + dt.timedelta(days=1)
+        v = sc.Provenance(self.client(hist, seen)).visit('https://github.com/o/r', T_)
+        self.assertEqual(v['visit'], 247)
+
+    def test_nothing_before_T_is_unavailable_never_the_latest(self):
+        hist = self.history(250); seen = []
+        r = sc.Provenance(self.client(hist, seen)).visit('https://github.com/o/r', dt.date(2019, 6, 1))
+        self.assertEqual(set(r), {'refusal'}); self.assertTrue(r['refusal'].startswith('unavailable before T'))
+        self.assertIn('2019-06-01', r['refusal'])
+        seen = []; r = sc.Provenance(self.client(self.history(3, no_snapshot=(1, 2, 3)), seen)).visit('https://github.com/o/r', dt.date(2030, 1, 1))
+        self.assertTrue(r['refusal'].startswith('unavailable before T')); self.assertEqual(len(seen), 1)   # short list read once
+        g = gw.Gateway([self.plugin('provenance')], T='2019-06-01', run='u', state=self.d / 'state')
+        g.client = self.client(hist, [])
+        out = g.call('provenance', 'https://github.com/o/r')
+        self.assertTrue(out['results']['refusal'].startswith('unavailable before T')); self.assertNotIn('warning', out)
+        g = gw.Gateway([self.plugin('provenance')], T='2020-03-01', run='u2', state=self.d / 'state')
+        g.client = self.client(hist, [])
+        out = g.call('provenance', 'https://github.com/o/r')                  # through the gateway: the visit before T, the barrier keeps it
+        self.assertEqual((out['results']['visit'], out['excluded_post_T_or_forbidden']), (20, 0)); self.assertLess(out['results']['date_visited'], '2020-03-01')
+
+    def test_bound_on_requests(self):
+        saved = dict(sc.CFG['software_heritage'])
+        try:
+            sc.CFG['software_heritage']['visit_requests'] = 2; hist = self.history(1000); seen = []
+            T_ = dt.date.fromisoformat(self.date_of(hist, 10)[:10]) + dt.timedelta(days=1)
+            r = sc.Provenance(self.client(hist, seen)).visit('https://github.com/o/r', T_)
+            self.assertEqual(len(seen), 2)
+            self.assertTrue(r['refusal'].startswith('unavailable before T') and 'within 2 visit-list requests' in r['refusal'], r)
+            seen = []; T_ = dt.date.fromisoformat(self.date_of(hist, 700)[:10]) + dt.timedelta(days=1)
+            v = sc.Provenance(self.client(hist, seen)).visit('https://github.com/o/r', T_)
+            self.assertLess(v['visit'], 700); self.assertIn('found within 2 requests', v['selected'])   # an earlier visit, flagged as such
+            self.assertLess(v['date_visited'][:10], T_.isoformat())
+        finally: sc.CFG['software_heritage'].update(saved)
 
 
 class Resp(io.BytesIO):

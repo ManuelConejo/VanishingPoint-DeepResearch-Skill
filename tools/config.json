@@ -6,7 +6,18 @@
  "data_series": {
   "obs_max": 240,
   "dbnomics_datasets": 3,
-  "note": "Finance data engines (gateway dbnomics, fred). obs_max = observations returned per read (the last ones before T; 240 = 20 years monthly, a reading budget, not a measured optimum). dbnomics_datasets = datasets of the DBnomics search whose matching series are listed (one request each, 2 s pacing)."
+  "dbnomics_candidates": 20,
+  "dbnomics_series_pool": 50,
+  "note": "Finance data engines (gateway dbnomics, fred). obs_max = observations returned per read (the last ones before T; 240 = 20 years monthly, a reading budget, not a measured optimum). dbnomics_datasets = datasets of the DBnomics search whose matching series are listed (one request each, 2 s pacing). dbnomics_candidates = datasets read from the one /search request and re-ranked locally (DBnomics orders them by number of matching series, not by relevance: live check of 2026-10-29, 'euro area inflation' put ECB CSEC first, 23,959 matching series, no query word in its name). dbnomics_series_pool = series read per opened dataset and re-ranked by the query words in their names (DBnomics returns them in code order). Reading bounds, not measured optima."
+ },
+ "oversample": {
+  "openalex_extra_pages": 4,
+  "note": "search-openalex asks OpenAlex for n works per page, then the local barrier (publication date, forbidden DOIs and titles, Crossref deposit recheck) removes some of them: openalex_extra_pages = most pages requested beyond the first (one OpenAlex request and one Crossref batch each) until n works pass or OpenAlex is exhausted; 0 = the v0.6.0 single page. A bound on requests, not a measured optimum (live check of 2026-10-29, 'graph neural network', T 2020-01-01, n 20: 7 works passed on one page, 20 after 3 pages)."
+ },
+ "software_heritage": {
+  "visits_per_page": 100,
+  "visit_requests": 8,
+  "note": "provenance <origin>: the last visit with a snapshot dated before T is searched in the origin's visit list (newest first, visits_per_page per request = the API maximum, checked live on 2026-10-29), by bisection on the visit number; visit_requests = most visit-list requests per origin (8 x 100 covers up to ~25,000 visits by bisection). Not found within the bound or no visit before T -> refusal 'unavailable before T', never the latest visit."
  },
  "linked_sources": {
   "unpaywall_dois": 10,
@@ -35,7 +46,13 @@
   "call_cap": 60,
   "fulltext": false,
   "fulltext_cap": 12,
-  "note": "One call per card; above max_chars_per_call (characters of sources), one call per source. A threshold to measure, not a fixed reference value. model: per host profile, '' = the host CLI's own default (no model name fixed here: the nested verifier follows the CLI's default unless VP_MODEL or --model names one; the lab measure of 2026-10-26 used claude-opus-5-5, and the 2026-10-28 duel ran it on the 'opus' alias that was the default then). call_cap = gateway calls of the verifier, its own pool (gateway counter-<run>.verifier.txt), outside the searches' cap: in the duel of 2026-10-28 the shared cap of 60 was reached in 7 of 9 runs and up to 54/54 claims ended SOURCE-UNAVAILABLE; the verifier reads at most one record per cited source, and the 10 cards of that duel cited 11 to 39 sources (median 17.5): 60 (the lab's search cap) covers the largest card measured with a 1.5x margin while still bounding a runaway card. fulltext = with --T, fetch the pinned full text (last version before T, verifier/fetch_fulltext.py) of the sources carrying the most claims, no gateway call; false = abstracts only (--fulltext / --no-fulltext override it). fulltext_cap = full-text attempts per verification (a failure counts): the value frozen for the duel of 2026-10-28 and exercised there (12 of 12 texts obtained in AN13, 4 of 4 in AN01, no reading after T; verifier cost 3.10 USD on 12 texts, the highest measured), not an optimum.",
+  "sandbox_failure_markers": [
+   "bwrap:",
+   "user namespace",
+   "landlock",
+   "seccomp"
+  ],
+  "note": "One call per card; above max_chars_per_call (characters of sources), one call per source. A threshold to measure, not a fixed reference value. model: per host profile, '' = the host CLI's own default (no model name fixed here: the nested verifier follows the CLI's default unless VP_MODEL or --model names one; the lab measure of 2026-10-26 used claude-opus-5-5, and the 2026-10-28 duel ran it on the 'opus' alias that was the default then). call_cap = gateway calls of the verifier, its own pool (gateway counter-<run>.verifier.txt), outside the searches' cap: in the duel of 2026-10-28 the shared cap of 60 was reached in 7 of 9 runs and up to 54/54 claims ended SOURCE-UNAVAILABLE; the verifier reads at most one record per cited source, and the 10 cards of that duel cited 11 to 39 sources (median 17.5): 60 (the lab's search cap) covers the largest card measured with a 1.5x margin while still bounding a runaway card. fulltext = with --T, fetch the pinned full text (last version before T, verifier/fetch_fulltext.py) of the sources carrying the most claims, no gateway call; false = abstracts only (--fulltext / --no-fulltext override it). sandbox_failure_markers = lower-case markers of a Codex sandbox that cannot start, looked for in the output of the failed shell commands of a `codex exec --json` stream (live check of 2026-10-29 in a container without unprivileged user namespaces: 'bwrap: No permissions to create a new namespace...'); when every shell command of a call failed and one carries a marker, the verifier stops calling the model, writes host_problem in its output and receipt, and exits 3 (claims UNVERIFIED with the reason, never silently). fulltext_cap = full-text attempts per verification (a failure counts): the value frozen for the duel of 2026-10-28 and exercised there (12 of 12 texts obtained in AN13, 4 of 4 in AN01, no reading after T; verifier cost 3.10 USD on 12 texts, the highest measured), not an optimum.",
   "windows": {
    "mode": "whole",
    "window_chars": 1000,

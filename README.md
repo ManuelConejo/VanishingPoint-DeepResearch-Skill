@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.6.0, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.6.1, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -105,7 +105,12 @@ Export `VP_HOST=openai` in the shell that launches Codex (`export VP_HOST=openai
 `codex -c sandbox_workspace_write.network_access=true` (interactive) or `codex exec -s workspace-write -c sandbox_workspace_write.network_access=true`
 (or set it in `~/.codex/config.toml`), otherwise every gateway call fails with a transport error. The Codex sandbox (bubblewrap) needs unprivileged user namespaces: in a
 container that forbids them, every shell command fails with "bwrap: No permissions to create a new namespace" before Python
-starts; fix the host (enable user namespaces), do not bypass the sandbox. Tell the agent to read SKILL.md with its file reader: `tools/` holds
+starts; fix the host (enable user namespaces), do not bypass the sandbox. The verifier detects this case (`tools/verifier.py` under
+`VP_HOST=openai`): instead of returning every claim as UNVERIFIED silently, it stops after the first failed call, writes
+`host_problem` in `verdicts.json` and in `state/verifier.json`, prints the reason on stderr and exits with code 3. Fallback, in this
+order: enable unprivileged user namespaces on the host; or run the verification step with the Claude Code profile when the `claude`
+CLI is installed (`--host claude`, or `VP_HOST=claude` for that command only); or verify without script as SKILL.md section 7
+describes (sources re-read with the gateway's `read`), the claims left unverified being flagged in the methodology appendix. Tell the agent to read SKILL.md with its file reader: `tools/` holds
 only the scripts listed below, there is no file-reading script. If your Codex version does not list the skill (ask it "which skills are
 available?"), add to the project's `AGENTS.md` the block below, which points to the file:
 

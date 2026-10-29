@@ -760,3 +760,12 @@ their tools ship as command-line tools, not used by the skill by default.
 24.67 USD-equivalent for the night, of which 19.50 USD for the trial runs (trial A 6.36, trial B 7.47, Sonnet re-measure of A
 and B2 5.67). Two scorer bugs were found after the runs and declared as amendments without touching the frozen scripts: the
 scorer read `verdicts.json` after the ABSENT removals, and counted B1's cost again in B2 (resumed session).
+
+## v0.6.1 - 2026-10-29 - source and verifier fixes
+
+Code fixes, each with offline tests (44 test files pass); no change to SKILL.md.
+
+- Fixed: `search-openalex` returned fewer than `--n` works because the local date barrier filtered a single page; it now pages until n works pass, OpenAlex is exhausted, or `oversample.openalex_extra_pages` extra pages were read (live: 7/20 -> 20/20).
+- Fixed: `provenance <origin>` read the latest Software Heritage visit; it now returns the last visit with a snapshot dated before T (visit list, bisection, at most `software_heritage.visit_requests` requests) and refuses with "unavailable before T" when there is none.
+- Improved: `search-dbnomics` relevance: a pool of `data_series.dbnomics_candidates` datasets and `dbnomics_series_pool` series per dataset re-ranked by the query words in their names, case duplicates merged, datasets interleaved; same number of requests.
+- Fixed: the verifier under Codex without a working sandbox no longer returns silent UNVERIFIED claims: it detects the sandbox failure (`verifier.sandbox_failure_markers`), stops calling the model, writes `host_problem`, prints the reason and exits 3; fallback documented in README ("Codex CLI").

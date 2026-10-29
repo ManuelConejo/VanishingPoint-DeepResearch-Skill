@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """DBnomics (keyless, level 2 `page` cadence): search-dbnomics, read dbnomics:<provider>/<dataset>/<series>; CURRENT values only,
 each one marked as_of "now" (possibly revised after T)."""
+import itertools
 import re
 import urllib.error, urllib.parse, urllib.request
-from sources._common import extra_ok, jget
+from sources._common import extra_ok, jget, tokens
 from sources._series import AS_OF_NOW, DATA_CFG, data_forbidden, obs_before_T, obs_cap
 from sources._common import value
 from sources._series import DATA_NO_CHAIN
@@ -20,7 +21,7 @@ SERIES_ID = r'[A-Za-z0-9_.@+-]+/[A-Za-z0-9_.@+-]+/[A-Za-z0-9_.@+%:=-]+'   # dbno
 
 
 # DBnomics (keyless aggregator: ECB, Eurostat, IMF, OECD, INSEE, BIS, World Bank...). Search = datasets (/search), then series of the best datasets
-# (/series/<provider>/<dataset>?q=); read = observations of one series. indexed_at is the LAST re-indexing, not a first-availability date: not a barrier.
+# (/series/<provider>/<dataset>?q=), both re-ranked locally by query tokens (search_dbnomics); read = observations of one series. indexed_at is the LAST re-indexing, not a first-availability date: not a barrier.
 
 def dbn_item(s):
     sid = f"{s.get('provider_code')}/{s.get('dataset_code')}/{s.get('series_code')}"
@@ -29,20 +30,45 @@ def dbn_item(s):
             'last_reindexed': (s.get('indexed_at') or '')[:10] or None, 'url': 'https://db.nomics.world/' + sid}   # informative, not a barrier date
 
 
+def dbn_score(qt, text):
+    """(share of the query's tokens found in a name, share of the name's tokens that are query tokens): the local relevance of the
+    ranking, coverage first, then the more specific name ('Unemployment rate by sex and age' before a long name that also mentions both)."""
+    tt = tokens(text or '')
+    return len(qt & tt) / max(1, len(qt)), len(qt & tt) / max(1, len(tt))
+
+
 def search_dbnomics(q, n, B):
-    r = jget(DBNOMICS + 'search?' + urllib.parse.urlencode({'q': q, 'limit': int(DATA_CFG['dbnomics_datasets'])})).get('results') or {}
-    out = []
-    for d in [x for x in r.get('docs') or [] if x.get('nb_matching_series')]:
-        if len(out) >= n: break
+    """The DBnomics dataset search (/search) ranks datasets by their number of matching series, so a huge dataset whose name says
+    nothing of the query comes first and fills every result. Here: a pool of data_series.dbnomics_candidates datasets (one request),
+    case duplicates merged, ranked by the query tokens in the dataset name (dbn_score), then by the share of the dataset's series that
+    match (a dataset about the query rather than one mentioning it), then DBnomics' order; the best dbnomics_datasets are opened, up to
+    dbnomics_series_pool series each (/series/<provider>/<dataset>?q=), ranked the same way on the series name (dbn_score) and
+    interleaved across datasets. Same number of requests as before (1 + dbnomics_datasets)."""
+    qt = tokens(q)
+    r = jget(DBNOMICS + 'search?' + urllib.parse.urlencode({'q': q, 'limit': int(DATA_CFG['dbnomics_candidates'])})).get('results') or {}
+    pool, seen = [], set()
+    for i, d in enumerate(r.get('docs') or []):
+        k = (str(d.get('provider_code')), str(d.get('code') or '').lower())
+        if not d.get('nb_matching_series') or k in seen: continue
+        seen.add(k)
+        share = d['nb_matching_series'] / max(1, d.get('nb_series') or d['nb_matching_series'])
+        cov, spec = dbn_score(qt, d.get('name') or d.get('code'))
+        pool.append((-cov, -spec, -share, i, d))
+    lists = []
+    for *_, d in sorted(pool, key=lambda x: x[:4])[:int(DATA_CFG['dbnomics_datasets'])]:
         path = '/'.join(urllib.parse.quote(str(d.get(k) or ''), safe='') for k in ('provider_code', 'code'))
-        try: ss = jget(DBNOMICS + f'series/{path}?' + urllib.parse.urlencode({'q': q, 'limit': n - len(out), 'observations': 0})).get('series') or {}
+        try: ss = jget(DBNOMICS + f'series/{path}?' + urllib.parse.urlencode({'q': q, 'limit': int(DATA_CFG['dbnomics_series_pool']), 'observations': 0})).get('series') or {}
         except urllib.error.HTTPError as e:
             if e.code == 404: continue
             raise
-        for s in ss.get('docs') or []:
-            it = dbn_item(s)
-            if not data_forbidden(B, [it['id']], [it['title']]):   # no first-availability date: the read checks existence by an observation before T
-                out.append(dict(it, dating='existence before T checked at read (an observation period ending before T); values: ' + AS_OF_NOW))
+        docs = list(enumerate(ss.get('docs') or []))
+        lists.append([s for _, s in sorted(docs, key=lambda x: (tuple(-v for v in dbn_score(qt, x[1].get('series_name'))), x[0]))])
+    out = []
+    for s in (x for row in itertools.zip_longest(*lists) for x in row if x is not None):   # interleaved: one dataset never fills n alone
+        if len(out) >= n: break
+        it = dbn_item(s)
+        if not data_forbidden(B, [it['id']], [it['title']]):   # no first-availability date: the read checks existence by an observation before T
+            out.append(dict(it, dating='existence before T checked at read (an observation period ending before T); values: ' + AS_OF_NOW))
     return out[:n], r.get('num_found')
 
 
