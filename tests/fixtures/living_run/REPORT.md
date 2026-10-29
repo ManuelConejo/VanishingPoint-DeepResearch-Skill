@@ -42,7 +42,7 @@ Verdict: established for no average benefit of vitamin D alone on fractures; pro
 
 ## Synthesis & Insights
 
-The findings fit one picture: in people who are not selected for deficiency, vitamin D does little for falls or fractures, and higher doses can harm. The 2026 synthesis [1], the trial sequential analysis [2] and the single largest trial [4][5] reinforce each other, although the first two draw on shared trials. The main disagreement is the network meta-analysis [7], which reports a fall benefit at moderate daily doses and in deficient people. This is my analysis: because that subgroup is exactly where the mechanism would be most plausible and where the large null trials are least informative about, a targeted trial in people with documented deficiency remains the clean test, and I did not find one.
+The findings fit one picture: in people who are not selected for deficiency, vitamin D does little for falls or fractures, and higher doses can harm. The 2026 synthesis [1], the trial sequential analysis [2] and the VITAL trial [4][5] reinforce each other, although the first two draw on shared trials. Of the trials read, VITAL is the largest. The main disagreement is the network meta-analysis [7], which reports a fall benefit at moderate daily doses and in deficient people. This is my analysis: because that subgroup is exactly where the mechanism would be most plausible and where the large null trials are least informative about, a targeted trial in people with documented deficiency remains the clean test, and I did not find one.
 
 ## Limitations & Caveats
 

@@ -4,14 +4,18 @@
 Standard library, no network, no model; run by finish_run.py after the exports, or alone. Written in the language of the run
 (tools/report_lang.py: `Report language:` of scope.md, else the titles of REPORT.md). Content, from the run's files only:
   answer      the first `summary.answer_sentences` sentences of the Executive Summary (citations [n] removed, at most `summary.answer_chars`)
-  confidence  high / medium / low from the share of FOUND among ALL the claims the verifier judged, read on its raw output, BEFORE the
-              removals of section 7 (state/verifier.json `summary`; else verdicts.json plus the removed claims it still lists: `removed`,
-              `filter.removed`); never on the edited verdicts.json alone, where the ABSENT are already gone (23 FOUND of 41 would read 23 of 23).
-              Without a raw output: `unknown`. Thresholds `summary.confidence`; one level lower when fewer than `summary.min_sources`
-              bibliography entries carry the report; with the finding verdicts counted
-  verification  "N claims verified, of which X FOUND" on the same raw counts (ABSENT, DISTORTED... listed), then "K removed from the
-              report after verification": K = raw claims minus the claims left in verdicts.json (basis 'verifier'), or the removed claims
-              verdicts.json lists (basis 'verdicts+removed'); not shown when unknown or 0
+  citations   "Citations confirmed: X of N checked": the FOUND (the claim is in its cited source) among ALL the claims the verifier
+              judged, read on its raw output, BEFORE the removals of section 7 (state/verifier.json `summary`; else verdicts.json plus the
+              removed claims it still lists: `removed`, `filter.removed`); never on the edited verdicts.json alone, where the ABSENT are
+              already gone (23 FOUND of 41 would read 23 of 23): that case is shown as the kept claims, removals unknown. Then the other
+              statuses (ABSENT, DISTORTED...) and "K removed from the report after verification": K = raw claims minus the claims left in
+              verdicts.json (basis 'verifier'), or the removed claims verdicts.json lists (basis 'verdicts+removed'); not shown when unknown
+              or 0. This measures attribution (is the claim in its source), not coverage nor the certainty of the answer: no "confidence"
+              level is derived from it (external audit of 2026-10-29).
+  coverage    what can be counted mechanically: the research angles of scope.md reached by at least one kept source (an angle is reached
+              when a searches/<n>.md file that names it in its first lines holds the identifier of a card.json source); the distinct
+              studies of the bibliography (tools/study_family.py: versions of one study count once), with the notice "fewer than
+              `summary.min_sources`" when it applies; the finding verdicts counted
   cost        --cost-usd when the host reports it; else the sum of the receipts of the nested calls (state/verifier.json, whole reading,
               contradictor.json), stated as partial; else "not known"
   duration    from state/run-start.json (tools/new_run.py) or the first gateway call, to the end of finish_run.py (state/finish_run.json)
@@ -23,10 +27,11 @@ import argparse, datetime as dt, json, pathlib, re, sys
 P = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(P))
 import report_lang as RL   # noqa: E402
+import study_family as SF   # noqa: E402
 
 CFG = json.loads((P / 'config.json').read_text(encoding='utf-8')).get('summary') or {}
 SENTENCES = int(CFG.get('answer_sentences', 3)); CHARS = int(CFG.get('answer_chars', 500))
-LEVELS = CFG.get('confidence') or {'high': 0.9, 'medium': 0.75}; MIN_SOURCES = int(CFG.get('min_sources', 10))
+MIN_SOURCES = int(CFG.get('min_sources', 10)); ANGLE_LINES = int(CFG.get('angle_header_lines', 5))
 SCALE = list(RL.LANGS['en']['verdicts'])       # established, probable, possible, open, unlikely, refuted
 ORDER = ['FOUND', 'DISTORTED', 'SOURCE-UNAVAILABLE', 'UNVERIFIED', 'ABSENT', 'INVALID']
 
@@ -132,6 +137,43 @@ def removed_count(d, counts, basis):
     return None
 
 
+def _angle_numbers(text):
+    """Angle numbers a searches/<n>.md names in its first lines: "angle 3", "angles 1 and 2", "angles 4,5,6", "angles 4-6",
+    "Angles: 1 (meta-analyses), 5 (bias)"."""
+    out = set()
+    for line in re.finditer(r'\bangles?\b\s*[:=]?([^\n]*)', text, re.I):
+        rest = re.sub(r'\([^)]*\)', ' ', line.group(1)).split('.')[0]          # "Angles: 1 (meta-analyses), 5 (bias). T = ..."
+        m = re.match(r'\s*(\d{1,2}(?:\s*(?:,|;|and|et|y|und|&|-|–|to|à)\s*\d{1,2})*)', rest, re.I)
+        if not m: continue
+        for a, b in re.findall(r'(\d{1,2})(?:\s*(?:-|–|to|à)\s*(\d{1,2}))?', m.group(1)):
+            out |= set(range(int(a), int(b) + 1)) if b else {int(a)}
+    return out
+
+
+def angle_coverage(d):
+    """(angles of scope.md reached by at least one kept source, angles of scope.md), or None when it cannot be counted (no numbered
+    angles, or no searches/ file naming its angles)."""
+    try:
+        import resume as _rs
+        angles = {int(a) for a in _rs.angles(_text(d / 'scope.md'))}
+    except Exception: return None
+    files = sorted((d / 'searches').glob('*.md')) if (d / 'searches').is_dir() else []
+    card = _json(d / 'card.json') or {}
+    vals = set()
+    for x in (card.get('sources') or {}).values() if isinstance(card.get('sources'), dict) else ():
+        for f, v in (x or {}).items() if isinstance(x, dict) else ():
+            if f in SF.NOT_IDS or not isinstance(v, str): continue
+            v = v.strip().casefold(); base = v.rsplit('@', 1)[0] if f in ('code', 'local') else v   # <path>@<SHA>: the path is what a searcher writes
+            vals |= {w for w in (v, base) if len(w) >= 4}
+    named, reached = set(), set()
+    for p in files:
+        t = _text(p); a = _angle_numbers('\n'.join(t.splitlines()[:ANGLE_LINES])) & angles
+        named |= a; low = t.casefold()
+        if a and any(re.search(r'(?<![\w.])' + re.escape(v) + r'(?![\w])', low) for v in vals): reached |= a
+    if not angles or not named: return None
+    return len(reached), len(angles)
+
+
 def build(folder, cost_usd=None, lang=None):
     d = pathlib.Path(folder).resolve()
     md = _text(d / 'REPORT.md')
@@ -139,11 +181,8 @@ def build(folder, cost_usd=None, lang=None):
     counts, basis = raw_counts(d)
     n = sum(counts.values()); found = counts.get('FOUND', 0)
     bib = len(re.findall(r'^\s*\[(\d{1,3})\]', RL.section(md, 'Bibliography'), re.M))
-    if not n or basis == 'verdicts': level = 'unknown'      # removals unknown: a share on the kept claims alone would overstate it
-    else:
-        share = found / n
-        level = 'high' if share >= LEVELS['high'] else 'medium' if share >= LEVELS['medium'] else 'low'
-        if bib < MIN_SOURCES: level = {'high': 'medium', 'medium': 'low'}.get(level, level)
+    fam = SF.families(_json(d / 'card.json') or {}, md); studies = fam['studies'] if bib else 0
+    cov = angle_coverage(d)
     fu = _json(d / 'followup.json')
     base, stem = (pathlib.Path(fu['parent']).resolve(), f"FOLLOWUP-{fu['n']}") if isinstance(fu, dict) and fu.get('parent') and fu.get('n') else (d, 'REPORT')
     html_p, pdf_p = base / f'{stem}.html', base / f'{stem}.pdf'
@@ -151,9 +190,11 @@ def build(folder, cost_usd=None, lang=None):
     if cost_usd is not None: cost, kind = round(float(cost_usd), 2), 'host'
     else:
         cost = known_costs(d); kind = 'partial' if cost is not None else 'unknown'
-    return {'dir': str(d), 'language': lang, 'answer': answer(md), 'level': level, 'claims': n, 'found': found, 'counts': counts, 'counts_basis': basis,
+    return {'dir': str(d), 'language': lang, 'answer': answer(md), 'claims': n, 'found': found, 'counts': counts, 'counts_basis': basis,
             'removed': removed_count(d, counts, basis),
-            'found_share': round(found / n, 3) if n else None, 'bibliography_entries': bib, 'finding_verdicts': finding_verdicts(md),
+            'found_share': round(found / n, 3) if n and basis != 'verdicts' else None, 'bibliography_entries': bib, 'studies': studies,
+            'study_families': [g['members'] for g in fam['groups']], 'angles_reached': cov[0] if cov else None, 'angles': cov[1] if cov else None,
+            'finding_verdicts': finding_verdicts(md),
             'cost_usd': cost, 'cost_kind': kind, 'duration_s': duration(d),
             'report_html': str(html_p) if html_p.exists() else None, 'report_pdf': str(pdf_p) if pdf_p.exists() else None,
             'attach': str(pdf_p) if pdf_p.exists() else (str(html_p) if html_p.exists() else None),
@@ -171,22 +212,32 @@ def _verdict_label(lang, en):
 
 
 def render(x):
+    """At most six lines: answer (with the follow-up number), citations confirmed, coverage, cost, duration, report."""
     L = x['language']; c = RL.msg(L, 'colon'); M = lambda key_, **kw: RL.msg(L, key_, **kw)
+    sep = ' ; ' if c.startswith(' ') else '; '
     lines = []
-    if x['followup']: lines.append(f"**{M('followup', n=x['followup'])}**")
-    lines.append(f"**{M('answer')}**{c}{x['answer'] or '-'}")
-    detail = []
-    if x['claims'] and x.get('counts_basis') != 'verdicts': detail.append(M('found_share', found=x['found'], n=x['claims'], pct=100 * x['found'] // x['claims']))
-    if x['bibliography_entries'] < MIN_SOURCES and x['claims']: detail.append(M('few_sources', k=MIN_SOURCES))
-    if x['finding_verdicts']:
-        detail.append(M('findings_verdicts', v=', '.join(f'{_verdict_label(L, k)} {v}' for k, v in sorted(x['finding_verdicts'].items(), key=lambda kv: SCALE.index(kv[0]) if kv[0] in SCALE else 99))))
-    lines.append(f"**{M('confidence')}**{c}{M('level')[x['level']]}" + (f" ({(' ; ' if c.startswith(' ') else '; ').join(detail)})" if detail else ''))
+    head = (M('followup', n=x['followup']) + ' — ' if x['followup'] else '') + M('answer')
+    lines.append(f"**{head}**{c}{x['answer'] or '-'}")
     others = ', '.join(f'{k} {x["counts"][k]}' for k in ORDER if k != 'FOUND' and x['counts'].get(k))
-    lines.append(f"**{M('verification')}**{c}{M('claims_found', n=x['claims'], found=x['found'])}" + (f' ({others})' if others else '')
-                 + (f"{' ;' if c.startswith(' ') else ';'} {M('removed', k=x['removed'])}" if x.get('removed') else ''))
+    if not x['claims']: cit = M('citations_none')
+    elif x.get('counts_basis') == 'verdicts': cit = M('citations_kept', found=x['found'], n=x['claims'])
+    else:
+        extra = [e for e in (others, M('removed', k=x['removed']) if x.get('removed') else '') if e]
+        cit = sep.join([M('citations_found', found=x['found'], n=x['claims'], pct=100 * x['found'] // x['claims'])] + extra)
+    lines.append(f"**{M('citations')}**{c}{cit}")
+    cov = []
+    if x.get('angles'): cov.append(M('angles_reached', k=x['angles_reached'], n=x['angles']))
+    if x['bibliography_entries']:
+        cov.append(M('studies', s=x['studies'], b=x['bibliography_entries']) if x['studies'] != x['bibliography_entries'] else M('sources', b=x['bibliography_entries']) if x['bibliography_entries'] > 1 else M('source_one'))
+        if x['studies'] < MIN_SOURCES: cov.append(M('few_sources', k=MIN_SOURCES))
+    if x['finding_verdicts']:
+        cov.append(M('findings_verdicts', v=', '.join(f'{_verdict_label(L, k)} {v}' for k, v in sorted(x['finding_verdicts'].items(), key=lambda kv: SCALE.index(kv[0]) if kv[0] in SCALE else 99))))
+    if cov: lines.append(f"**{M('coverage')}**{c}{sep.join(cov)}")
     usd = None if x['cost_usd'] is None else f"{x['cost_usd']:.2f}"
-    lines.append(f"**{M('cost')}**{c}" + (M('cost_given', usd=usd) if x['cost_kind'] == 'host' else M('cost_partial', usd=usd) if x['cost_kind'] == 'partial' else M('cost_unknown')))
-    if (du := _dur(L, x['duration_s'])): lines.append(f"**{M('duration')}**{c}{du}")
+    cost = M('cost_given', usd=usd) if x['cost_kind'] == 'host' else M('cost_partial', usd=usd) if x['cost_kind'] == 'partial' else M('cost_unknown')
+    du = _dur(L, x['duration_s'])
+    lines.append(f"**{M('cost')}**{c}{cost}")
+    if du: lines.append(f"**{M('duration')}**{c}{du}")
     rep = x['report_html'] or x['dir']
     lines.append(f"**{M('report')}**{c}{rep}" + (f" ({M('pdf')}{c}{x['report_pdf']})" if x['report_pdf'] else ''))
     return '\n'.join(lines) + '\n'

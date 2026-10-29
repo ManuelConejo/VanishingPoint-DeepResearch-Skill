@@ -13,10 +13,16 @@ Unit = the clause that carries one citation group, as a judge pairs it: within a
 to this group (the text after the last group joins the last clause); adjacent groups ("[2][9]", "[2], [9]") form one group. A clause is
 flagged when it holds a marker of the report's language (MARKERS, one entry per language of tools/report_lang.py; English is also read in
 every language) and its group names exactly one source. Sections skipped: config.json `cross_source.skip_sections` (canonical titles).
-Usage: cross_source.py REPORT.md [--json]       Import: flagged(md) -> [dict]; problems(md) -> [str] (lines of check 14, empty = OK)."""
+Study families (tools/study_family.py, given as {n: family}): sources that are one study under several forms (preprint and article,
+registry record and report, versions) count as one. A group whose numbers all belong to one study cites a single study ("[3][7]" with [7]
+the preprint of [3]); a clause whose count of sources ("three trials [1][2][3]") is more than the studies of its group and at most the documents of
+the group is flagged too (the versions were counted as separate sources).
+Usage: cross_source.py REPORT.md [--card card.json] [--json]       Import: flagged(md, lang=None, families=None) -> [dict];
+problems(md, lang=None, families=None) -> [str] (lines of check 14, empty = OK)."""
 import json, pathlib, re, sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import report_lang as RL   # noqa: E402
+import study_family as SF   # noqa: E402
 
 CFG = (json.loads((pathlib.Path(__file__).resolve().parent / 'config.json').read_text(encoding='utf-8')).get('cross_source') or {})
 
@@ -83,6 +89,9 @@ MARKERS = {
         ('overlap of sources', r'\b(?:überschneid\w*|überlapp\w*|(?:dasselbe|derselben|demselben|selben) (?:Team|Gruppe|Zentrum|Kohorte|Autoren))'),
     ],
 }
+# value of the number words of the `count of sources` markers (one list per language, two to twenty in the order of _N / _NFR / _NES / _NDE)
+_VALUES = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 20]
+NUMBER_WORDS = {w.casefold(): v for rx in (_N, _NFR, _NES, _NDE) for w, v in zip(rx[3:-1].split('|'), _VALUES)}
 COMPILED = {lang: [(fam, re.compile(rx, re.I)) for fam, rx in fams] for lang, fams in MARKERS.items()}
 
 GROUP = re.compile(r'\[\d{1,3}(?:\s*[,;–-]\s*\d{1,3})*\](?:\s*,?\s*\[\d{1,3}(?:\s*[,;–-]\s*\d{1,3})*\])*')
@@ -124,6 +133,13 @@ def clauses(s):
     return out
 
 
+def stated_count(words):
+    """The number a `count of sources` marker states ("three trials" -> 3), else None."""
+    for w in re.findall(r'[^\W\d_]+', words or ''):
+        if w.casefold() in NUMBER_WORDS: return NUMBER_WORDS[w.casefold()]
+    return None
+
+
 def markers(text, lang):
     """[(family, matched words)] of the markers of `lang` (plus English) found in text (citation groups removed)."""
     t = GROUP.sub(' ', text); found = []
@@ -134,9 +150,10 @@ def markers(text, lang):
     return found
 
 
-def flagged(md, lang=None):
-    """Sentences of REPORT.md with a clause that holds a cross-source marker and cites exactly one source:
-    [{'section', 'sentence', 'citation', 'markers'}], in file order."""
+def flagged(md, lang=None, families=None):
+    """Sentences of REPORT.md with a clause that holds a cross-source marker and cites exactly one study (one source, or several versions
+    of one study when `families` = {n: family} of tools/study_family.py is given), or whose count of sources ("three trials") is more
+    than the studies and at most the documents of its group (versions counted as sources): [{'section', 'sentence', 'citation', 'markers', 'same_study', 'studies'}], in file order."""
     lang = lang or RL.title_language([s for s, _ in RL.raw_sections(md)])
     skip = set(CFG.get('skip_sections') or ['Bibliography']); out = []
     for title, body in RL.sections(md):
@@ -144,16 +161,23 @@ def flagged(md, lang=None):
         for s in sentences(body):
             for clause, group in clauses(s):
                 ns = numbers(group)
-                if len(ns) != 1: continue
-                mk = markers(clause, lang)
-                if mk: out.append({'section': title, 'sentence': s, 'citation': f'[{next(iter(ns))}]', 'markers': [w for _, w in mk]}); break
+                if not ns: continue
+                studies = SF.count(families, ns)
+                mk = markers(clause, lang) if studies == 1 or studies < len(ns) else []
+                if not mk: continue
+                if studies > 1:                                   # several studies, fewer than the documents cited: only an overstated count
+                    mk = [(f, w) for f, w in mk if f == 'count of sources' and studies < (stated_count(w) or 0) <= len(ns)]
+                    if not mk: continue
+                cit = f'[{next(iter(ns))}]' if len(ns) == 1 else group.strip()
+                out.append({'section': title, 'sentence': s, 'citation': cit, 'markers': [w for _, w in mk], 'same_study': len(ns) > 1,
+                            'studies': studies}); break
     return out
 
 
-def problems(md, lang=None):
+def problems(md, lang=None, families=None):
     """Lines of check 14 (empty = OK): one heading line, then one line per flagged sentence."""
     if CFG.get('enabled') is False: return []
-    f = flagged(md, lang)
+    f = flagged(md, lang, families)
     if not f: return []
     width = int(CFG.get('excerpt_chars') or 200)
     pb = [f'14 REPORT.md: {len(f)} sentence(s) compare, rank, count, exclude or report a search outcome across sources but cite a single '
@@ -161,13 +185,19 @@ def problems(md, lang=None):
           'count, exclusion or search outcome as your synthesis without [n] ("Of the studies read, ..."), or cite every source it compares']
     for x in f:
         s = x['sentence'] if len(x['sentence']) <= width else x['sentence'][:width - 1] + '…'
-        pb.append(f'14 REPORT.md ({x["section"]}) {x["citation"]} "{", ".join(x["markers"])}": {s}')
+        same = (f' (versions of one study counted as separate sources: {x["studies"]} distinct stud{"y" if x["studies"] == 1 else "ies"}, '
+                'tools/study_family.py; cite each study once and count studies)') if x.get('same_study') else ''
+        pb.append(f'14 REPORT.md ({x["section"]}) {x["citation"]} "{", ".join(x["markers"])}"{same}: {s}')
     return pb
 
 
 if __name__ == '__main__':
-    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    args = [a for i, a in enumerate(sys.argv[1:], 1) if not a.startswith('--') and sys.argv[i - 1] != '--card']
     if not args: print(__doc__); sys.exit(2)
     md = pathlib.Path(args[0]).read_text(encoding='utf-8', errors='replace')
-    if '--json' in sys.argv: print(json.dumps(flagged(md), ensure_ascii=False, indent=1)); sys.exit(0)
-    p = problems(md); print('\n'.join(p) if p else 'OK'); sys.exit(1 if p else 0)
+    card_p = sys.argv[sys.argv.index('--card') + 1] if '--card' in sys.argv[:-1] else str(pathlib.Path(args[0]).with_name('card.json'))
+    try: card = json.loads(pathlib.Path(card_p).read_text(encoding='utf-8'))
+    except (OSError, ValueError): card = {}
+    fam = SF.by_number(SF.families(card if isinstance(card, dict) else {}, md))
+    if '--json' in sys.argv: print(json.dumps(flagged(md, families=fam), ensure_ascii=False, indent=1)); sys.exit(0)
+    p = problems(md, families=fam); print('\n'.join(p) if p else 'OK'); sys.exit(1 if p else 0)
