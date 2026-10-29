@@ -161,12 +161,21 @@
   "max_usd": 4.0,
   "reread_usd_per_call": 0.4,
   "max_per_list": 3,
+  "general": {
+   "sources_cap_chars": 220000,
+   "min_fragment_chars": 20,
+   "whole_source_below_chars": 8000,
+   "window_chars": 2000,
+   "section_chars": 6000,
+   "bias_heading": "## Discipline biases",
+   "note": "General mode of tools/contradictor.py (any plugin but code): sources_cap_chars = cap on the source texts sent (sources/<key>/source.txt, whole, in key order; a source that does not fit is left out and declared); min_fragment_chars = shortest fragment accepted as verbatim evidence; whole_source_below_chars / window_chars = extract sent to a reread (the whole source when shorter, else this many characters around the fragment); section_chars = cap per report section in the match call; bias_heading = the plugin section joined to the material."
+  },
   "timeout_s": 900,
   "reread_model": {
    "claude": "",
    "openai": ""
   },
-  "note": "Optional contradictor after the report (tools/contradictor.py). families: empty = option absent; set it here, or VP_CONTRADICTORS, or ~/.config/vp/contradictors. A family is <via>[:<model>]: openai[:<model>] = the Codex CLI (openai host profile), claude[:<model>] = claude -p (claude host profile), <provider>:<model> = an OpenAI-compatible chat-completions API named in providers (url, key = name of the key variable resolved as in KEYS.md or null for no key, extra = fields merged into the request body, keys_url = where to obtain the key, check_url = a free GET that answers 401/403 to a wrong key, default <url without /chat/completions>/models; both read by tools/setup_keys.py only); add your own provider here or in VP_CONTRADICTOR_PROVIDERS (JSON). No model name is fixed in the code or here: the model id is given in the family (required for an API; for a CLI, empty = the CLI's own default model, so the choice follows the vendor); the models measured on 2026-10-27 are recorded in CHANGELOG.md and plugins/code.md. request = body fields of the measure (temperature 0, 8,000 output tokens). y_cap_chars = the cut of Y used in the measure. max_usd = ceiling on the match call and the rereads (host model) per run, checked before each call with reread_usd_per_call as the estimate; a CLI on a subscription (openai profile) reports 0, so the ceiling only bites on metered hosts; reread_model per host profile: empty = the host CLI's default model (--model / VP_MODEL override it)."
+  "note": "Optional contradictor after the report (tools/contradictor.py): code plugin = the whole-reading material, any other plugin = general mode after the verification (block general). families: empty = option absent; set it here, or VP_CONTRADICTORS, or ~/.config/vp/contradictors. A family is <via>[:<model>]: openai[:<model>] = the Codex CLI (openai host profile), claude[:<model>] = claude -p (claude host profile), <provider>:<model> = an OpenAI-compatible chat-completions API named in providers (url, key = name of the key variable resolved as in KEYS.md or null for no key, extra = fields merged into the request body, keys_url = where to obtain the key, check_url = a free GET that answers 401/403 to a wrong key, default <url without /chat/completions>/models; both read by tools/setup_keys.py only); add your own provider here or in VP_CONTRADICTOR_PROVIDERS (JSON). No model name is fixed in the code or here: the model id is given in the family (required for an API; for a CLI, empty = the CLI's own default model, so the choice follows the vendor); the models measured on 2026-10-27 are recorded in CHANGELOG.md and plugins/code.md. request = body fields of the measure (temperature 0, 8,000 output tokens). y_cap_chars = the cut of Y used in the measure. max_usd = ceiling on the match call and the rereads (host model) per run, checked before each call with reread_usd_per_call as the estimate; a CLI on a subscription (openai profile) reports 0, so the ceiling only bites on metered hosts; reread_model per host profile: empty = the host CLI's default model (--model / VP_MODEL override it)."
  },
  "cs_engines": {
   "pmlr_volumes": 6,

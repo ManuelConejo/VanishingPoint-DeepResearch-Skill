@@ -91,7 +91,7 @@ def contradictors_line():
     """Names only, and for each API provider whether its key variable is present; never a value."""
     fams = contradictors()
     if not fams:
-        return ('Contradictors: none (optional, code plugin: VP_CONTRADICTORS or ~/.config/vp/contradictors = openai[:<model>] (Codex CLI), claude[:<model>] (claude -p), '
+        return ('Contradictors: none (optional, any plugin: VP_CONTRADICTORS or ~/.config/vp/contradictors = openai[:<model>] (Codex CLI), claude[:<model>] (claude -p), '
                 '<provider>:<model> for an OpenAI-compatible API, providers: ' + ', '.join(sorted(providers())) + '; KEYS.md)')
     provs = providers(); parts = []
     for f in fams:

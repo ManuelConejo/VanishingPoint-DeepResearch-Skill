@@ -165,3 +165,7 @@ In addition, specific to cs-ai:
 6. **Date**: every source with a known date reaching T is excluded; the list of exclusions is attached to the receipt.
 7. **Mechanical retraction check (rule shared by all plugins)**: for every retained DOI, the verifier reads Crossref `/works/<DOI>`: `has-update` then `update-to` (`update-type`: `retraction`, `erratum`, `expression_of_concern`), and cross-checks with Retraction Watch (CSV `crossref/retraction-watch-data`, distributed by Crossref); **no model call** (measured on our benches: 30/30 detected). State `retracted / erratum / concern / unknown` carried on the card; `unknown` is kept as is, never converted to `clean`. Done by `tools/finish_run.py` (SKILL.md section 8; `retractions.json`), no gateway call.
 8. **Code**: a repository is "official" only if HF declares it or if its README cites the paper; otherwise `community, unverified`.
+
+## Contradictor (optional, never by default)
+
+When SKILL.md "Contradictor" is switched on, the general mode runs once after the verification (section 7) and before `finish_run.py`: `python3 -I tools/contradictor.py <run dir> --plugin plugins/cs-ai.md`; the bias section above joins its material, and its status line is applied as SKILL.md says (measured on 6 reports of biology, cs-ai and law, 2026-10-29).

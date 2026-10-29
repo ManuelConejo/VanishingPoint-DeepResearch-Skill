@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.6.9, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.6.10, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -204,7 +204,7 @@ python3 -I "$SKILL/tools/gateway.py" --T 2026-10-26 --run try --state /tmp/vp-st
 |---|---|---|---|
 | standard (default) | nothing | the whole method; verification of what carries a decision, one pass | about 2-3 USD per academic question; about 7 USD per code study with the whole reading |
 | audit | `VP_MODE=audit`, or `~/.config/vp/mode` containing `audit`, or "audit mode" in the question | exhaustive card (every atomic claim), verification by batches at fresh context, corrections re-verified once | 6 to 7 times the standard mode (measured: -6.7 points of false claims) |
-| contradictor (code plugin) | `VP_CONTRADICTORS` or `~/.config/vp/contradictors` = one or more of `openai[:<model>]` (Codex CLI), `claude[:<model>]` (`claude -p`), `<provider>:<model>` (any OpenAI-compatible API of `tools/config.json`: `openrouter`, `gemini`, `openai-api`, `mistral`, `ollama`, or yours); no model name is fixed in the skill | after the report, a model of another family tries to prove it wrong; what survives a mechanical check and a fresh-context reread is annotated or added by the orchestrator; the tool never edits the report | 0 USD for the Codex CLI on a subscription, about 0.26 USD per call through an API, + about 0.6 USD of rereads per report (measured on 6 code cases with three models of 2026-10-27; other models, providers and `claude` as contradictor not measured) |
+| contradictor (every plugin) | `VP_CONTRADICTORS` or `~/.config/vp/contradictors` = one or more of `openai[:<model>]` (Codex CLI), `claude[:<model>]` (`claude -p`), `<provider>:<model>` (any OpenAI-compatible API of `tools/config.json`: `openrouter`, `gemini`, `openai-api`, `mistral`, `ollama`, or yours); no model name is fixed in the skill | after the report (code plugin), or after the verification against the source texts the verifier read (other plugins), a model of another family tries to prove it wrong (false or too-strong statements, missing angles); what survives a mechanical check and a fresh-context reread is annotated or added by the orchestrator; the tool never edits the report | 0 USD for the Codex CLI on a subscription, about 0.26 USD per call through an API, + about 0.6 USD of rereads per report (measured on 6 code cases with three models of 2026-10-27); other plugins: about 0.75 USD of rereads per report (measured on 6 biology, cs-ai and law reports, 2026-10-29: Codex 20 true detections against 4 added errors, Kimi 15 against 4; finance, other models, providers and `claude` as contradictor not measured) |
 | prior art | ask "prior art?", "has this already been done?" | the idea is cut into essential elements; `PRIOR-ART.md` answers Exists / Partially / Not found, decided by code from the verified claims (no `REPORT.md`) | same engine and verifier; answer rule not measured |
 | PRISMA / follow-ups | ask for a PRISMA flow diagram or follow-up questions | `PRISMA.md` / `.svg` and `FOLLOWUPS.md`, derived by code from the run (`finish_run.py --prisma --followups`), appended to `REPORT.html` | no model or gateway call |
 
@@ -233,6 +233,8 @@ the shape of a context capsule.
 - Contradictor option (code plugin): 0 USD for the Codex CLI on a subscription (the natural contradictor on a Claude Code host),
   about 0.26 USD per call through an API (OpenRouter, 2026-10-27), plus about 0.6 USD of fresh-context rereads per report
   (`contradictor.json` carries the figures, and says when a provider does not report its cost).
+- Contradictor option (other plugins, general mode): 0 USD for the Codex CLI, 0.03 to 0.14 USD per API call, about 0.75 USD
+  of match call and rereads per report (6 reports of biology, cs-ai and law, 2026-10-29: 4.88 USD for 12 contradictor runs).
 - Codex CLI on a subscription: 0 USD per run on the metered side; the same number of gateway calls.
 - User budget ("Budget 2 USD"): it covers the whole run, verification included; `tools/cost.py` reserves a quarter for the
   verifier and caps the gateway calls, expensive options off (3 Sonnet runs at 2 USD: 1.43 to 1.85 USD).
@@ -319,7 +321,7 @@ tools/check_keys.py keys and mode (setup_keys.py: install + live check; auto_upd
 tools/finish_run.py all end steps in one command (checks, retractions, law checks, exports; SKILL.md section 8; --summary optional)
 tools/followup.py, resume.py   follow-up in the conversation, resuming an interrupted run (v0.6.0)
 tools/export_report.py, export_data.py, passages.py, living_diff.py, law_checks.py   exports, cited passages, living review, legal rules
-tools/code_capsule.py, code_sources.py (library), condense_repo.py, whole_reading.py, contradictor.py   code plugin tools (capsule, Y condensation, whole reading, contradictor)
+tools/code_capsule.py, code_sources.py (library), condense_repo.py, whole_reading.py, contradictor.py   code plugin tools (capsule, Y condensation, whole reading); contradictor (every plugin)
 tools/prior_art.py, prisma.py, followups.py   optional sections of SKILL.md (prior art, PRISMA flow diagram, follow-up questions)
 tools/evidence_bank.py, contradictions.py   command-line tools, not used by the skill by default; progress.py (run by the SKILL.md hook on Claude Code), report_lang.py, new_run.py, parse_date.py, summary.py (finish_run.py --summary), cost.py (budget): used by the skill
 tools/config.json   caps, models, host command profiles             tests/  examples/  KEYS.md  ACCESS-POLICY.md  CONTRIBUTING.md  CHANGELOG.md  USAGE.md  LICENSE  NOTICE

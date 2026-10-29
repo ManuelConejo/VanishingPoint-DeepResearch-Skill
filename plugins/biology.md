@@ -120,3 +120,7 @@ In addition, specific to biology:
 6. **Accession**: must resolve in its database (UniProt, Ensembl, PDBe, GBIF); an accession that does not resolve makes the claim `SOURCE-UNAVAILABLE`.
 7. **Disordered PDF**: fragments copied from a PDF text concentrate the rejections (measured on our benches); copy from the Grep output, tables rebuilt row and column.
 8. **Negative** ("no study"): receipt of PubMed and Europe PMC queries with bounds, otherwise `ABSENT`.
+
+## Contradictor (optional, never by default)
+
+When SKILL.md "Contradictor" is switched on, the general mode runs once after the verification (section 7) and before `finish_run.py`: `python3 -I tools/contradictor.py <run dir> --plugin plugins/biology.md`; the bias section above joins its material, and its status line is applied as SKILL.md says (measured on 6 reports of biology, cs-ai and law, 2026-10-29).

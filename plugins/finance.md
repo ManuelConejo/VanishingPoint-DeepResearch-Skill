@@ -138,3 +138,7 @@ Level 1 (`tools/verifier/ROLE.md`, the level-1 verifier role; fragments checked 
 5. **Mechanical retraction check (rule shared by all plugins)**: for every retained DOI (including NBER 10.3386 and SSRN 10.2139), the verifier reads Crossref `/works/<DOI>`: `has-update` then `update-to` (`update-type`: `retraction`, `erratum`, `expression_of_concern`), and cross-checks with Retraction Watch (CSV `crossref/retraction-watch-data`); **no model call** (measured on our benches: 30/30 detected). `unknown` stays `unknown`. Done by `tools/finish_run.py` (SKILL.md section 8; `retractions.json`), no gateway call.
 6. **Date**: every source with a known date reaching T is excluded and listed.
 7. **Typed verdict**: verdicts come out as typed JSON, never read from free text.
+
+## Contradictor (optional, never by default)
+
+When SKILL.md "Contradictor" is switched on, the general mode runs once after the verification (section 7) and before `finish_run.py`: `python3 -I tools/contradictor.py <run dir> --plugin plugins/finance.md`; the bias section above joins its material, and its status line is applied as SKILL.md says (measured on 6 reports of biology, cs-ai and law, 2026-10-29).
