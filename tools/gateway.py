@@ -9,7 +9,8 @@ Command line:
              <command> <argument> [--n N]
   --plugin takes a path from the current directory, a path from the skill directory (plugins/cs-ai.md) or a bare name (cs-ai): the gateway
   runs the same from any directory; an unknown plugin stops with exit 2 and the list of the plugins shipped.
-  Call pools: the searches count in `counter-<run>.txt` (cap: --cap, else the plugins' `cap:`, else config call_cap.default); tools/verifier.py
+  Call pools: the searches count in `counter-<run>.txt` (cap: --cap, else the `cap` of <state>/budget.json written by tools/cost.py --state
+  under a user budget, never above the next ones, else the plugins' `cap:`, else config call_cap.default); tools/verifier.py
   opens the pool `verifier` (`counter-<run>.verifier.txt`, cap: config verifier.call_cap), so verification never competes with the searches.
   commands: sources | search-<engine> "<query>" | read <id> | citing <id> | references <id> | related <id> (OpenAlex related works, same barrier)
   general engines: pubmed, europepmc, crossref, openalex, arxiv   (id: pmid:NNN | doi:10.x | arxiv:2501.01234)
@@ -135,6 +136,14 @@ def read_plugin(path):
             'since': decl.get('since') or None, 'cap': int(decl['cap']) if decl.get('cap', '').isdigit() else None, 'keys': keys}
 
 
+def budget_cap(state=None):
+    """`cap` of <state>/budget.json (tools/cost.py --state, a user budget), or None."""
+    p = pathlib.Path(state or os.environ.get('VP_STATE') or 'vp-state') / 'budget.json'
+    try: c = json.loads(p.read_text(encoding='utf-8')).get('cap')
+    except (OSError, ValueError, AttributeError): return None
+    return c if isinstance(c, int) and not isinstance(c, bool) and c > 0 else None
+
+
 class Gateway:
     def __init__(self, plugins=(), T=None, case=None, run='vp', state=None, cap=None, since=None, pool=None):
         """pool: None = the searches (counter-<run>.txt); a name = a separate budget with its own counter (counter-<run>.<pool>.txt) and
@@ -151,7 +160,9 @@ class Gateway:
         self.not_wired = sorted(set(declared) - set(ENGINES) - set(self.served_by))   # a name served by a declared code engine is not "not wired"
         self.pool = re.sub(r'[^A-Za-z0-9_-]', '_', str(pool)) if pool else None
         if self.pool: self.cap = cap or int((CFG.get(self.pool) or {}).get('call_cap') or 0) or None
-        else: self.cap = cap or min((p['cap'] for p in self.plugins if p['cap']), default=None) or CFG['call_cap']['default']
+        else:
+            self.cap = cap or min((p['cap'] for p in self.plugins if p['cap']), default=None) or CFG['call_cap']['default']
+            if not cap and (b := budget_cap(state)): self.cap = min(self.cap, b)   # a user budget (tools/cost.py --state) lowers it, never raises it
         if not self.cap: raise ValueError(f"no call cap for the pool {self.pool!r}: set {self.pool}.call_cap in tools/config.json or pass cap")
         self.run = re.sub(r'[^A-Za-z0-9_.-]', '_', str(run))
         setattr(sys.modules[__name__], 'STATE', pathlib.Path(state or os.environ.get('VP_STATE') or 'vp-state'))   # rebinds every source

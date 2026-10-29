@@ -252,7 +252,7 @@ def main(argv=None):
               + (f"; gateway pool {v['gateway'].get('pool')} cap {v['gateway'].get('cap')}" if v.get('gateway') else '')))
         print('validation: ' + ('passed' if r['validation_passed'] else 'FAILED (exit 1)'))
         for f in r['files']: print(f)
-        if r.get('summary'): print('--- SUMMARY.md (--summary) ---\n' + r['summary'].rstrip())
+        if r.get('summary'): print('--- SUMMARY.md (--summary): copy these lines as is into your final message ---\n' + r['summary'].rstrip())
     return 0 if r['validation_passed'] else 1
 
 
