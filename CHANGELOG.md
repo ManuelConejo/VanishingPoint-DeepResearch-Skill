@@ -920,3 +920,18 @@ From an external audit by three model families (Codex, Gemini, Kimi) and a Vanis
   another family (all 159 false corrections rejected and no swapped arms accepted, but 76 % of the right ones accepted against
   85 % required: the judge saw only the source of the claim, not every source a correction cites); three recall levers on a
   Cochrane bench (+2 to +3 points each).
+
+## v0.6.14 - 2026-10-30 - Read every possible candidate; keep borderline trials
+
+- Adopted: before the stop, the abstracts of every candidate left `possible` or `probable` on its title are read by one free
+  batch call (`tools/read_possibles.py`, standard library, no model). This reading does not consume the `read` budget.
+- Adopted: trials judged borderline are no longer dropped. They stay in `result.json` and in the report, marked with the
+  `borderline` flag (checked by `validate_result.py`).
+- Measured on our benches: 4 Cochrane reviews, 2 runs per arm. Median per-trial recall of the report's citations went from
+  51.5 % to 63.7 %, every review improved (worst case +6.7 points), at 1.09x the cost; citation faithfulness 97.4 % against
+  97.2 % before.
+- Caveat, explicitly: about 4/5 of the gain comes from `borderline` entries, and only about 24 % of those appear in the
+  Cochrane review, which is stricter than the question asked. Outside `borderline` entries, precision does not change. The
+  measure covers clinical intervention questions only.
+- Fixes: `validate_card.py` now flags editing placeholders left in the run's JSON files; DOIs containing parentheses are kept
+  whole; the esummary title goes through the same plain-text cleaning as other titles.
