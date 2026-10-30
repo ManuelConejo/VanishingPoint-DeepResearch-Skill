@@ -118,5 +118,23 @@ class Test(unittest.TestCase):
         for n in '15689': self.assertTrue(any(p.startswith(n + ' ') for p in pb), (n, pb))
 
 
+    def test_editing_marker_left_by_a_two_step_edit(self):
+        # a claim block of verdicts.json replaced by a bare marker line and never finished: unreadable JSON and the marker named, with its line
+        d = folder(self.tmp.name)
+        txt = json.dumps(VERDICTS, indent=1).replace('  {\n   "id": "A2"', 'PLACEHOLDER_X\n  {\n   "id": "A2"', 1)
+        self.assertIn('PLACEHOLDER_X', txt); (d / 'verdicts.json').write_text(txt)
+        pb = V.problems(d)
+        self.assertTrue(any(p.startswith('3 verdicts.json line ') and "'PLACEHOLDER_X'" in p for p in pb), pb)
+        self.assertTrue(any(p.startswith('5 verdicts.json: unreadable JSON (') for p in pb), pb)
+        # REPORT.md: a marker left in the prose is named; the same word inside a code span (an identifier quoted by a code report) is not
+        pb = V.problems(folder(self.tmp.name, **{'REPORT.md': REPORT_MD.replace('Process: 7 angles', 'Retractions: RETRACTIONS_LINE_PLACEHOLDER. Process: 7 angles')}))
+        self.assertTrue(any(p.startswith('3 REPORT.md line ') and 'RETRACTIONS_LINE_PLACEHOLDER' in p for p in pb), pb)
+        ok = folder(self.tmp.name, **{'REPORT.md': REPORT_MD.replace('A single document carries everything.', 'A single document carries everything; the repository defines `PLACEHOLDER_TOKEN`.')})
+        self.assertEqual(V.problems(ok), [])
+        # a JSON value quoting the word is not a marker
+        c = json.loads(json.dumps(CARD)); c['claims'][1]['text'] = 'M replaces PLACEHOLDER_TOKEN at load time.'
+        self.assertEqual([p for p in V.problems(folder(self.tmp.name, **{'card.json': c})) if p.startswith('3 ')], [])
+
+
 if __name__ == '__main__':
     unittest.main()

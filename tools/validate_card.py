@@ -36,6 +36,8 @@ MISFILED = re.compile(r'([a-z][a-z0-9]*):\S+')   # check 2: a gateway identifier
 STATUSES = {'FOUND', 'DISTORTED', 'ABSENT', 'SOURCE-UNAVAILABLE', 'INVALID', 'UNVERIFIED'}
 UNHANDLED = {'ABSENT', 'INVALID'}
 PLACEHOLDER = re.compile(r'TODO|TBD|FIXME|to be completed|lorem ipsum|XXX|<[a-z ]{3,30}>|\[\.\.\.\]|\?\?\?', re.I)
+EDIT_MARKER = re.compile(r'(?<![A-Za-z0-9])[A-Z0-9_]*PLACEHOLDER[A-Z0-9_]*')   # check 3: an editing marker left by a two-step edit (e.g. a line `PLACEHOLDER_X` left in verdicts.json), case-sensitive
+MARKED_FILES = ('REPORT.md', 'card.json', 'result.json', 'verdicts.json')
 COVERAGE = RL.any_words('coverage'); ACTIVE = RL.any_words('active'); SKIPPED = RL.any_words('skipped'); UNVERIFIED = RL.any_words('unverified')
 SECTIONS = RL.EN                     # canonical (English) titles; the report may use the eight titles of any one language of tools/report_lang.py
 SUMMARY_WORDS = (200, 400); FINDINGS = (4, 8); BULLETS_MAX = 0.20
@@ -174,6 +176,13 @@ def problems(folder, prior_art=False):
                 pb.append(f'2 source {c}: field code holds a {m.group(1)} identifier, not <path>@<SHA>: write {{"{m.group(1)}": "<identifier without the {m.group(1)}: prefix>"}}')
         for m in PLACEHOLDER.finditer(json.dumps(f, ensure_ascii=False)):
             pb.append(f'3 card.json: placeholder {m.group(0)!r}'); break
+    for name in MARKED_FILES:   # 3 editing markers, read as text (the file may no longer parse as JSON)
+        fp = d / name
+        if not fp.exists(): continue
+        for n, line in enumerate(fp.read_text(encoding='utf-8', errors='replace').splitlines(), 1):
+            # JSON files: a marker standing alone on its line (outside any value); REPORT.md: a marker outside `code` spans
+            m = EDIT_MARKER.fullmatch(line.strip().rstrip(',')) if name.endswith('.json') else EDIT_MARKER.search(re.sub(r'`[^`]*`', '', line))
+            if m: pb.append(f'3 {name} line {n}: editing marker {m.group(0)!r} left in the file (finish the edit or rewrite the file)'); break
     # 4 searches
     se = sorted((d / 'searches').glob('*.md')) if (d / 'searches').is_dir() else []
     fu = is_followup(d); smin = int(FOLLOWUP.get('min_searches', 1)) if fu else 3
@@ -185,7 +194,7 @@ def problems(folder, prior_art=False):
     v = load(d / 'verdicts.json') if (d / 'verdicts.json').exists() else None
     unverified = []
     if v is None: pb.append('5 verdicts.json: missing (downstream verification not done)')
-    elif not isinstance(v, dict): pb.append('5 verdicts.json: unreadable JSON')
+    elif not isinstance(v, dict): pb.append('5 verdicts.json: unreadable JSON' + (f' ({v})' if isinstance(v, ValueError) else ''))
     else:
         st = {a.get('id'): a.get('status') for a in v.get('claims') or []}
         for i in sorted(ids, key=str) if isinstance(f, dict) else []:

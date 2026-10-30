@@ -46,6 +46,9 @@ def problems(r, max_studies=MAX):
             for k in CRITERIA:
                 if not isinstance(cr.get(k), str): pb.append(f'{p}.criteria.{k}: text expected')
         if e.get('basis') not in ('abstract', 'title'): pb.append(f'{p}.basis: "abstract" or "title" expected')
+        if 'borderline' in e:   # SKILL.md section 4 step 2 / section 6: optional flag of a kept borderline entry
+            if not isinstance(e['borderline'], bool): pb.append(f'{p}.borderline: true or false expected')
+            elif e['borderline'] and not str(e.get('borderline_reason') or '').strip(): pb.append(f'{p}.borderline_reason: non-empty text expected when borderline is true')
     if conf != sorted(conf, reverse=True): pb.append('studies: confidence not non-increasing')
     return pb
 

@@ -360,5 +360,17 @@
   "steps": ["framing", "searches", "writing", "annex", "verify", "verified", "done"],
   "log": "progress.log",
   "note": "tools/progress.py --hook, run by Claude Code after each tool call of the orchestrator (PostToolUse hook of the SKILL.md header; never by the model). Measured 29/10 (skill-vp/essai-progress-29-10): Claude Code 2.1.292 folds tool output (\"Ran 1 shell command\") and shows it only in the detailed transcript (ctrl+o), so a line printed by a tool is not seen unless the model copies it (copied 5 times out of 8 in the two runs of essai-ergo-263); a hook systemMessage is shown by the host itself (\"PostToolUse:Bash says: ...\"), in the default view and in stream-json (system/informational). Hooks do not run for sub-agent tool calls. hook_tools = the tools whose calls carry a run path; steps = the order in which each step is shown once (searches: again on each new searcher file); log = file under state/."
+ },
+ "possibles": {
+  "verdict_regex": "\\b(possible|probable)\\b",
+  "read_basis_regex": "(\\|\\s*(basis:?\\s*)?abstract\\s*(\\||$))|(\\bbasis:?\\s*abstract\\b)",
+  "pubmed_batch": 200,
+  "epmc_batch": 20,
+  "max_records": 200,
+  "abstract_chars": 2500,
+  "title_chars": 200,
+  "journal_pool": "possibles",
+  "note": "tools/read_possibles.py (SKILL.md section 4, before the stop). A candidate line of searches/*.md is one carrying an identifier and a verdict matching verdict_regex; its first identifier counts as already read when the line matches read_basis_regex (basis abstract), and any identifier read by the gateway (`read` in state/journal.jsonl) is already read. At most max_records candidates, in order of first appearance; abstracts by batches of pubmed_batch PMIDs (esummary for the date barrier, then efetch XML) and epmc_batch DOIs (Europe PMC core), then openalex_batch DOIs for those Europe PMC does not index (OpenAlex, abstract from its inverted index, OPENALEX_KEY optional); abstracts cut at abstract_chars and titles at title_chars in state/possibles.md. The batch is journaled under journal_pool (seen, never counted against the searches' cap). These are reading bounds, not measured optima.",
+  "openalex_batch": 50
  }
 }
