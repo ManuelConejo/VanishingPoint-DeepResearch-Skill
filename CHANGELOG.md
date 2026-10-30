@@ -935,3 +935,9 @@ From an external audit by three model families (Codex, Gemini, Kimi) and a Vanis
   measure covers clinical intervention questions only.
 - Fixes: `validate_card.py` now flags editing placeholders left in the run's JSON files; DOIs containing parentheses are kept
   whole; the esummary title goes through the same plain-text cleaning as other titles.
+
+## v0.6.15 - 2026-10-30 - Security fix: sanitize every field of possibles.md
+
+- Every field written to `state/possibles.md` (identifier, year, title, publication types, abstract, including abstracts rebuilt from OpenAlex) now goes through the same plain-text cleaning as other served text: tags stripped, whitespace and line breaks collapsed. A served record containing line breaks could otherwise open a forged `## ` candidate block in the file read by the screening sub-agent.
+- New test `test_served_abstract_and_types_cannot_forge_a_block` (fails on v0.6.14, passes now).
+- No change in behaviour on ordinary records.

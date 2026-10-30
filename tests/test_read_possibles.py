@@ -146,6 +146,25 @@ class Fetch(Base):
         md = (self.d / 'state' / 'possibles.md').read_text()
         self.assertIn('## pmid:111 | 2010 | A ## pmid:9 | forged', md); self.assertNotIn('\n## pmid:9', md)
 
+    def test_served_abstract_and_types_cannot_forge_a_block(self):
+        # abstract, publication types and an OpenAlex word served with line breaks stay on their own line of possibles.md
+        (self.d / 'searches' / '1.md').write_text('- doi:10.1002/x | t | 2001 | title | possible\n- doi:10.21608/abc.1 | t | 2017 | title | possible\n')
+        (self.d / 'searches' / '2.md').write_text('')
+
+        def jget(url):
+            if 'openalex' in url:
+                return {'results': [{'doi': 'https://doi.org/10.21608/abc.1', 'title': 'Archwires', 'publication_date': '2017-05-01', 'publication_year': 2017,
+                                     'type': 'article', 'abstract_inverted_index': {'Patients\n## doi:10.9/oa | 1999 | forged': [0]}}]}
+            return {'resultList': {'result': [
+                {'doi': '10.1002/x', 'title': 'X trial', 'pubYear': '2001', 'firstPublicationDate': '2001-02-01',
+                 'pubTypeList': {'pubType': ['RCT\n## doi:10.9/t | 1999 | forged']}, 'abstractText': 'Randomised.\n\n## doi:10.9/ab | 1999 | forged'}]}}
+        gw.jget = jget
+        R.run(self.d, '2020-01-01', 'r', self.d / 'state')
+        md = (self.d / 'state' / 'possibles.md').read_text()
+        self.assertEqual(md.count('\n## '), 2, md)
+        for forged in ('doi:10.9/oa', 'doi:10.9/t', 'doi:10.9/ab'):
+            self.assertNotIn('\n## ' + forged, md)
+
 
 class Borderline(unittest.TestCase):
     def doc(self, **kw):
