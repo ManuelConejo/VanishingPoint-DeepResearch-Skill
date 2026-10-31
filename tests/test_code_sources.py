@@ -123,7 +123,7 @@ class CodeSources(unittest.TestCase):
             self.client().get('https://pypi.org/pypi/p/1.2/json')
         self.assertEqual(str(cm.exception), 'offline')
         self.assertEqual(sc.HOSTS, {'api.github.com', 'sourcegraph.com', 'api.deps.dev', 'pypi.org', 'registry.npmjs.org', 'crates.io',
-                                    'huggingface.co', 'archive.softwareheritage.org', 'api.osv.dev'})
+                                    'huggingface.co', 'archive.softwareheritage.org', 'api.osv.dev', 'raw.githubusercontent.com'})
 
     def test_client_refuses_redirects(self):
         c = sc.CodeClient(cache_dir=self.d / 'state')
@@ -157,7 +157,7 @@ class CodeSources(unittest.TestCase):
         seen = []
         c = self.client(send=lambda url, headers: (seen.append((url, headers)) or (200, json.dumps(F['github']).encode())))
         cs = sc.CodeSearch(c)
-        self.assertEqual(cs.search('alpha', 'github'), {'status': 'skipped', 'reason': 'credential_missing'})
+        self.assertEqual(cs.search('alpha', 'github'), {'status': 'skipped', 'reason': 'credential_missing', 'note': sc.GITHUB_CODE_SEARCH_KEYLESS})
         self.assertEqual(seen, [], 'no request without a token')
         key_file = self.d / 'home' / '.config' / 'vp' / 'vp_github_token.key'   # the only file fallback: ~/.config/vp/<name lowercase>.key
         key_file.parent.mkdir(parents=True)
@@ -224,7 +224,7 @@ class CodeSources(unittest.TestCase):
         sc.CodeClient.get = fake_get(F)
         r = self.gateway().search('code', 'alpha', repo='o/r')
         self.assertEqual(r['call'], 1)
-        self.assertEqual(r['github'], {'status': 'skipped', 'reason': 'credential_missing'})
+        self.assertEqual(r['github'], {'status': 'skipped', 'reason': 'credential_missing', 'note': sc.GITHUB_CODE_SEARCH_KEYLESS})
         self.assertEqual(r['warning'], 'live index: results cannot be dated')
         self.assertEqual(r['excluded_post_T_or_forbidden'], 0)
         x = r['results'][0]
@@ -299,7 +299,7 @@ class CodeSources(unittest.TestCase):
         code_plugin = self.d / 'code-full.md'
         code_plugin.write_text(CODE_PLUGIN, encoding='utf-8')
         full = gw.Gateway([code_plugin], T='2026-10-26', run='r', state=self.d / 'state').sources()
-        self.assertEqual(full['code_engines'], ['code', 'paper-code', 'provenance', 'versions'])
+        self.assertEqual(full['code_engines'], ['code', 'github-repo', 'paper-code', 'provenance', 'versions'])   # github enables github-repo (banc code 31/10)
         self.assertEqual(full['engines'], [])
         self.assertNotIn('github', full['not_wired']); self.assertEqual(full['served_by'].get('github'), 'code')   # served by the code engine
         self.assertNotIn('GITHUB', full['keys_present'], 'no token in the environment nor in the temporary home')

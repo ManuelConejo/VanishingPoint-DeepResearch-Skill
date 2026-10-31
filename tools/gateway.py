@@ -17,9 +17,20 @@ Command line:
   law engines (plugins/law.md): eurlex, justice-administrative [--court CE|TA75|CAA69] [--from YYYY-MM-DD] [--to YYYY-MM-DD], hal, theses-fr,
   hudoc, hudoc-feed (search only), europarl, isidore (id: hudoc:<itemid> | europarl:<document id> | isidore:<Isidore URI> | ecli:ECLI:CE:ECHR:...)
     (id: celex:32016R0679 | ecli:ECLI:EU:... | ecli:ECLI:FR:... | ja:<court>/<file> | hal:hal-0123 | thesesfr:<nnt>)
-  code engines (code_sources.py; served only when a plugin declares them): search-code "<pattern>" [--language L] [--repo owner/repo] |
+  code engines (code_sources.py; served only when a plugin declares them): search-code "<pattern>" [--language L] [--repo owner/repo] [--path P] |
     versions <pypi|npm|cargo>:<package>@<version> | paper-code <arxiv> | provenance <origin https://... | swh:1:...> |
     code-file <origin https://...>#<path>@<40-hex SHA> (whole file at the SHA, engine provenance; read by tools/verifier.py)
+    search-code: filters typed inside the pattern are applied as filters, not searched as text: repo:<owner>/<name> (also r:, ^github\\.com/o/n$,
+    a github.com URL, or a bare name fragment), lang: / language:, file: / path: / f:; a filter alone (empty pattern) is refused. Sourcegraph keyless:
+    a 429 is retried after bounded waits, then Sourcegraph is stopped for the run (`sourcegraph` in the answer: status, until_utc); a Cloudflare
+    challenge is never circumvented (stop, no retry). GitHub code search needs VP_GITHUB_TOKEN: without it the GitHub side is skipped (401 keyless).
+  code engine github-repo (served when a plugin declares `github` or `github-repo`; GitHub REST keyless, 60 requests/h, read-only token optional):
+    a NAMED repository without a SHA: 1. repo-head <owner>/<name> -> last commit of the default branch dated before T (sha, committer date; gated:
+    default branch history, repository created before T); 2. repo-tree <owner>/<name>[/<dir>]@<SHA> -> file paths at that commit;
+    3. repo-file <owner>/<name>/<path>@<SHA> -> whole file at that commit (cite it as repo:<owner>/<name>/<path>:<a>-<b>@<SHA>).
+    repo-info <owner>/<name> -> SPDX licence, archived (both as_of "now"), created_at, pushed_at (a push date, not a commit date), and at_T:
+    last commit of the default branch before T with the SPDX licence at it; repo-info <owner>/<name>@<SHA> -> that commit dated, licence at it.
+    <owner>/<name> may also be written repo:<owner>/<name> or https://github.com/<owner>/<name>.
   extra keyless engines: clinicaltrials (biology), dblp (cs-ai), econbiz (finance)   (id: nct:NCT01234567 | dblp:conf/acl/Xiong0LZ24 | econbiz:10011386660);
     code engine osv: vulns <pypi|npm|cargo|go|maven|rubygems|nuget|packagist>:<package>@<version> ; read osv:<id>
   preprint engines (plugins/biology.md): biorxiv, medrxiv (Europe PMC words, versions dated on api.biorxiv.org; id doi:<preprint DOI>; read biorxiv:<DOI> | medrxiv:<DOI>)
@@ -131,8 +142,10 @@ def read_plugin(path):
                 k, v = line.split(':', 1); decl[k.strip().lower()] = v.strip()
     engines = [x.lower() for x in re.split(r'[,\s]+', decl.get('engines', '')) if x]
     code = [x for x in engines if x in CODE_ENGINES.values()]                 # declared code engines, listed apart (code_engines)
+    rest = [x for x in engines if x not in code]
+    code += [e for x in engines for e in _reg.ENABLED_BY.get(x, ()) if e not in code]   # a declared source that enables a code engine (github -> github-repo)
     keys = [x for x in re.split(r'[,\s]+', decl.get('keys', '')) if x]
-    return {'file': str(path), 'name': pathlib.Path(path).stem, 'declared': bool(m), 'engines': [x for x in engines if x not in code], 'code_engines': code,
+    return {'file': str(path), 'name': pathlib.Path(path).stem, 'declared': bool(m), 'engines': rest, 'code_engines': code,
             'since': decl.get('since') or None, 'cap': int(decl['cap']) if decl.get('cap', '').isdigit() else None, 'keys': keys}
 
 
@@ -285,6 +298,21 @@ class Gateway:
 
 
 
+TEXT_COMMANDS = ('repo-file', 'code-file')   # code commands that return a whole file under `text`
+
+
+def served_view(out, cmd):
+    """The answer as printed for the model: the whole file of repo-file / code-file cut to config.json code_text.served_chars characters with
+    an explicit elision mark (bytes and sha256 stay those of the whole file; the start is kept, so line numbers stay valid). In-process callers
+    (verifier, check_code_refs) call Gateway.call and keep the whole text."""
+    r = out.get('results') if isinstance(out, dict) and cmd in TEXT_COMMANDS else None
+    cap = int(CFG['code_text']['served_chars'])
+    if not isinstance(r, dict) or not isinstance(r.get('text'), str) or len(r['text']) <= cap: return out
+    t = r['text']
+    return dict(out, results=dict(r, text=t[:cap] + f'\n[... file cut at {cap:,} of {len(t):,} characters (config.json code_text.served_chars); '
+                                                f'bytes and sha256 are those of the whole file ...]', text_served={'chars': cap, 'of_chars': len(t)}))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--plugin', action='append', default=[], help='plugin file (repeatable)')
@@ -294,13 +322,15 @@ def main():
     ap.add_argument('--since', default=None)
     ap.add_argument('cmd'); ap.add_argument('arg', nargs='*'); ap.add_argument('--n', type=int, default=20)
     ap.add_argument('--language', default=None); ap.add_argument('--repo', default=None, help='search-code: language / owner/repo filters')
+    ap.add_argument('--path', default=None, help='search-code: file path filter (a path or a part of it)')
     ap.add_argument('--court', default=None, help='search-justice-administrative: exact court code (CE, TA75, CAA69)')
     ap.add_argument('--from', dest='date_from', default=None); ap.add_argument('--to', dest='date_to', default=None, help='search-justice-administrative: decision-date window YYYY-MM-DD')
     ap.add_argument('--chamber', default=None, help='search-judilibre: chamber key (civ1, soc, cr...); --court cc|ca|tj|tcom'); ap.add_argument('--fund', default=None, help='search-legifrance: code|loda|jorf')
     a = ap.parse_args()
     try: g = Gateway(a.plugin, T=a.T, case=a.case, run=a.run, state=a.state, cap=a.cap, since=a.since)
     except PluginNotFound as e: print(f'gateway.py: {e}', file=sys.stderr); sys.exit(2)
-    print(json.dumps(g.call(a.cmd, ' '.join(a.arg), a.n, language=a.language, repo=a.repo, court=a.court, date_from=a.date_from, date_to=a.date_to, chamber=a.chamber, fund=a.fund), ensure_ascii=False))
+    out = g.call(a.cmd, ' '.join(a.arg), a.n, language=a.language, repo=a.repo, path=a.path, court=a.court, date_from=a.date_from, date_to=a.date_to, chamber=a.chamber, fund=a.fund)
+    print(json.dumps(served_view(out, a.cmd), ensure_ascii=False))
 
 
 if __name__ == '__main__':

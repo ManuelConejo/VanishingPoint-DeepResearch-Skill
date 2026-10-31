@@ -21,11 +21,13 @@ source compared cited;
 13 (command line, runs with a gateway journal only) end steps done on the current files: state/finish_run.json, written by tools/finish_run.py,
 whose fingerprints of REPORT.md, card.json, result.json and verdicts.json match the files (else: run finish_run.py, which runs these checks,
 the retraction check, law_checks and the exports).
-Output: problems (empty = OK), exit code 1 if there are any. Import: problems(dir) -> [str] (checks 1-12 and 14); end_problems(dir) -> [str] (check 13);
-header(dir) -> dict."""
+Output: problems (empty = OK), exit code 1 if there are any; then warnings (prefix `warning:`), never blocking: a code reference (field `code`
+of card.json, ids of result.json) without a repository (`<path>@<SHA>` instead of `repo:<owner>/<name>/<path>@<40-hex SHA>`) or with a SHA
+shorter than 40 hex (validate_result.code_warnings). Import: problems(dir) -> [str] (checks 1-12 and 14); warnings(dir) -> [str];
+end_problems(dir) -> [str] (check 13); header(dir) -> dict."""
 import hashlib, json, pathlib, re, sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from validate_result import problems as pb_result
+from validate_result import problems as pb_result, warnings as warn_result, code_warnings
 import sources as _reg   # noqa: E402  (source registry)
 import report_lang as RL   # noqa: E402  (titles of the eight sections, one version per language)
 import cross_source as CS   # noqa: E402  (check 14)
@@ -149,6 +151,24 @@ def end_problems(folder):
     return [f'13 end steps stale: {", ".join(changed)} changed since the last finish_run.py: run {cmd}'] if changed else []
 
 
+def warnings(folder):
+    """Non-blocking deviations: code references of card.json (sources table and claims' own source) and code ids of result.json."""
+    d = pathlib.Path(folder); out = []
+    f = load(d / 'card.json') if (d / 'card.json').exists() else None
+    if isinstance(f, dict):
+        for k, s in sorted((f.get('sources') or {}).items()) if isinstance(f.get('sources'), dict) else []:
+            for fld in ('code', 'local'):
+                v = (s or {}).get(fld) if isinstance(s, dict) else None
+                if v: out += [f'card.json source {k}.{fld}: {w}' for w in code_warnings(v if fld == 'code' or str(v).startswith('local:') else 'local:' + str(v))]
+        for a in f.get('claims') or []:
+            s = a.get('source') if isinstance(a, dict) else None
+            if isinstance(s, dict) and not s.get('key') and s.get('code'):
+                out += [f'card.json claim {a.get("id")}.source.code: {w}' for w in code_warnings(s['code'])]
+    r = load(d / 'result.json') if (d / 'result.json').exists() else None
+    if isinstance(r, dict): out += ['result.json ' + w for w in warn_result(r)]
+    return out
+
+
 def problems(folder, prior_art=False):
     """Checks 1-12; prior_art=True: checks 1-5 and 9 plus PA1-PA4 (tools/prior_art.py) in place of the report and result.json checks."""
     d = pathlib.Path(folder); pb = []
@@ -238,5 +258,7 @@ if __name__ == '__main__':
             (d / 'run.json').write_text(json.dumps(header(d), ensure_ascii=False, indent=1)); print('run.json written')
         else:                                                # injected mode or a copied run: never replace a header by an empty one
             print('run.json not written: no state/journal.jsonl', file=sys.stderr)
-    p = problems(d, prior_art='--prior-art' in sys.argv) + end_problems(d)
-    print('\n'.join(p) if p else 'OK'); sys.exit(1 if p else 0)
+    p = problems(d, prior_art='--prior-art' in sys.argv) + end_problems(d); w = warnings(d)
+    print('\n'.join(p) if p else 'OK')
+    if w: print('\n'.join('warning: ' + x for x in w))
+    sys.exit(1 if p else 0)

@@ -18,7 +18,7 @@ class DataSkip(Exception):
 
 def data_forbidden(B, ids, titles):
     """Forbidden identifier or title (same lists as the DOIs and titles of the barrier): counted, True."""
-    if any(i and str(i).lower() in B.forbidden for i in ids) or any(t and any(title_sim(tokens(t), f) >= CFG['review_title_threshold'] for f in B.titles) for t in titles):
+    if any(i and B.is_forbidden(i) for i in ids) or any(t and any(title_sim(tokens(t), f) >= CFG['review_title_threshold'] for f in B.titles) for t in titles):
         B.excluded += 1; return True
     return False
 

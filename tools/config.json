@@ -3,6 +3,14 @@
   "default": 60
  },
  "review_title_threshold": 0.8,
+ "code_text": {
+  "served_chars": 20000,
+  "note": "gateway.py served_view (security review of 2026-10-31, item 5): the whole file returned by repo-file and code-file (up to the 5 MB transport cap) is cut to its first served_chars characters in the JSON the gateway prints for the model, followed by an explicit elision mark; bytes and sha256 stay those of the whole file, line numbers stay valid (the start is kept), and in-process callers (verifier, check_code_refs) still receive the whole text. Same order of magnitude as the other sources (TEXT_HEAD 20,000 characters for official texts, 6,000 for abstracts). A reading budget, not a measured optimum."
+ },
+ "arxiv_recheck": {
+  "ids_per_request": 50,
+  "note": "sources/arxiv.py arxiv_recheck (security review of 2026-10-31, item 1): an arXiv work served as arxiv:<id> by the OpenAlex lane is checked against its arXiv record, whose <arxiv:doi> names the venue (journal) version: a preprint of a forbidden article listed by its journal DOI is refused; no record returned -> refused. ids_per_request = arXiv ids per id_list request (one request per OpenAlex page of up to that many arXiv works, 3 s pacing of export.arxiv.org). A bound on the request size, not a measured optimum."
+ },
  "data_series": {
   "obs_max": 240,
   "dbnomics_datasets": 3,
@@ -18,6 +26,37 @@
   "visits_per_page": 100,
   "visit_requests": 8,
   "note": "provenance <origin>: the last visit with a snapshot dated before T is searched in the origin's visit list (newest first, visits_per_page per request = the API maximum, checked live on 2026-10-29), by bisection on the visit number; visit_requests = most visit-list requests per origin (8 x 100 covers up to ~25,000 visits by bisection). Not found within the bound or no visit before T -> refusal 'unavailable before T', never the latest visit."
+ },
+ "github_repo": {
+  "api": "https://api.github.com/",
+  "raw": "https://raw.githubusercontent.com/",
+  "web": "https://github.com/",
+  "anonymous_requests_per_hour": 60,
+  "metadata_chars": 200,
+  "rate_limit_wait_s": 3600,
+  "note": "Engine github-repo (tools/sources/github_repo.py, code_sources.GitHubRepo): api = GitHub REST base (repos/<o>/<r>, /license?ref=, /commits/<sha>, /compare, /rate_limit), raw = file at a commit (raw.githubusercontent.com/<o>/<r>/<sha40>/<path>), web = base of the repository URLs (origin of a repo:<owner>/<name>/<path>@<sha> reference, permalinks). Keyless; the read-only VP_GITHUB_TOKEN is sent to the api host only when it is already resolvable by the key rule (KEYS.md). anonymous_requests_per_hour = documented GitHub core quota without a token (reported, never used to pace: the pacing is code_intervals); a 403/429 with X-RateLimit-Remaining 0 or Retry-After is typed rate_limited and no further GitHub API request is made in the process. Every commit is also checked by /compare/<default branch>...<sha> (one request per repository and commit; check_ancestry, an option until v0.6.15, is now always on): a commit served by /commits on a repository may belong to another fork of the same network; 'behind' or 'identical' = in the default branch history. Date barrier of a commit (security review of 2026-10-31, item 2): refused unless it is in the default branch history AND the repository was created before T; the committer date it is then dated by stays falsifiable (git lets a pusher set it), a residual limit. metadata_chars = longest repository metadata string served (full name, default branch, licence path and identifiers of GitHub, deps.dev and ecosyste.ms: tags stripped, one line, cut there). rate_limit_wait_s = how long an exhausted quota is remembered in the state dir (<state>/github-rate-limited.json) when GitHub sends neither X-RateLimit-Reset nor Retry-After (GitHub's core window is one hour); with either header, the stop lasts until that time. head_candidates = commits listed per request by repo-head and repo-info without a SHA (GET /commits?sha=<default branch>&until=<T>, newest first; the first with a committer date before T is taken, then resolved and gated like any commit: one request whatever the value, 20 covers a page of commits whose committer date is on/after T while their author date is before it); tree_paths_served = longest list of file paths repo-tree serves (GET /git/trees/<sha>?recursive=1, filtered by the directory asked; 400 paths of about 40 characters = the order of one served file, code_text.served_chars). Banc code of 2026-10-31: no command resolved a named repository without SHA (C4 15 abstentions, C5 UNDETERMINED).",
+  "head_candidates": 20,
+  "tree_paths_served": 400
+ },
+ "sourcegraph_limits": {
+  "retry_waits_s": [
+   5,
+   20
+  ],
+  "stop_s": 900,
+  "challenge_stop_s": 1800,
+  "note": "code_sources.CodeSearch (search-code, Sourcegraph side, keyless). A 429 without challenge: one retry after each wait of retry_waits_s (Retry-After when Sourcegraph announces one no longer than the longest wait), then no Sourcegraph request before the announced reset or stop_s, recorded in <state>/sourcegraph-stopped.json so that later calls of the run make no request (no burst). A Cloudflare challenge (429 with cf-mitigated: challenge, observed 2026-10-31 from the VPS: every call of C5 and C4) is a technical block (ACCESS-POLICY.md level 3): no retry, stop challenge_stop_s (the __cf_bm cookie Cloudflare sets with it lasts 30 min). Orders of magnitude, not measured optima: banc code 2026-10-31 C2 had 13 answers then 8 x 429 at about one call per 6 s."
+ },
+ "repo_metadata": {
+  "ecosystems_repos": "https://repos.ecosyste.ms/api/v1/repositories/lookup",
+  "deps_dev_projects": "https://api.deps.dev/v3/projects/",
+  "osv_query": "https://api.osv.dev/v1/query",
+  "note": "Keyless repository metadata (audit of 2026-10-31, section 6 item 5): ecosystems_repos = ecosyste.ms repository lookup by URL (usage repo:<owner>/<name>: licence, pushed_at, archived; created_at must be before T; counts observed now), deps_dev_projects = deps.dev project (github.com/<owner>/<name>: licence, OpenSSF Scorecard score and date; added to repo-info without a SHA, as_of now), osv_query = OSV query endpoint used by vulns commit:<40-hex SHA> (advisories whose affected ranges contain that commit)."
+ },
+ "code_refs": {
+  "snippet_window_lines": 3,
+  "snippet_min_chars": 12,
+  "note": "tools/check_code_refs.py (mechanical check of code references in REPORT.md, card.json, mechanisms.json). snippet_window_lines = k: a quoted fragment attached to a reference must appear within the cited lines widened by k lines on each side (whitespace-normalised); snippet_min_chars = shortest quoted fragment checked (shorter quotes are words, not snippets). Reading budget, not a measured optimum."
  },
  "linked_sources": {
   "unpaywall_dois": 10,

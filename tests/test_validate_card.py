@@ -85,6 +85,24 @@ class Test(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             self.assertFalse([x for x in V.problems(folder(t, **{'card.json': c})) if x.startswith('2 ')])
 
+    def test_code_reference_warnings(self):
+        """A code reference without a repository or with an abbreviated SHA is a warning, never a problem; repo:<o>/<n>/<path>@<40 hex>
+        is complete; a repo: value in the `code` field is not taken for a misfiled gateway identifier."""
+        full = 'repo:o/lib/src/a.py@' + 'c' * 40
+        c = json.loads(json.dumps(CARD)); c['sources'] = {'S1': {'code': full, 'title': 'A'}}
+        with tempfile.TemporaryDirectory() as t:
+            d = folder(t, **{'card.json': c}); self.assertEqual(V.problems(d), []); self.assertEqual(V.warnings(d), [])
+        c['sources'] = {'S1': {'code': 'src/a.py@0123abc', 'title': 'A'}, 'S2': {'code': 'local:x.py@' + 'd' * 40}}
+        c['claims'][1]['source'] = {'key': 'S2'}
+        with tempfile.TemporaryDirectory() as t:
+            d = folder(t, **{'card.json': c, 'verdicts.json': {'claims': [{'id': 'A1', 'status': 'FOUND'}, {'id': 'A2', 'status': 'FOUND'}]}})
+            self.assertEqual([p for p in V.problems(d) if p.startswith(('1 ', '2 '))], [])
+            w = V.warnings(d)
+            self.assertEqual(len(w), 2, w); self.assertTrue(all(x.startswith('card.json source S1.code: ') for x in w), w)
+            import subprocess
+            r = subprocess.run([sys.executable, '-I', str(P.parent / 'tools' / 'validate_card.py'), str(d)], capture_output=True, text=True, timeout=120)
+            self.assertIn('warning: card.json source S1.code: abbreviated SHA', r.stdout)
+
     def test_each_check(self):
         c2 = json.loads(json.dumps(CARD)); c2['claims'][1]['source'] = {'key': 'S9'}; c2['claims'][0]['text'] = 'TODO'
         d = folder(self.tmp.name, **{'card.json': c2, 'verdicts.json': {'claims': [{'id': 'A1', 'status': 'ABSENT'}, {'id': 'A2', 'status': 'WEIRD'}]},

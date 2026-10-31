@@ -1,13 +1,35 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Code search (code engine `code`, plugins/code.md): search-code "<pattern>" [--language L] [--repo owner/repo] over Sourcegraph and,
-with VP_GITHUB_TOKEN, GitHub (else the GitHub side is skipped, credential_missing; Sourcegraph continues). Client: code_sources.CodeClient."""
+"""Code search (code engine `code`, plugins/code.md): search-code "<pattern>" [--language L] [--repo owner/repo] [--path P] over Sourcegraph and,
+with VP_GITHUB_TOKEN, GitHub (else the GitHub side is skipped, credential_missing; Sourcegraph continues). Client: code_sources.CodeClient.
+Filters typed inside the pattern (repo:, lang:, file:/path:) are taken out and applied as filters (code_sources.split_filters). A Sourcegraph
+rate limit or challenge does not lose the call: `sourcegraph` in the answer types it (status, until_utc, advice), results stay a list."""
+import time
 import code_sources as sc
 
 
+SG_STATUS = {'rate_limited': 'rate_limited', 'bot_challenge': 'blocked'}
+
+
 def run_search_code(g, arg, n, opt, B, extra):
-    cs = sc.CodeSearch(g.client); f = dict(language=opt.get('language'), repo=opt.get('repo'), limit=n)
-    res = cs.search(arg, 'sourcegraph', **f)
-    try: gh = cs.search(arg, 'github', **f)                           # GitHub only with a token, else skipped; its typed error does not lose Sourcegraph
+    try: pattern, typed = sc.split_filters(arg)
+    except ValueError as e: return {'refusal': f'search-code: {e} (filters typed in the pattern: repo:<owner>/<name>, lang:<language>, file:<path>, one value each)'}
+    f = dict(language=opt.get('language'), repo=opt.get('repo'), path=opt.get('path'))
+    for k, v in typed.items():
+        if f.get(k) and f[k] != v: return {'refusal': f'search-code: {k} given twice with two values ({f[k]!r} and {v!r} typed in the pattern)'}
+        f[k] = v
+    if typed: extra['filters_from_pattern'] = typed
+    if not pattern.strip(): return {'refusal': 'search-code: empty pattern once the filters are taken out; give the code text to search (filters alone list nothing)'}
+    cs = sc.CodeSearch(g.client); f['limit'] = n
+    try: res = cs.search(pattern, 'sourcegraph', **f)
+    except ValueError as e:
+        if str(e) not in SG_STATUS: raise
+        st = cs.sourcegraph_stopped(); until = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(st[0])) if st else None
+        res = []
+        extra['sourcegraph'] = {'status': SG_STATUS[str(e)], 'reason': str(e) + (': Cloudflare challenge (cf-mitigated), a technical block never circumvented (ACCESS-POLICY.md)'
+                                if str(e) == 'bot_challenge' else ': Sourcegraph keyless rate limit, bounded retries done'),
+                                'until_utc': until, 'advice': 'no Sourcegraph request before until_utc (later search-code calls return at once); '
+                                'for a named repository use repo-head, repo-tree and repo-file (engine github-repo)'}
+    try: gh = cs.search(pattern, 'github', **f)                           # GitHub only with a token, else skipped; its typed error does not lose Sourcegraph
     except ValueError as e: gh = {'status': 'error', 'reason': str(e)}
     if isinstance(gh, dict): extra['github'] = gh
     else: res += gh

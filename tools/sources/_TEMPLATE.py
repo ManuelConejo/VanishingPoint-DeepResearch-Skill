@@ -49,7 +49,8 @@ SOURCE = {
     'engines': {'example': search_example},   # engine -> search(q, n, B); command search-example. With options:
                                        #   {'example': {'search': fn, 'options': ('date_from', 'date_to')}} (passed by Gateway.call)
     # 'commands': {...}                # code engines only (see code_search.py, versions.py): {cmd: {engine, run(g, arg, n, opt, B, extra),
-                                       #   form, form_msg, example, date_filter}}; 'serves': plugin names served by that code engine
+                                       #   form, form_msg, example, date_filter}}; 'serves': plugin names served by that code engine;
+                                       #   'enabled_by': plugin names whose declaration also enables that code engine (github -> github-repo)
     'ids': [{'prefix': 'example',      # identifier `example:<value>`, routed by gateway read; card / result.json field of the same name
              'form': r'[A-Za-z0-9]+',  # accepted value in result.json (validate_result.py)
              'export': 'article',      # export_data type: article preprint paper thesis dataset software standard trial case legislation report

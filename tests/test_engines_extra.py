@@ -225,10 +225,11 @@ class Osv(Base):
         self.assertNotIn(FAKE, url + body.decode() + json.dumps(headers)); self.assertNotIn('@', url)
         x = r['vulns'][0]; self.assertEqual((x['summary'], x['affected'][0]['events'][1], x['validity']), ('Sandbox escape', {'fixed': '2.0'}, 'advisory unchanged since before T'))
 
-    def test_modified_after_T_is_masked_and_withdrawal_dated(self):
+    def test_modified_after_T_is_served_marked_and_withdrawal_dated(self):   # barrier on published, not modified (banc code 31/10, defect 4)
         x = gw.osv_item(self.vuln('GHSA-m', '2020-01-01T00:00:00Z', modified=F, withdrawn=F), barrier(), with_details=True)
-        self.assertEqual((x['summary'], x['affected'], x['severity'], x['references'], x['date_modified'], x['withdrawn']), (None, None, None, None, None, None))
-        self.assertIn('masked', x['abstract']); self.assertEqual(x['aliases'], ['CVE-0000-m'])
+        self.assertEqual((x['summary'], x['affected'][0]['events'][1], x['date_modified'], x['modified_after_T'], x['withdrawn']),
+                         ('Sandbox escape', {'fixed': '2.0'}, 'on/after T', True, None))
+        self.assertEqual(x['abstract'], 'DETAILS'); self.assertIn('post-T edits', x['validity']); self.assertEqual(x['aliases'], ['CVE-0000-m'])
         y = gw.osv_item(self.vuln('GHSA-w', '2020-01-01T00:00:00Z', withdrawn='2021-01-01T00:00:00Z'), barrier(), with_details=True)
         self.assertEqual((y['withdrawn'], y['abstract']), ('2021-01-01T00:00:00Z', 'DETAILS'))
 

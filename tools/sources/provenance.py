@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Provenance (code engine `provenance`, plugins/code.md): provenance <origin https://... | swh:1:...> -> Software Heritage visit or
-object. Optional SWH_TOKEN (1,200 req/h instead of 120). Client: code_sources.CodeClient."""
+object; code-file <origin>#<path>@<SHA> -> the whole file at the SHA (GitHub raw first for a GitHub origin, then Software Heritage). Optional SWH_TOKEN (1,200 req/h instead of 120). Client: code_sources.CodeClient."""
+import re
 import code_sources as sc
 
 ORIGIN_FORM_MSG = 'expected form <origin https://... | swh:1:...>'
@@ -11,8 +12,27 @@ def run_provenance(g, arg, n, opt, B, extra):
     return sc.Provenance(c).resolve(arg) if arg.startswith('swh:1:') else sc.Provenance(c).visit(arg, B.T)   # last visit before T
 
 
+GITHUB_FINAL = ('commit_not_in_repository', 'commit_mismatch', 'file_not_found', 'binary', 'reference', 'repository')   # answers that stand: no fallback
+
+
 def run_code_file(g, arg, n, opt, B, extra):
-    """code-file <origin>#<path>@<SHA>: the whole file at the SHA (verifier, plugins/code.md verification rule 1); dated by the commit."""
+    """code-file <origin>#<path>@<SHA>: the whole file at the SHA (verifier, plugins/code.md verification rule 1); dated by the commit.
+    A GitHub origin is read first on GitHub (code_sources.GitHubRepo: the commit resolved ON the named repository, then the raw file at the
+    SHA, refused unless the commit is in the default branch history and the repository was created before T, GitHubRepo.gate); a definite
+    GitHub answer (commit not in that repository or not in its default branch history, repository created on/after T, file absent, binary) stands, while a transport failure, a rate limit or
+    offline mode falls back to Software Heritage (whose revision lookup does not check the origin: the fallback is marked in `github`)."""
+    origin, path, sha = re.fullmatch(sc.CODE_FILE, arg).groups()
+    repo = sc.github_repo_of(origin)
+    if repo:
+        gh = sc.GitHubRepo(g.client, extra)
+        try:
+            f = gh.file_at(repo, sha, path)
+            why = gh.gate(f, B.T)                       # a definite answer: no Software Heritage fallback
+            return {'refusal': f'GitHub: after T or not datable: {why} ({repo}@{sha[:12]}, {path})'} if why else f
+        except ValueError as e:
+            if str(e) in GITHUB_FINAL: return {'refusal': f'GitHub: {e} ({repo}@{sha[:12]}, {path})'}
+            extra['github'] = f'not read on GitHub ({e}): Software Heritage tried (origin of the revision not checked there)'
+        except RuntimeError as e: extra['github'] = f'not read on GitHub ({e}): Software Heritage tried (origin of the revision not checked there)'
     return sc.Provenance(g.client).file_text(arg)
 
 
