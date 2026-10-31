@@ -13,7 +13,8 @@ reported once on stderr and not loaded. A duplicate source name, engine, command
 
 Declaration (keys of SOURCE; `_TEMPLATE.py` is the commented reference):
   name, order, engines {engine: search | {'search': fn, 'options': (...)}}, commands {cmd: {engine, run, form, form_msg, example, date_filter}},
-  serves (plugin source names served by this source's code engine), ids [{prefix, field, form, law_form, export, export_rank, read,
+  serves (plugin source names served by this source's code engine), enabled_by (plugin source names whose declaration also enables this
+  source's code engine, e.g. github -> github-repo), ids [{prefix, field, form, law_form, export, export_rank, read,
   card, code_engine}], match, read, citing / references / related (callable or "not served" message; absent = default source),
   default, plugins, access, terms, barrier, as_of, hosts {host: {interval, stop, timeout}}, key (None or key spec), wired.
 """
@@ -53,6 +54,8 @@ def _norm(src, file):
         v.setdefault('date_filter', True)
     s['serves'] = tuple(s.get('serves') or ())
     if s['serves'] and len({v['engine'] for v in s['commands'].values()}) != 1: _err(s, 'serves needs exactly one code engine')
+    s['enabled_by'] = tuple(s.get('enabled_by') or ())
+    if s['enabled_by'] and len({v['engine'] for v in s['commands'].values()}) != 1: _err(s, 'enabled_by needs exactly one code engine')
     ids = []
     for i in s.get('ids') or ():
         i = dict(i)
@@ -168,6 +171,9 @@ FILTER_OPT = {'search-' + e: v['options'] for s in SOURCES for e, v in s['engine
 CODE_COMMANDS = {c: v for s in SOURCES for c, v in s['commands'].items()}                            # code command -> spec
 CODE_ENGINES = {c: v['engine'] for c, v in CODE_COMMANDS.items()}                                    # code command -> engine name
 SERVED_BY = {x: next(iter(s['commands'].values()))['engine'] for s in SOURCES for x in s['serves']}  # plugin source name -> code engine
+ENABLED_BY = {}                                                                                      # plugin source name -> code engines it also enables
+for _s in SOURCES:
+    for _x in _s['enabled_by']: ENABLED_BY.setdefault(_x, ()); ENABLED_BY[_x] += (next(iter(_s['commands'].values()))['engine'],)
 IDS = [dict(i, source=s['name']) for s in SOURCES for i in s['ids']]                                 # identifier kinds, registry order
 
 

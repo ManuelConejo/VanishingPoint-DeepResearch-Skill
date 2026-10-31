@@ -10,14 +10,17 @@ Standard library, no network, no model; run by finish_run.py after the exports, 
               already gone (23 FOUND of 41 would read 23 of 23): that case is shown as the kept claims, removals unknown. Then the other
               statuses (ABSENT, DISTORTED...) and "K removed from the report after verification": K = raw claims minus the claims left in
               verdicts.json (basis 'verifier'), or the removed claims verdicts.json lists (basis 'verdicts+removed'); not shown when unknown
-              or 0. This measures attribution (is the claim in its source), not coverage nor the certainty of the answer: no "confidence"
+              or 0. Claims the contradictor added or changed (SKILL.md "On request after delivery": verified apart into
+              verdicts-contradictor.json, without --state, then merged into verdicts.json) are added to the raw counts of
+              state/verifier.json and named ("K checked after the contradictor"); a changed claim counts its first wording as
+              removed. This measures attribution (is the claim in its source), not coverage nor the certainty of the answer: no "confidence"
               level is derived from it (external audit of 2026-10-29).
   coverage    what can be counted mechanically: the research angles of scope.md reached by at least one kept source (an angle is reached
               when a searches/<n>.md file that names it in its first lines holds the identifier of a card.json source); the distinct
               studies of the bibliography (tools/study_family.py: versions of one study count once), with the notice "fewer than
               `summary.min_sources`" when it applies; the finding verdicts counted
   cost        --cost-usd when the host reports it; else the sum of the receipts of the nested calls (state/verifier.json, whole reading,
-              contradictor.json), stated as partial; else "not known"
+              contradictor.json, verdicts-contradictor.json), stated as partial; else "not known"
   duration    from state/run-start.json (tools/new_run.py) or the first gateway call, to the end of finish_run.py (state/finish_run.json)
   report      absolute paths of REPORT.html and REPORT.pdf (a follow-up: the parent's FOLLOWUP-<n>.html / .pdf)
 summary.json adds `attach`: the file a host that can attach one sends with the message (the PDF when it exists, else the HTML).
@@ -34,6 +37,7 @@ SENTENCES = int(CFG.get('answer_sentences', 3)); CHARS = int(CFG.get('answer_cha
 MIN_SOURCES = int(CFG.get('min_sources', 10)); ANGLE_LINES = int(CFG.get('angle_header_lines', 5))
 SCALE = list(RL.LANGS['en']['verdicts'])       # established, probable, possible, open, unlikely, refuted
 ORDER = ['FOUND', 'DISTORTED', 'SOURCE-UNAVAILABLE', 'UNVERIFIED', 'ABSENT', 'INVALID']
+CONTRA_VERDICTS = 'verdicts-contradictor.json'   # the --out SKILL.md ("Contradictor", on request after delivery) gives verifier.py
 
 
 def _json(p):
@@ -98,7 +102,30 @@ def known_costs(d):
     if isinstance(w, dict) and isinstance(w.get('usd'), (int, float)): parts.append(float(w['usd']))
     c = _json(d / 'contradictor.json')
     if isinstance(c, dict) and isinstance((c.get('cost_usd') or {}).get('total'), (int, float)): parts.append(float(c['cost_usd']['total']))
+    vc = _json(d / CONTRA_VERDICTS)
+    if isinstance(vc, dict) and isinstance(vc.get('cost_usd'), (int, float)) and not isinstance(vc.get('cost_usd'), bool): parts.append(float(vc['cost_usd']))
     return round(sum(parts), 2) if parts else None
+
+
+def _status_counts(ver):
+    """Raw counts of one verifier output: its `summary` when it has one, else its claims plus the removed claims it still lists, by id."""
+    if not isinstance(ver, dict): return {}
+    s = ver.get('summary')
+    if isinstance(s, dict):
+        c = {k: int(x) for k, x in s.items() if k in ORDER and isinstance(x, int) and not isinstance(x, bool) and x > 0}
+        if c: return c
+    f = ver.get('filter') if isinstance(ver.get('filter'), dict) else {}
+    seen = {}
+    for i, c in enumerate(list(ver.get('claims') or []) + list(ver.get('removed') or []) + list(f.get('removed') or [])):
+        if isinstance(c, dict): seen.setdefault(str(c.get('id') or f'#{i}'), str(c.get('status')))
+    out = {}
+    for st in seen.values(): out[st] = out.get(st, 0) + 1
+    return out
+
+
+def contradictor_counts(d):
+    """Raw counts of the separate verification of the claims the contradictor added or changed (verdicts-contradictor.json), or {}."""
+    return _status_counts(_json(d / CONTRA_VERDICTS))
 
 
 def raw_counts(d):
@@ -179,6 +206,9 @@ def build(folder, cost_usd=None, lang=None):
     md = _text(d / 'REPORT.md')
     lang = lang if lang in RL.LANGS else RL.of_run(d)
     counts, basis = raw_counts(d)
+    contra = contradictor_counts(d)
+    if basis == 'verifier' and contra:          # the first pass's receipt never holds them; verdicts.json (other bases) already does
+        counts = {k: counts.get(k, 0) + contra.get(k, 0) for k in ORDER if counts.get(k, 0) + contra.get(k, 0)}
     n = sum(counts.values()); found = counts.get('FOUND', 0)
     bib = len(re.findall(r'^\s*\[(\d{1,3})\]', RL.section(md, 'Bibliography'), re.M))
     fam = SF.families(_json(d / 'card.json') or {}, md); studies = fam['studies'] if bib else 0
@@ -191,7 +221,7 @@ def build(folder, cost_usd=None, lang=None):
     else:
         cost = known_costs(d); kind = 'partial' if cost is not None else 'unknown'
     return {'dir': str(d), 'language': lang, 'answer': answer(md), 'claims': n, 'found': found, 'counts': counts, 'counts_basis': basis,
-            'removed': removed_count(d, counts, basis),
+            'removed': removed_count(d, counts, basis), 'contradictor_checked': sum(contra.values()),
             'found_share': round(found / n, 3) if n and basis != 'verdicts' else None, 'bibliography_entries': bib, 'studies': studies,
             'study_families': [g['members'] for g in fam['groups']], 'angles_reached': cov[0] if cov else None, 'angles': cov[1] if cov else None,
             'finding_verdicts': finding_verdicts(md),
@@ -222,7 +252,8 @@ def render(x):
     if not x['claims']: cit = M('citations_none')
     elif x.get('counts_basis') == 'verdicts': cit = M('citations_kept', found=x['found'], n=x['claims'])
     else:
-        extra = [e for e in (others, M('removed', k=x['removed']) if x.get('removed') else '') if e]
+        extra = [e for e in (others, M('removed', k=x['removed']) if x.get('removed') else '',
+                             M('contra_checked', k=x['contradictor_checked']) if x.get('contradictor_checked') else '') if e]
         cit = sep.join([M('citations_found', found=x['found'], n=x['claims'], pct=100 * x['found'] // x['claims'])] + extra)
     lines.append(f"**{M('citations')}**{c}{cit}")
     cov = []

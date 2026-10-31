@@ -13,6 +13,8 @@ the working copy, never an excerpt written by the engine:
      in the verifier's pool, date barrier = the commit date), when the card or the capsule gives the origin URL and the plugin declares
      the engine.
 A branch name or a non-hexadecimal revision is refused (`unpinned`), never resolved; an absolute path or a `..` segment is refused.
+The form `repo:<owner>/<name>/<path>[:line[-end]]@<SHA>` names the GitHub repository itself (origin = config.json github_repo.web + owner/name).
+A cited line (`:line[-end]`) is checked against the file read: receipt `line_check` {line, end, lines_in_file, status in_bounds | out_of_bounds}.
 Bound: the size bound of the code transport (code_sources.MAX_BYTES); a binary blob (NUL byte) is refused.
 Standard library only. Import: code_ref(key, desc) ; run_repos(run_dir, given) ; read(ref, repos, gateway=None, origin=None)."""
 import hashlib, json, os, pathlib, re, subprocess, sys
@@ -37,10 +39,14 @@ def code_ref(key, desc):
     body = v[len('local:'):] if v.startswith('local:') else v
     m = REF.fullmatch(body)
     if not m: return {'error': 'unpinned' if '@' in body else 'reference', 'ident': v}
-    path = m['path']
+    path, repo = m['path'], None
+    if not local and path.startswith('repo:'):                                  # repo:<owner>/<name>/<path>: the repository is named
+        parts = path[len('repo:'):].split('/', 2)
+        if len(parts) < 3 or not re.fullmatch(_sc.GH_REPO, parts[0] + '/' + parts[1]): return {'error': 'reference', 'ident': v}
+        repo, path = parts[0] + '/' + parts[1], parts[2]
     if path.startswith('/') or any(x in ('', '.', '..') for x in path.split('/')): return {'error': 'reference', 'ident': v}
     return {'path': path, 'sha': m['sha'].lower(), 'line': int(m['line']) if m['line'] else None, 'end': int(m['end']) if m['end'] else None,
-            'side': 'X' if local else 'Y', 'ident': v}
+            'side': 'X' if local else 'Y', 'ident': v, **({'repo': repo} if repo else {})}
 
 
 def git_dir(d):
@@ -124,7 +130,9 @@ def read_local(ref, repos):
 
 
 def origin_of(ref, desc, run_dir=None):
-    """Origin URL for the gateway: the card's url/repo field when it is https, else for Y the repository of the capsule (github.com/o/r)."""
+    """Origin URL for the gateway: the repository named by a repo: reference, else the card's url/repo field when it is https, else for Y
+    the repository of the capsule (github.com/o/r)."""
+    if ref.get('repo'): return _sc.GH['web'] + ref['repo']
     for k in ('url', 'repo', 'origin'):
         v = str((desc or {}).get(k) or '')
         m = re.match(r'(https://[A-Za-z0-9.-]+/[^\s#/]+/[^\s#/]+?)(?:\.git)?(?:/|$)', v)
@@ -137,8 +145,30 @@ def origin_of(ref, desc, run_dir=None):
     return None
 
 
+def git_lines(text):
+    """The lines of a file as git and GitHub number them: split on \\n only (str.splitlines also splits on \\f, a lone \\r, \\x1c-\\x1e,
+    \\x85, U+2028/U+2029, which shifts every later line number), a final \\r of each line dropped, no empty line after a final \\n."""
+    lines = [x[:-1] if x.endswith('\r') else x for x in text.split('\n')]
+    return lines[:-1] if lines and lines[-1] == '' else lines
+
+
+def line_check(ref, text):
+    """The cited line range against the file read: None without a cited line, else {line, end, lines_in_file, status}."""
+    if not ref.get('line'): return None
+    n = len(git_lines(text)); end = ref.get('end') or ref['line']
+    ok = 1 <= ref['line'] <= end <= n
+    return {'line': ref['line'], 'end': end, 'lines_in_file': n, 'status': 'in_bounds' if ok else 'out_of_bounds'}
+
+
 def read(ref, repos, gateway=None, origin=None):
-    """-> (text | None, receipt). Local git directories first, then the gateway (code-file) when an origin and a 40-hex SHA are known."""
+    """-> (text | None, receipt). Local git directories first, then the gateway (code-file) when an origin and a 40-hex SHA are known;
+    the receipt carries `line_check` when a line is cited (line_check)."""
+    text, rec = _read(ref, repos, gateway, origin)
+    lc = line_check(ref, text) if text is not None else None
+    return text, (dict(rec, line_check=lc) if lc else rec)
+
+
+def _read(ref, repos, gateway=None, origin=None):
     if ref.get('error'): return None, {'reason': f"{ref['error']}: {ref['ident']} (a code source is cited <path>@<SHA>, SHA in hexadecimal)"}
     text, rec = read_local(ref, repos)
     if text is not None or rec.get('commit'): return text, rec           # the commit was found locally: its answer stands
@@ -148,7 +178,8 @@ def read(ref, repos, gateway=None, origin=None):
     res = gateway.call('code-file', f"{origin}#{ref['path']}@{sha}")
     r = res.get('results') if isinstance(res, dict) else None
     if isinstance(r, dict) and isinstance(r.get('text'), str) and r['text'].strip():
-        return r['text'], {'method': 'gateway code-file (provenance)', 'origin': origin, 'commit': sha, 'commit_date': r.get('date'), 'path': ref['path'],
-                           'swhid': r.get('swhid'), 'bytes': r.get('bytes'), 'sha256': r.get('sha256'), 'call': res.get('call')}
+        return r['text'], {'method': 'gateway code-file (' + (r.get('method') or 'provenance') + ')', 'origin': origin, 'commit': sha, 'commit_date': r.get('date'),
+                           'path': ref['path'], 'swhid': r.get('swhid'), 'bytes': r.get('bytes'), 'sha256': r.get('sha256'), 'call': res.get('call'),
+                           **({'membership': r['membership']} if r.get('membership') else {}), **({'github': res['github']} if res.get('github') else {})}
     why = (res.get('refusal') or (r or {}).get('refusal') or (r or {}).get('error') or 'no text') if isinstance(res, dict) else 'no answer'
     return None, dict(rec, reason=rec['reason'] + f'; gateway code-file: {why}')

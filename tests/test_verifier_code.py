@@ -175,6 +175,7 @@ class VerifierCode(unittest.TestCase):
     def test_gateway_fallback_and_date_barrier(self):
         raw = LIB.encode(); target, rev = 'c' * 40, self.ysha
         def fake_get(client, url, token=None, cred=None, body=None):
+            if url.startswith((sc.GH['api'], sc.GH['raw'])): raise ValueError('transport_error:URLError')   # GitHub unreachable: Software Heritage fallback
             if '/revision/' in url: return json.dumps({'directory': 'd' * 40, 'committer_date': self.date}).encode()
             if '/directory/' in url: return json.dumps({'type': 'file', 'target': target}).encode()
             if url.endswith('/content/sha1_git:' + target + '/raw/'): return raw
@@ -189,6 +190,7 @@ class VerifierCode(unittest.TestCase):
             S = V.load_sources(card, None, g, out_dir=self.d / 'out', repos=[])
             self.assertEqual((S['S2']['origin'], S['S2']['text'], S['S2']['code']['method']), ('fulltext', LIB, 'gateway code-file (provenance)'))
             self.assertEqual((self.d / 'out' / 'S2' / 'source.txt').read_text(), LIB)
+            self.assertIn('Software Heritage tried', S['S2']['code']['github'])                 # the GitHub attempt failed in transport: marked
             self.date = '2026-11-01T00:00:00+00:00'                                     # commit after T: refused by the date barrier
             g = gw.Gateway([str(self.d / 'code.md')], T='2026-10-29', run='r2', state=self.d / 'state', pool='verifier', cap=5)
             S = V.load_sources(card, None, g, out_dir=self.d / 'out2', repos=[])
@@ -197,6 +199,64 @@ class VerifierCode(unittest.TestCase):
                              {'refusal': 'expected form <origin https://...>#<path>@<40-hex SHA>'})
         finally:
             sc.CodeClient.get = get0
+
+    def _github(self, commits_status=200, compare='behind'):
+        """CodeClient.get replaced: GitHub API and raw host answer for o/lib at self.ysha; Software Heritage must never be called."""
+        seen = []
+        def fake_get(client, url, token=None, cred=None, body=None):
+            seen.append(url)
+            api, raw = sc.GH['api'] + 'repos/o/lib', sc.GH['raw'] + 'o/lib/'
+            if url.startswith(api + '/commits/'):
+                if commits_status != 200: raise ValueError(f'provider_error:HTTP{commits_status}')
+                return json.dumps({'sha': self.ysha, 'commit': {'committer': {'date': '2026-01-01T00:00:00Z'}, 'author': {'date': '2026-01-01T00:00:00Z'}}}).encode()
+            if url == api: return json.dumps({'full_name': 'o/lib', 'default_branch': 'main', 'created_at': '2020-01-01T00:00:00Z'}).encode()
+            if url.startswith(api + '/compare/main...' + self.ysha): return json.dumps({'status': compare}).encode()
+            if url == raw + self.ysha + '/lib/wait.py': return LIB.encode()
+            raise AssertionError('unexpected URL ' + url)
+        get0, sc.CodeClient.get = sc.CodeClient.get, fake_get
+        self.addCleanup(setattr, sc.CodeClient, 'get', get0)
+        (self.d / 'code.md').write_text(PLUGIN)
+        return seen
+
+    def test_code_file_reads_github_first_and_checks_the_named_repository(self):
+        """code-file on a GitHub origin: the commit is resolved on the named repository (membership recorded), then the raw file at the
+        SHA; Software Heritage is not called. A commit unknown to that repository is refused, with no Software Heritage fallback."""
+        seen = self._github()
+        card = {'card_id': 'C', 'sources': {'S2': {'code': f'repo:o/lib/lib/wait.py:2@{self.ysha}'}}, 'claims': [{'id': 'A1', 'text': 't', 'source': {'key': 'S2'}}]}
+        g = gw.Gateway([str(self.d / 'code.md')], T='2026-10-29', run='g1', state=self.d / 'state', pool='verifier', cap=5)
+        S = V.load_sources(card, None, g, out_dir=self.d / 'out', repos=[])
+        self.assertEqual((S['S2']['origin'], S['S2']['text']), ('fulltext', LIB))
+        rec = S['S2']['code']
+        self.assertEqual((rec['method'], rec['origin'], rec['membership']), ('gateway code-file (github raw at the SHA)', sc.GH['web'] + 'o/lib', 'in the default branch history'))
+        self.assertEqual(rec['line_check'], {'line': 2, 'end': 2, 'lines_in_file': 6, 'status': 'in_bounds'})
+        self.assertFalse([u for u in seen if 'softwareheritage' in u], seen)
+        seen.clear(); seen2 = self._github(commits_status=422)
+        g = gw.Gateway([str(self.d / 'code.md')], T='2026-10-29', run='g2', state=self.d / 'state2', pool='verifier', cap=5)
+        S = V.load_sources(card, None, g, out_dir=self.d / 'out2', repos=[])
+        self.assertEqual(S['S2']['origin'], 'missing'); self.assertIn('commit_not_in_repository', S['S2']['note'])
+        self.assertFalse([u for u in seen2 if 'softwareheritage' in u], seen2)
+
+    def test_cited_line_bound(self):
+        """The line cited after the path is checked against the file read at the SHA (it used to be parsed and ignored)."""
+        repos = CF.run_repos(self.run)
+        t, rec = CF.read(CF.code_ref('S', {'code': f'lib/wait.py:2-3@{self.ysha}'}), repos)
+        self.assertEqual(t, LIB); self.assertEqual(rec['line_check']['status'], 'in_bounds')
+        t, rec = CF.read(CF.code_ref('S', {'code': f'lib/wait.py:99@{self.ysha}'}), repos)
+        self.assertEqual(rec['line_check'], {'line': 99, 'end': 99, 'lines_in_file': 6, 'status': 'out_of_bounds'})
+        t, rec = CF.read(CF.code_ref('S', {'code': f'lib/wait.py:5-2@{self.ysha}'}), repos)
+        self.assertEqual(rec['line_check']['status'], 'out_of_bounds')
+        t, rec = CF.read(CF.code_ref('S', {'code': f'lib/wait.py@{self.ysha}'}), repos)
+        self.assertNotIn('line_check', rec)
+        card = {'card_id': 'C', 'sources': {'S2': {'code': f'lib/wait.py:99@{self.ysha}'}}, 'claims': [{'id': 'A1', 'text': 't', 'source': {'key': 'S2'}}]}
+        S = V.load_sources(card, None, None, out_dir=self.d / 'o3', run_dir=self.run)
+        self.assertIn('cited line 99 out of bounds (6 lines)', S['S2']['note'])
+
+    def test_repo_form_names_the_repository(self):
+        r = CF.code_ref('S', {'code': 'repo:o/lib/lib/wait.py:2-3@' + self.ysha})
+        self.assertEqual((r['repo'], r['path'], r['line'], r['end'], r['side']), ('o/lib', 'lib/wait.py', 2, 3, 'Y'))
+        self.assertEqual(CF.origin_of(r, {'url': 'https://github.com/other/repo'}), sc.GH['web'] + 'o/lib', 'the named repository prevails')
+        self.assertEqual(CF.code_ref('S', {'code': 'repo:o/lib.py@' + self.ysha})['error'], 'reference')
+        self.assertEqual(CF.code_ref('S', {'code': 'repo:o/lib/../x.py@' + self.ysha})['error'], 'reference')
 
 
 if __name__ == '__main__':

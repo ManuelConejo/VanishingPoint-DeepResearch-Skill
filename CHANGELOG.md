@@ -941,3 +941,29 @@ From an external audit by three model families (Codex, Gemini, Kimi) and a Vanis
 - Every field written to `state/possibles.md` (identifier, year, title, publication types, abstract, including abstracts rebuilt from OpenAlex) now goes through the same plain-text cleaning as other served text: tags stripped, whitespace and line breaks collapsed. A served record containing line breaks could otherwise open a forged `## ` candidate block in the file read by the screening sub-agent.
 - New test `test_served_abstract_and_types_cannot_forge_a_block` (fails on v0.6.14, passes now).
 - No change in behaviour on ordinary records.
+
+## v0.6.16 - 2026-10-31 - Code mode tools, arXiv on the OpenAlex lane, security and bug fixes (tools only)
+
+No change to `SKILL.md` or to any plugin instruction; every change below is in the tools and covered by offline tests.
+
+- Code references: the form `repo:owner/name/path@<40-hex SHA>` is checked, with a warning when the SHA is abbreviated. New code
+  engine `github-repo` (`tools/sources/github_repo.py`): `repo-info` (SPDX licence at a commit, default branch, full SHA,
+  `at_T`), `repo-head`, `repo-tree` and `repo-file`; served only when a plugin declares it (`enabled_by`). The verifier checks the cited
+  lines (`line_check`).
+  OSV queries by commit and dates on `published`; ecosyste.ms per repository; deps.dev project licence and Scorecard.
+- New `tools/check_code_refs.py`: mechanical check, with no model, of every code reference of a run, including references
+  written in the prose and multiple line ranges.
+- `search-code`: filters typed inside the pattern (`repo:`, `lang:`, `file:`/`path:`) are applied as filters; new `--path`. A
+  Sourcegraph rate limit or challenge page is reported as such (status, retry time) and never worked around; the call is
+  bounded.
+- arXiv: `crossref_deposit` no longer refuses arXiv works. They are served as `arxiv:<id>`, and `10.48550/arXiv.<id>` maps to
+  `arxiv:<id>` both ways.
+- Bugs: `read_possibles.py` honours `since` and `--plugin` and reports `skipped_other_ids`; `SUMMARY.md` now counts the claims
+  added by the contradictor.
+- Security review (0 high, 2 medium, 7 low, all fixed). KEYS.md now recommends a GitHub token limited to public repositories.
+  Known limit: a backdated commit pushed to the default branch still passes the date check.
+- Measured on our benches (5 code cases, before/after the access fixes): repository maintenance and licence facts 5/20 to 20/20;
+  "does the function do what the README says" from undetermined to a correct verdict with 10/10 references checked; "how do
+  others implement X" 0/5 to 2/5 repositories found. No invented reference in any case. Small sample; read as a direction.
+- Tests: `test_github_repo.py`, `test_check_code_refs.py`, `test_code_access.py`, `test_arxiv_only.py`, and extended existing
+  tests. Full offline suite green, including on Python 3.9.

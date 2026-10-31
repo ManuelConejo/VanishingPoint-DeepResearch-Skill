@@ -1,0 +1,5 @@
+{"card_id": "fixture", "question": "q", "sources": {
+  "S1": {"code": "repo:o/lib/src/retry.py:5@4f2b9c0d1e3a5b7c9d0e1f2a3b4c5d6e7f8a9b0c", "title": "o/lib retry"},
+  "S2": {"code": "src/retry.py@deadbee", "url": "https://github.com/o/lib", "title": "a commit of another repository"},
+  "S3": {"code": "repo:ghost/none/a.py@4f2b9c0d1e3a5b7c9d0e1f2a3b4c5d6e7f8a9b0c", "title": "no such repository"}},
+ "claims": [{"id": "A1", "text": "Y retries.", "source": {"key": "S1"}, "location": "Finding 1"}]}

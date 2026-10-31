@@ -4,7 +4,7 @@ import hashlib
 import json
 import re
 import urllib.error, urllib.parse, urllib.request
-from sources._common import ProviderError, STATE, extra_ok, fetch, year_before_T
+from sources._common import ProviderError, STATE, arxiv_month, extra_ok, fetch, year_before_T
 from sources.crossref import doi_recheck
 from sources._common import EXTRA_NO_CHAIN, RELATED_ONLY, value
 
@@ -28,12 +28,6 @@ def dblp_rows(q):
         (STATE / 'cache' / hashlib.sha256((url + json.dumps({'Accept': 'application/sparql-results+json'}, sort_keys=True)).encode()).hexdigest()).unlink(missing_ok=True)
         raise ProviderError('bot_challenge: dblp answered a non-JSON page (not an empty result)')
     return [{k: v.get('value') for k, v in b.items()} for b in r.get('results', {}).get('bindings', [])]
-
-
-def arxiv_month(aid):
-    """YYYY-MM of the first submission encoded in an arXiv identifier (2401.01234 -> 2024-01; cs/0101001 -> 2001-01), else None."""
-    m = re.match(r'(?:[a-z-]+(?:\.[A-Z]{2})?/)?(\d{2})(\d{2})[.\d]', aid or '')
-    return f"{(19 if int(m.group(1)) > 90 else 20)}{m.group(1)}-{m.group(2)}" if m else None
 
 
 def dblp_items(rows, B, limit=100):

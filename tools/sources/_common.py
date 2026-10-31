@@ -137,7 +137,7 @@ class Barrier:
 
     def __init__(self, T, forbidden_dois=(), forbidden_titles=(), since=None):
         self.T = T if isinstance(T, dt.date) else dt.date.fromisoformat(str(T)[:10])
-        self.forbidden = {x.lower() for x in forbidden_dois}
+        self.forbidden = set().union(*(id_forms(x) for x in forbidden_dois))   # normalised: doi:/resolver prefix, arXiv versions and forms
         self.titles = [tokens(t) for t in forbidden_titles]
         self.since = int(since) if since else None
         self.excluded = 0
@@ -151,18 +151,51 @@ class Barrier:
         return cls(c['T'], c['forbidden_dois'], c.get('forbidden_titles', []))
 
     def ok(self, doi=None, *dates, title=None):
-        if doi and doi.lower().replace('https://doi.org/', '') in self.forbidden: self.excluded += 1; return False
+        if doi and self.is_forbidden(doi): self.excluded += 1; return False
         if title and any(title_sim(tokens(title), t) >= CFG['review_title_threshold'] for t in self.titles): self.excluded += 1; return False
         ds = [date_upper(x) for x in dates]
         if not ds or any(x is None for x in ds) or any(x >= self.T for x in ds): self.excluded += 1; return False
         if self.since and max(ds).year < self.since: self.excluded += 1; return False
         return True
 
+    def is_forbidden(self, ident):
+        """An identifier (DOI with or without doi:/resolver prefix, arxiv:<id>, bare arXiv id, any version) on the forbidden list."""
+        return bool(ident) and bool(id_forms(ident) & self.forbidden)
+
     @property
     def eve(self): return self.T - dt.timedelta(days=1)
 
     @property
     def start(self): return dt.date(self.since, 1, 1) if self.since else dt.date(1800, 1, 1)
+
+
+ARXIV_FORM = r'\d{4}\.\d{4,5}(v\d+)?|[a-z-]+(\.[A-Z]{2})?/\d{7}(v\d+)?'   # arXiv identifier, new (2401.01234) and old (hep-th/9901001) schemes
+ARXIV_DOI = '10.48550/arxiv.'                                                          # DataCite prefix of the arXiv DOIs (lower case)
+
+
+def arxiv_id(s):
+    """Bare arXiv identifier, version dropped, of an arXiv DOI (10.48550/arXiv.<id>, bare, doi: or resolver URL), an arxiv:<id> or an
+    arxiv.org abs/pdf URL; else None. doi:10.48550/arXiv.<id> and arxiv:<id> name the same work."""
+    s = str(s or '').strip()
+    m = (re.match(r'(?i)(?:doi:|https?://(?:dx\.)?doi\.org/)?10\.48550/arxiv\.(.+)$', s) or re.match(r'(?i)arxiv:(.+)$', s)
+         or re.match(r'(?i)https?://(?:www\.|export\.)?arxiv\.org/(?:abs|pdf)/(.+?)(?:\.pdf)?/?$', s))
+    v = m.group(1).strip() if m else ''
+    return re.sub(r'v\d+$', '', v) if v and re.fullmatch(ARXIV_FORM, v, re.I) else None
+
+
+def id_forms(ident):
+    """Normalised forms of an identifier for the forbidden list: lower case, doi: or resolver prefix dropped; an arXiv work (10.48550/arXiv.<id>,
+    arxiv:<id>, arxiv.org URL or bare id, any version vN) -> its four forms without version (arXiv DOI, arxiv:<id>, bare id, as given)."""
+    s = re.sub(r'(?i)^(?:doi:\s*|https?://(?:dx\.)?doi\.org/)', '', str(ident or '').strip()).lower()
+    if not s: return set()
+    ax = arxiv_id(s) or (re.sub(r'v\d+$', '', s) if re.fullmatch(ARXIV_FORM, s, re.I) else None)
+    return {s} | ({ARXIV_DOI + ax, 'arxiv:' + ax, ax} if ax else set())
+
+
+def arxiv_month(aid):
+    """YYYY-MM of the first submission encoded in an arXiv identifier (2401.01234 -> 2024-01; cs/0101001 -> 2001-01), else None."""
+    m = re.match(r'(?:[a-z-]+(?:\.[A-Z]{2})?/)?(\d{2})(\d{2})[.\d]', aid or '')
+    return f"{(19 if int(m.group(1)) > 90 else 20)}{m.group(1)}-{m.group(2)}" if m else None
 
 
 def year_before_T(year, B):
@@ -181,7 +214,7 @@ class ProviderError(RuntimeError):
 def law_ok(B, ids, dates, titles=()):
     """Barrier for law records: forbidden identifiers (DOI, CELEX, ECLI, NNT, HAL id; same list as the DOIs) and titles,
     then every date (act, decision, defence, deposit) < T through B.ok; no usable date -> refused (strict)."""
-    if any(i and str(i).lower().replace('https://doi.org/', '') in B.forbidden for i in ids) or \
+    if any(i and B.is_forbidden(i) for i in ids) or \
        any(t and any(title_sim(tokens(t), f) >= CFG['review_title_threshold'] for f in B.titles) for t in titles):
         B.excluded += 1; return False
     return B.ok(None, *dates)
@@ -221,7 +254,7 @@ def dmy(s):
 
 def extra_ok(B, ids, dates, titles=()):
     """Barrier of the extra engines: forbidden identifiers (same list as the DOIs) and titles, then every date < T through B.ok."""
-    if any(i and str(i).lower().replace('https://doi.org/', '') in B.forbidden for i in ids) or \
+    if any(i and B.is_forbidden(i) for i in ids) or \
        any(t and any(title_sim(tokens(t), f) >= CFG['review_title_threshold'] for f in B.titles) for t in titles):
         B.excluded += 1; return False
     return B.ok(None, *dates)

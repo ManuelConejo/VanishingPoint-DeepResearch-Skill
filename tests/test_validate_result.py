@@ -38,6 +38,7 @@ class Test(unittest.TestCase):
                'nct:NCT01234567', 'dblp:conf/acl/Xiong0LZ24', 'econbiz:10011386660', 'osv:GHSA-p6mc-m468-83gw', 'openreview:hSyW5go0v8',
                'zenodo:1234567', 'biorxiv:10.1101/2020.01.01.123456', 'medrxiv:10.1101/2021.03.04.21252916', 'pmcid:PMC1234567',
                'arxiv:hep-th/9901001', 'src/model.py@0123abc', 'local:lib/x.py@0123456789abcdef0123', 'hfmodel:google-bert/bert-base-uncased',
+               'repo:alharkan7/beeblio/agent/lib/openalex.ts@22a8a77dcf8ecb39d2c4adf8142c19e8974de756',
                'hfdataset:rajpurkar/squad', 'rfc:8446', 'pep:484', 'w3c:webauthn-2', 'acl:2024.acl-long.1', 'pmlr:v202/aamand23a',
                'cvf:content/CVPR2024/html/Zeng_Unmixing_Diffusion_CVPR_2024_paper',
                'judilibre:5fca56cd0a790c1ec36ddc07', 'legi:LEGIARTI000006438819', 'jorf:JORFTEXT000032004939',
@@ -47,9 +48,27 @@ class Test(unittest.TestCase):
         self.assertEqual(sorted(set(C.IDS) - kinds - {'pmid', 'doi', 'arxiv'}), [], 'a kind of validate_card.IDS without a test id')
         r = good(); r['studies'] = [dict(r['studies'][0], id=i, confidence=0.5) for i in ids]
         self.assertEqual(V.problems(r), [])
-        for bad in ('S1', 'celex:', 'foo:bar', 'nct:123', 'src/model.py@nothex', 'celex:62012CJ0131 extra'):
+        for bad in ('S1', 'celex:', 'foo:bar', 'nct:123', 'src/model.py@nothex', 'celex:62012CJ0131 extra', 'repo:o/n/a.py@main', 'repo:onlyowner@' + 'a' * 40):
             r['studies'][0]['id'] = bad
             self.assertTrue(any('studies[0].id' in p for p in V.problems(r)), bad)
+
+    def test_code_id_warnings(self):
+        """repo:<owner>/<name>/<path>@<40-hex SHA> is the complete form (no warning); an abbreviated SHA or a path without a repository stays
+        valid (no problem) but is warned, until the instructions change by duel (audit of 2026-10-31, section 6 item 1)."""
+        full = 'repo:alharkan7/beeblio/agent/lib/openalex.ts@22a8a77dcf8ecb39d2c4adf8142c19e8974de756'
+        self.assertEqual(V.code_warnings(full), [])
+        self.assertEqual(V.code_warnings('pmid:35589669'), []); self.assertEqual(V.code_warnings('osv:GHSA-p6mc-m468-83gw'), [])
+        self.assertEqual(V.code_warnings('local:lib/x.py@' + 'a' * 40), [])
+        w = V.code_warnings('src/model.py@0123abc')
+        self.assertEqual(len(w), 2, w); self.assertIn('abbreviated SHA (7 hex characters', w[0]); self.assertIn('no repository named', w[1])
+        self.assertEqual(len(V.code_warnings('src/model.py@' + 'b' * 40)), 1)
+        self.assertIn('abbreviated SHA (8', V.code_warnings('repo:alharkan7/beeblio/LICENSE.md@22a8a77d')[0])
+        self.assertIn('abbreviated SHA (20', V.code_warnings('local:lib/x.py@0123456789abcdef0123')[0])
+        r = good(); r['studies'] = [dict(r['studies'][0], id=i, confidence=0.5) for i in (full, 'src/model.py@0123abc')]
+        self.assertEqual(V.problems(r), [])
+        ws = V.warnings(r)
+        self.assertEqual(len(ws), 2, ws); self.assertTrue(all(x.startswith('studies[1].id: ') for x in ws), ws)
+        self.assertEqual(V.warnings(good()), []); self.assertEqual(V.warnings([]), [])
 
 
 if __name__ == '__main__':

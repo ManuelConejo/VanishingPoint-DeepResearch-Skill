@@ -3,8 +3,8 @@
 references, related) of doi:, pmid: and arXiv ids. Europe PMC, OpenCitations, Crossref and OpenAlex, each record dated < T."""
 import re
 import urllib.error, urllib.parse, urllib.request
-from sources._common import _mailto, jget, year_before_T
-from sources.arxiv import _arxiv_ok
+from sources._common import _mailto, arxiv_id, jget, year_before_T
+from sources.arxiv import _arxiv_ok, read_arxiv
 from sources.crossref import cr_item, crossref_batch, crossref_deposit
 from sources.datacite import datacite_read
 from sources.europepmc import EPMC, epmc_date, epmc_item, epmc_resolve
@@ -16,6 +16,7 @@ def read_doi(ident, B):
     """A DOI (doi:10.x or bare), or any identifier no other source claims (OpenAlex W id): Europe PMC core abstract, else OpenAlex
     (abstract rebuilt, Crossref deposit AND publication < T), else Crossref."""
     ident = ident.strip()
+    if arxiv_id(ident): return read_arxiv(_as_arxiv(ident), B)        # arXiv DOI: v1 notice and abstract, arXiv barrier (as read arxiv:)
     doi = ident[4:] if ident.lower().startswith('doi:') else ident
     r = jget('https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&resultType=core&pageSize=1&query=' + urllib.parse.quote(f'DOI:"{doi}"'))
     res = r.get('resultList', {}).get('result', [])
@@ -38,6 +39,12 @@ def read_doi(ident, B):
     return dict(it, abstract=' '.join(m for _, m in pos)[:6000] or '(no abstract available)')
 
 
+def _as_arxiv(ident):
+    """doi:10.48550/arXiv.<id> (or an arxiv.org URL) -> arxiv:<id>; any other identifier unchanged."""
+    ax = arxiv_id(ident)
+    return f'arxiv:{ax}' if ax else ident
+
+
 def _datacite_or(doi, B, refusal):
     """A DOI Crossref does not attest may be a DataCite DOI (dataset, software, arXiv, Zenodo): its DataCite record under the same barrier
     (issued, created AND registered < T), else the original refusal."""
@@ -58,6 +65,7 @@ def doi_of(ident, B):
 def citing_doi(ident, n, B):
     """Citing works of doi:, pmid:, arxiv: (and of every identifier handed to the default source): Europe PMC, then OpenCitations with a
     Crossref recheck, then OpenAlex cites: (each citing work dated < T)."""
+    ident = _as_arxiv(ident)
     if ident.lower().startswith('arxiv:'):
         if not _arxiv_ok(ident, B): return [], 'document after T or forbidden'
         w = oa_work(ident)
@@ -89,6 +97,7 @@ def citing_doi(ident, n, B):
 def references_doi(ident, n, B):
     """References of doi:, pmid:, arxiv:: Europe PMC, then Crossref, then OpenAlex; a reference without identifier is kept only when its
     year is strictly before the year of T."""
+    ident = _as_arxiv(ident)
     if ident.lower().startswith('arxiv:'):
         if not _arxiv_ok(ident, B): return [], 'document after T or forbidden'
         return _references_openalex(oa_work(ident), n, B)
@@ -142,8 +151,8 @@ def _oc_total(more, out, total):
 
 def related_doi(ident, n, B):
     """OpenAlex related_works of a work dated < T (arXiv: v1 < T; other: OpenAlex publication date < T); each related work rechecked like an
-    OpenAlex search result (publication < T, then Crossref deposit AND publication < T; no Crossref DOI -> refused)."""
-    s = ident.strip().lower()
+    OpenAlex search result (publication < T, then Crossref deposit AND publication < T; no Crossref DOI -> refused, arXiv work -> arxiv:<id>)."""
+    ident = _as_arxiv(ident); s = ident.strip().lower()
     if s.startswith('arxiv:'):
         if not _arxiv_ok(ident, B): return [], 'document after T or forbidden'
     w = oa_work(ident.strip())

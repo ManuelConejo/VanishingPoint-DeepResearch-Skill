@@ -80,6 +80,34 @@ class T(unittest.TestCase):
         self.assertNotRegex(S.render(x), r'\bhigh\b'); self.assertNotIn('23 of 23 checked', S.render(x))
         self.assertIn('23 of the 23 claims kept in verdicts.json (raw verifier output missing', S.render(x))
 
+    def test_contradictor_additions_counted(self):
+        """Defect of 2026-10-31 (essai-contra-offre-29-10, run B): the claims the contradictor added are verified apart (verifier.py verify on
+        card-contradictor.json --out verdicts-contradictor.json, without --state, SKILL.md "On request after delivery") then merged into
+        verdicts.json; state/verifier.json keeps the first pass only. SUMMARY.md read "13 of 13" for 17 claims checked, and the removals
+        were under-counted by the number of claims added."""
+        kept = [{'id': f'A{i}', 'status': 'FOUND'} for i in range(1, 24)]
+        added = [{'id': f'C{i}', 'status': 'FOUND'} for i in range(1, 4)] + [{'id': 'C4', 'status': 'DISTORTED'}]
+        (self.d / 'verdicts.json').write_text(json.dumps({'claims': kept + added}))
+        (self.d / 'state' / 'verifier.json').write_text(json.dumps({'summary': {'FOUND': 23, 'ABSENT': 18}, 'cost_usd': 1.0}))
+        (self.d / 'verdicts-contradictor.json').write_text(json.dumps({'claims': added, 'summary': {'FOUND': 3, 'DISTORTED': 1, 'ABSENT': 0},
+                                                                         'cost_usd': 0.25, 'filter': {'removed': []}}))
+        x = S.build(self.d)
+        self.assertEqual((x['claims'], x['found'], x['counts']['DISTORTED'], x['removed'], x['contradictor_checked']), (45, 26, 1, 18, 4))
+        self.assertEqual((x['cost_usd'], x['cost_kind']), (1.25, 'partial'))
+        t = S.render(x)
+        self.assertIn('26 of 45 checked (57 %)', t); self.assertIn('18 removed from the report after verification', t)
+        self.assertIn('4 checked after the contradictor', t); self.assertLessEqual(len(t.splitlines()), 6)
+        for lang in ('fr', 'es', 'de'): self.assertIn('4', S.render(S.build(self.d, lang=lang)).splitlines()[1])
+        # no summary in verdicts-contradictor.json: its claims plus the removed claims it lists, by id
+        (self.d / 'verdicts-contradictor.json').write_text(json.dumps({'claims': added, 'filter': {'removed': [{'id': 'C5', 'status': 'ABSENT'}]}}))
+        x = S.build(self.d); self.assertEqual((x['claims'], x['contradictor_checked'], x['removed']), (46, 5, 19))
+        # verdicts.json alone (no raw first pass): the merged claims are already there, never counted twice
+        (self.d / 'state' / 'verifier.json').unlink()
+        x = S.build(self.d); self.assertEqual((x['counts_basis'], x['claims']), ('verdicts', 27))
+        # no contradictor: unchanged
+        (self.d / 'verdicts-contradictor.json').unlink()
+        self.assertEqual(S.build(self.d)['contradictor_checked'], 0)
+
     def test_costs_pdf_french(self):
         (self.d / 'state' / 'verifier.json').write_text(json.dumps({'cost_usd': 0.42}))
         (self.d / 'REPORT.pdf').write_bytes(b'%PDF-1.4')

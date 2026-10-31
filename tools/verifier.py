@@ -363,7 +363,9 @@ def load_code(c, desc, ref, repos, gateway, out_dir, run_dir):
                 txt, rec = t, dict(kept, kept=True)
     if txt is None: return None, 'missing', 'code source not read: ' + rec.get('reason', 'unknown'), rec
     where = rec.get('repo') or rec.get('origin') or ''
-    return txt, 'fulltext', f"(whole file {rec['path']} at {str(rec.get('commit'))[:12]}, {rec['method']}{' in ' + where if where else ''})", rec
+    lc = rec.get('line_check') or {}
+    bad = f"; cited line {lc['line']}{'-' + str(lc['end']) if lc['end'] != lc['line'] else ''} out of bounds ({lc['lines_in_file']} lines)" if lc.get('status') == 'out_of_bounds' else ''
+    return txt, 'fulltext', f"(whole file {rec['path']} at {str(rec.get('commit'))[:12]}, {rec['method']}{' in ' + where if where else ''}{bad})", rec
 
 
 def load_sources(card, sources_dir=None, gateway=None, fulltext=False, out_dir=None, T=None, fulltext_cap=None, repos=None, run_dir=None):

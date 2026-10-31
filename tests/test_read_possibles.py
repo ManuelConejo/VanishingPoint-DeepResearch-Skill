@@ -38,7 +38,7 @@ class Base(unittest.TestCase):
         # pmid:777 already read through the gateway (search pool): not read again
         (self.d / 'state' / 'journal.jsonl').write_text(json.dumps({'run': 'r', 'call': 'read', 'query': 'pmid:777', 'ids': ['pmid:777'], 'error': None}) + '\n')
         self.calls = []
-        self.saved = {k: getattr(gw, k) for k in ('fetch', 'jget', 'pubmed_summ')}
+        self.saved = {k: getattr(gw, k) for k in ('fetch', 'jget', 'pubmed_summ', 'read_arxiv')}
 
         def summ(ids, B):   # 666 is dated after T: refused by the barrier
             self.calls.append(('esummary', list(ids)))
@@ -164,6 +164,78 @@ class Fetch(Base):
         self.assertEqual(md.count('\n## '), 2, md)
         for forged in ('doi:10.9/oa', 'doi:10.9/t', 'doi:10.9/ab'):
             self.assertNotIn('\n## ' + forged, md)
+
+
+class Bounds(Base):
+    """Defects of 2026-10-31: the run's lower bound (`since`, gateway --since or a plugin's `since:`) was never passed to the barrier, and
+    `skipped_other_ids` stayed 0 whatever the identifiers given to fetch()."""
+    def test_since_reaches_the_barrier(self):
+        seen = []
+
+        def summ(ids, B):
+            seen.append(B.since)
+            return [{'id': f'pmid:{i}', 'doi': None, 'title': f'T{i}', 'year': '2010'} for i in ids]
+        gw.pubmed_summ = summ
+        (self.d / 'searches' / '1.md').write_text('- pmid:111 | t | 2010 | title | possible\n'); (self.d / 'searches' / '2.md').write_text('')
+        s = R.run(self.d, '2020-01-01', 'r', self.d / 'state', since='2015')
+        self.assertEqual((seen, s['since']), ([2015], 2015))
+        last = json.loads((self.d / 'state' / 'journal.jsonl').read_text().splitlines()[-1])
+        self.assertEqual(last['since'], 2015)
+
+    def test_since_from_plugins_like_the_gateway(self):
+        pl = self.d / 'p.md'
+        pl.write_text('# P\n```sources\nengines: pubmed\nsince: 2012\n```\n')
+        self.assertEqual(R.lower_bound(None, [pl]), 2012)
+        self.assertEqual(R.lower_bound('2016', [pl]), 2016)          # an explicit --since wins, as in gateway.Gateway
+        self.assertIsNone(R.lower_bound(None, []))
+
+    def test_barrier_since_refuses_older_records(self):
+        (self.d / 'searches' / '1.md').write_text('- doi:10.1002/old | t | 2001 | title | possible\n'); (self.d / 'searches' / '2.md').write_text('')
+        gw.jget = lambda url: {'resultList': {'result': [{'doi': '10.1002/old', 'title': 'Old', 'pubYear': '2001', 'firstPublicationDate': '2001-02-01',
+                                                          'abstractText': 'Old.'}]}} if 'ebi' in url else {'results': []}
+        self.assertEqual(R.run(self.d, '2020-01-01', 'r', self.d / 'state')['served'], 1)
+        self.assertEqual(R.run(self.d, '2020-01-01', 'r2', self.d / 'state2', since=2010)['served'], 0)
+
+    def test_skipped_other_ids_counted(self):
+        gw.read_arxiv = lambda ident, B: {'refusal': 'not found'}   # arxiv: is read since the security review of 2026-10-31 (item 8)
+        recs, c = R.fetch(['pmid:111', 'arxiv:2101.00001', 'nct01234567'], gw.Barrier('2020-01-01'))
+        self.assertEqual(c['skipped_other_ids'], 1)
+        self.assertEqual([r['id'] for r in recs], ['pmid:111'])
+
+    def test_counts_keys_stable_without_candidates(self):
+        (self.d / 'searches' / '1.md').write_text(''); (self.d / 'searches' / '2.md').write_text('')
+        s = R.run(self.d, '2020-01-01', 'r', self.d / 'state')
+        self.assertEqual(s['skipped_other_ids'], 0)
+
+    def test_cli_since_option(self):
+        import subprocess
+        (self.d / 'searches' / '1.md').write_text(''); (self.d / 'searches' / '2.md').write_text('')
+        r = subprocess.run([sys.executable, '-I', str(P.parent / 'tools' / 'read_possibles.py'), '--dir', str(self.d), '--T', '2020-01-01',
+                            '--run', 'r', '--state', str(self.d / 'state'), '--since', '2015'], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads((self.d / 'state' / 'possibles.json').read_text())['since'], 2015)
+        r = subprocess.run([sys.executable, '-I', str(P.parent / 'tools' / 'read_possibles.py'), '--dir', str(self.d), '--T', '2020-01-01',
+                            '--run', 'r', '--state', str(self.d / 'state'), '--since', 'abc'], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 2)
+
+
+class ArxivCandidates(Base):
+    """Security review of 2026-10-31, item 8: OpenAlex serves arxiv:<id> works, which were counted in skipped_other_ids and never read."""
+    def test_arxiv_candidates_read_through_read_arxiv(self):
+        seen = []
+
+        def read_arxiv(ident, B):
+            seen.append(ident)
+            if ident != 'arxiv:2101.00001': return {'refusal': 'after T or forbidden'}
+            return {'id': ident, 'doi': None, 'title': '<b>Widgets</b>', 'year': '2019', 'abstract': 'We survey widgets.'}
+        gw.read_arxiv = read_arxiv
+        (self.d / 'searches' / '1.md').write_text('- arxiv:2101.00001v2 | t | 2019 | title | possible\n- arXiv:2102.00002 | t | 2019 | title | probable\n')
+        (self.d / 'searches' / '2.md').write_text('')
+        s = R.run(self.d, '2022-01-01', 'r', self.d / 'state')
+        self.assertEqual(seen, ['arxiv:2101.00001', 'arxiv:2102.00002'])          # version dropped, one reading each
+        self.assertEqual((s['served'], s['skipped_other_ids'], s['refused_or_missing']), (1, 0, 1))
+        md = (self.d / 'state' / 'possibles.md').read_text()
+        self.assertIn('## arxiv:2101.00001 | 2019 | Widgets', md); self.assertIn('We survey widgets.', md)
 
 
 class Borderline(unittest.TestCase):

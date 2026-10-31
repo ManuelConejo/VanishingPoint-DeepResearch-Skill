@@ -21,15 +21,20 @@ def search_crossref(q, n, B):
 
 def crossref_deposit(items, B):
     """OpenAlex has no reliable indexing date: every returned DOI is rechecked on Crossref (deposit AND publication < T).
-    Without DOI, or DOI absent from Crossref: refused (strict)."""
+    Without DOI, or DOI absent from Crossref: refused (strict). An arxiv:<id> item (oa_item: dated by its identifier, no Crossref deposit
+    exists for an arXiv DOI) is never sent to Crossref: it passes when its arXiv record names no forbidden venue DOI nor title (arxiv_recheck)."""
     dois = [x['id'][4:] for x in items if x['id'].startswith('doi:')]
     ok = set()
     for i in range(0, len(dois), 40):
         f = ','.join('doi:' + x for x in dois[i:i + 40])
         m = jget('https://api.crossref.org/works?rows=100&select=DOI,title,issued,created&filter=' + urllib.parse.quote(f, safe=':,') + _mailto())['message']
         ok |= {it['DOI'].lower() for it in m.get('items', []) if cr_item(it, B)}
-    kept = [x for x in items if x['id'].startswith('doi:') and x['id'][4:].lower() in ok]
-    B.excluded += len(items) - len(kept)
+    ax = [x for x in items if x['id'].startswith('arxiv:')]
+    if ax:
+        from sources.arxiv import arxiv_recheck   # late import: sources.arxiv does not import this module, the order stays free
+        ax_kept = arxiv_recheck(ax, B)            # counts its own refusals in B.excluded
+    kept = [x for x in items if (x['id'].startswith('arxiv:') and x in ax_kept) or (x['id'].startswith('doi:') and x['id'][4:].lower() in ok)]
+    B.excluded += len(items) - len(kept) - (len(ax) - len(ax_kept) if ax else 0)
     return kept
 
 
