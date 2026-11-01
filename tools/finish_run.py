@@ -10,6 +10,11 @@ validate_result (no result.json in that mode).
 Runs, in this order, each step whatever the others gave (status ok | problems | skipped, with the reason):
   1 validate_card.py DIR --header (--header skipped without state/journal.jsonl)   2 validate_result.py DIR/result.json
   3 retraction check (below; writes DIR/retractions.json)   4 law_checks.py DIR (only when a law plugin is used: --plugin, else scope.md)
+  4b code plugin only (--plugin code, else scope.md, capsule or mechanisms.json): tools/check_code_refs.py DIR (code references: repository,
+  commit, file, lines, snippets, licence at the commit -> DIR/code-refs.json) and tools/check_code_facts.py DIR [--T] (licence, archived, last
+  commit, pushed_at, OSV advisories -> DIR/code-facts.json), --offline passed on (references unchecked, facts UNCHECKABLE: network); then the
+  mechanical caps of the GO verdicts of mechanisms.json (rule 2 licence not confirmed, rule 3 seam missing, scope missing; capsule not
+  reviewed as a label) -> DIR/code-guards.json. Labels only, never blocking, the run files are not rewritten.
   5 export_report.py DIR --pdf --open (with the cited passages under each bibliography entry)   6 export_data.py DIR (also passages.json,
   PASSAGES.md: tools/passages.py)   7 a follow-up run only (followup.json, tools/followup.py), validation passed: copies REPORT.md / .html / .pdf
   to <parent>/FOLLOWUP-<n>.md / .html / .pdf (never a parent file)   8 --summary only (off by default; command-line tool, not used by the
@@ -147,6 +152,86 @@ def law_used(d, plugins):
     return s.exists() and bool(re.search(r'\bplugins?\b[^\n.]{0,40}\blaw\b|plugins/law\.md', s.read_text(encoding='utf-8', errors='replace'), re.I))
 
 
+def code_used(d, plugins):
+    """The code plugin is used: --plugin code, else scope.md names plugins/code.md, else the run holds a capsule or a mechanisms.json."""
+    if plugins: return any(pathlib.Path(p).stem == 'code' for p in plugins)
+    s = d / 'scope.md'
+    return (d / 'mechanisms.json').is_file() or (d / 'capsule.json').is_file() or (d / 'capsule.md').is_file() or \
+        (s.exists() and bool(re.search(r'plugins/code\.md|\bplugins?\b[^\n.]{0,40}\bcode\b', s.read_text(encoding='utf-8', errors='replace'), re.I)))
+
+
+GO = re.compile(r'^\W*GO\b')                                                 # a GO verdict (never NO-GO)
+X_REF = re.compile(r'(?:local:)?((?:[\w.-]+/)*[\w.-]+):\d+(?:-\d+)?@([0-9a-f]{7,40})')
+
+
+def code_guards(d, facts, refs):
+    """Mechanical caps of the GO verdicts of mechanisms.json (plugins/code.md, verification rules 2 and 3, framing): a GO whose licence is not
+    confirmed by check_code_facts (rule 2: SOURCE-UNAVAILABLE, GO not allowed), whose x_seam cites no file:line@SHA or a reference that
+    check_code_refs found absent (rule 3: `seam missing`, at most WATCH), or in a run whose scope.md is missing or holds no GO / WATCH / NO-GO
+    scale (`scope missing`, GO not allowed). `capsule not reviewed` is reported as a label only (no rule ties it to the verdict). Labels only:
+    the files are never rewritten. -> {'labels': [...], 'go': n, 'go_capped': n}."""
+    try: mechs = json.loads((d / 'mechanisms.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError): return None
+    if not isinstance(mechs, list): return None
+    run_labels, out = [], []
+    scope = d / 'scope.md'
+    st = scope.read_text(encoding='utf-8', errors='replace') if scope.exists() else None
+    if st is None: run_labels.append('scope missing (no scope.md): GO not allowed')
+    elif not any(all(re.search(r'\b' + w + r'\b', l) for w in ('GO', 'WATCH', 'NO-GO')) for l in st.split('\n\n')):
+        run_labels.append('scope missing (scope.md holds no GO / WATCH / NO-GO scale): GO not allowed')
+    cap = next((d / n for n in ('capsule.md', 'capsule.json') if (d / n).exists()), None)
+    if cap and re.search(r'not reviewed|reviewed_by_owner"?\s*:\s*"?(?:no|false)\b', cap.read_text(encoding='utf-8', errors='replace'), re.I):
+        run_labels.append('capsule not reviewed (label, plugins/code.md "Context capsule")')
+    failed = [(r.get('path'), str(r.get('sha') or '')) for r in (refs or {}).get('refs') or [] if r.get('status') == 'failed' and r.get('path')]
+    absent = lambda ref: any(p == ref[0] and (h.startswith(ref[1]) or ref[1].startswith(h)) for p, h in failed)
+    for i, m in enumerate(mechs):
+        if not isinstance(m, dict) or not GO.match(str(m.get('verdict') or '')): continue
+        why = [x for x in run_labels if 'GO not allowed' in x]
+        lic = [f for f in (facts or {}).get('facts') or [] if f.get('type') == 'licence' and any(w.endswith(f'mechanisms.json:[{i}].licence') for w in f.get('where') or [])]
+        if not facts: why.append('licence not checked (check_code_facts did not run): rule 2, GO not allowed until the licence is read')
+        elif not lic: why.append('licence field names no licence check_code_facts can read: rule 2 (SOURCE-UNAVAILABLE), GO not allowed')
+        elif not all(f.get('status') == 'CONFIRMED' for f in lic):
+            why.append('licence ' + ', '.join(f"{f.get('claimed')} {f.get('status')}" + (f" ({f.get('reason_type')})" if f.get('reason_type') else '') for f in lic)
+                       + ': rule 2, GO not allowed')
+        seam = str(m.get('x_seam') or '')
+        refs_here = [(x.group(1), x.group(2)) for x in X_REF.finditer(seam)]
+        if not refs_here: why.append('seam missing (x_seam cites no file:line@SHA): rule 3, at most WATCH')
+        elif any(absent(r) for r in refs_here): why.append('seam missing (x_seam reference not found at the SHA by check_code_refs): rule 3, at most WATCH')
+        out.append({'mechanism': i, 'name': str(m.get('mechanism') or '')[:80], 'verdict': str(m.get('verdict'))[:40], 'caps': why})
+    return {'labels': run_labels, 'go': len(out), 'go_capped': sum(1 for x in out if x['caps']), 'mechanisms': out}
+
+
+def code_checks(d, T, offline, step, files):
+    """check_code_refs.py and check_code_facts.py on the run (code plugin): outputs code-refs.json / code-facts.json, a summary line each,
+    then code_guards. Never blocking: no network = references unchecked and facts UNCHECKABLE (network), said in the line."""
+    reps = {}
+    for name, tool, extra in (('code_refs', 'check_code_refs.py', []), ('code_facts', 'check_code_facts.py', ['--T', T] if T else [])):
+        c, o = _run([tool, d] + extra + (['--offline'] if offline else []))
+        try: rep = json.loads(o[o.index('{'):]) if c in (0, 1) else None
+        except ValueError: rep = None
+        if rep is None:
+            step(name, 'skipped' if c == 2 else 'problems', (o.splitlines() or [''])[-1][:300]); continue
+        out = d / (name.replace('_', '-') + '.json')
+        out.write_text(json.dumps(rep, ensure_ascii=False, indent=1), encoding='utf-8'); reps[name] = rep
+        sm = rep.get('summary') or {}
+        if name == 'code_refs':
+            line = (f"{sm.get('references', 0)} references: {sm.get('verified', 0)} verified, {sm.get('failed', 0)} failed, {sm.get('unchecked', 0)} unchecked; "
+                    f"snippets {sm.get('snippets_found', 0)}/{sm.get('snippets', 0)} found" + ('; offline: unchecked' if offline else ''))
+            bad = sm.get('failed') or rep.get('errors')
+        else:
+            line = (f"{sm.get('facts', 0)} facts: {sm.get('confirmed', 0)} CONFIRMED, {sm.get('contradicted', 0)} CONTRADICTED, {sm.get('uncheckable', 0)} UNCHECKABLE"
+                    + (f" {sm.get('uncheckable_reasons')}" if sm.get('uncheckable_reasons') else '') + (f"; {sm.get('unparsed')} unparsed" if sm.get('unparsed') else ''))
+            bad = sm.get('contradicted')
+        step(name, 'problems' if bad else 'ok', line, [str(out)])
+    g = code_guards(d, reps.get('code_facts'), reps.get('code_refs'))
+    if g is None: step('code_guards', 'skipped', 'no mechanisms.json'); return
+    capped = [x for x in g['mechanisms'] if x['caps']]
+    step('code_guards', 'problems' if capped or any('GO not allowed' in x for x in g['labels']) else 'ok',
+         f"{g['go']} GO verdict(s), {g['go_capped']} capped" + (f"; labels: {'; '.join(g['labels'])}" if g['labels'] else '')
+         + ''.join(f"\n  [{x['mechanism']}] {x['name']}: " + ' | '.join(x['caps']) for x in capped))
+    (d / 'code-guards.json').write_text(json.dumps(g, ensure_ascii=False, indent=1), encoding='utf-8'); files.append(str(d / 'code-guards.json'))
+
+
 def verification(d):
     """Summary of DIR/state/verifier.json (written by verifier.py --state), or None when the verifier left no receipt."""
     try: v = json.loads((d / 'state' / 'verifier.json').read_text(encoding='utf-8'))
@@ -218,6 +303,8 @@ def finish(d, T=None, plugins=(), offline=False, rw_csv=None, prisma=False, foll
         step('law_checks', st if c4 == 0 else 'problems', o if s is None else f"to_apply {s.get('to_apply')}, to_flag {s.get('to_flag')} (applied by the orchestrator, SKILL.md section 7)",
              [s['out']] if s and s.get('out') else [])
     else: step('law_checks', 'skipped', 'no law plugin (--plugin or scope.md)')
+    # 4b code plugin: code references and repository facts checked mechanically, GO verdicts capped by labels (never blocking)
+    if code_used(d, plugins): code_checks(d, T, offline, step, files)
     # optional: PRISMA flow diagram, follow-up questions (before the exports, which append them to REPORT.html)
     for flag, name in ((prisma, 'prisma'), (followups, 'followups')):
         if flag:

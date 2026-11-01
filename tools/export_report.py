@@ -402,6 +402,13 @@ def extras(folder, prisma=False, followups=False):
             out.append(('prisma', 'PRISMA 2020 flow diagram', f'<div class="tw">{_pr.svg(data)}</div><p class="pre">{html.escape(_pr.DEFINITIONS)}</p>'))
         except Exception as e:
             out.append(('prisma', 'PRISMA 2020 flow diagram', f'<p class="pre">Not produced: {html.escape(type(e).__name__)}.</p>'))
+        try:
+            ps = _pr.prisma_s(folder)
+            body = ''.join(f'<p class="pre"><b>{it["n"]}. {html.escape(it["title"])}</b>: {html.escape(it["status"])}</p>' if it['status'] != 'filled' and not it['text'] else
+                           f'<p><b>{it["n"]}. {html.escape(it["title"])}</b>' + (f': {html.escape(it["status"])}' if it['status'] != 'filled' else '') + '</p><ul>' + ''.join(f'<li>{html.escape(x)}</li>' for x in it['text']) + '</ul>' for it in ps['items'])
+            out.append(('prisma-s', 'PRISMA-S: reporting of the literature searches', f'<p class="pre">{html.escape(ps["reference"])}</p>{body}'))
+        except Exception as e:
+            out.append(('prisma-s', 'PRISMA-S: reporting of the literature searches', f'<p class="pre">Not produced: {html.escape(type(e).__name__)}.</p>'))
     if followups:
         try:
             import followups as _fu

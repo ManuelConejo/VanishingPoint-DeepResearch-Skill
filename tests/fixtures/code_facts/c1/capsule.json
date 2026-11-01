@@ -1,0 +1,100 @@
+{
+ "Y": {
+  "licence": "to read",
+  "repo": "github.com/searxng/searxng",
+  "sha": "c15647b5a5921858d5147d291c658fbda3cba12c",
+  "sha_source": "given by the engine (gateway reading)"
+ },
+ "built_by": "engine (--auto), from the request; not reviewed by the owner",
+ "entry_points": {
+  "limits": [
+   "pyproject.toml: read truncated at 4096 bytes",
+   "pyproject.toml: not parsed (truncated or invalid), lexical fallback only",
+   "lexical parsers only: entry points computed at runtime (dynamic setup.py) are not seen"
+  ],
+  "list": []
+ },
+ "identity": {
+  "bytes": 746154,
+  "commit_date": "2026-10-19T20:19:58+02:00",
+  "files": 59,
+  "repo": "proj",
+  "sha": "5c13c8e0b4bc5faa54914115a8c796934ba6da9d",
+  "tree_sha256": "ab760569763394e40e4584ec07a968f7043400cde74264150281ff3464036388"
+ },
+ "intention": "What could my project (hynek/stamina, the current directory) reuse from https://github.com/searxng/searxng at commit c15647b5a5921858d5147d291c658fbda3cba12c, in particular its outgoing-request resilience (searx/network/, engine suspension after errors)? For each reusable mechanism, give code references pinned to a commit and say whether and how it can be reused.",
+ "intention_status": "inferred from the request",
+ "license": {
+  "file": "LICENSE",
+  "first_line": "MIT License",
+  "spdx_guess": "MIT"
+ },
+ "meta": {
+  "generated_utc": "2026-10-31T00:05:24+00:00",
+  "toml_parser": "tomllib",
+  "tool": "code_capsule.py"
+ },
+ "mode": "Y given",
+ "modules": {
+  "list": [
+   {
+    "bytes": 50562,
+    "files": 12,
+    "language": "python",
+    "path": "src/stamina"
+   },
+   {
+    "bytes": 11087,
+    "files": 6,
+    "language": "python",
+    "path": "src/stamina/instrumentation"
+   },
+   {
+    "bytes": 68475,
+    "files": 8,
+    "language": "python",
+    "path": "tests"
+   },
+   {
+    "bytes": 4949,
+    "files": 3,
+    "language": "python",
+    "path": "typing_tests"
+   }
+  ],
+  "total": 4,
+  "truncated": false
+ },
+ "refusals": [],
+ "refusals_status": "none recorded: implicit authorisation",
+ "registry": null,
+ "request_date": "2026-10-31",
+ "reviewed_by_owner": "no",
+ "target_seam": [
+  {
+   "status": "proposed, not reviewed",
+   "where": "src/stamina/_core.py:44@5c13c8e0b4bc",
+   "why": "module src/stamina (python, 12 files, 50562 bytes); source file of 30670 bytes; first top-level definition"
+  },
+  {
+   "status": "proposed, not reviewed",
+   "where": "src/stamina/_config.py:23@5c13c8e0b4bc",
+   "why": "module src/stamina (python, 12 files, 50562 bytes); source file of 5429 bytes; first top-level definition"
+  },
+  {
+   "status": "proposed, not reviewed",
+   "where": "src/stamina/exceptions.py:10@5c13c8e0b4bc",
+   "why": "module src/stamina (python, 12 files, 50562 bytes); source file of 2196 bytes; first top-level definition"
+  }
+ ],
+ "target_seam_status": "proposed, not reviewed",
+ "tests": {
+  "directories": [
+   {
+    "path": "tests",
+    "test_files": 6
+   }
+  ],
+  "test_files": 6
+ }
+}

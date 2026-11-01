@@ -1,0 +1,21 @@
+{
+ "card_id": "c3",
+ "question": "As of 2024-12-01, which known security vulnerabilities affect jinja2==3.1.2 and urllib3==1.26.15 (PyPI)? List every advisory with its identifiers (GHSA, CVE, PYSEC) and the first fixed version.",
+ "sources": {
+  "S3": {"osv": "PYSEC-2023-192", "title": "PYSEC-2023-192 (CVE-2023-43804, urllib3)"},
+  "S4": {"osv": "PYSEC-2023-212", "title": "PYSEC-2023-212 (CVE-2023-45803, urllib3)"},
+  "S8": {"ghsa": "GHSA-g3rq-g295-4j3m", "title": "GHSA-g3rq-g295-4j3m (CVE-2020-28493, jinja2)"},
+  "S9": {"ghsa": "GHSA-462w-v97r-4m45", "title": "GHSA-462w-v97r-4m45 (CVE-2019-10906, jinja2)"},
+  "S10": {"ghsa": "GHSA-5phf-pp7p-vc2r", "title": "GHSA-5phf-pp7p-vc2r (CVE-2021-28363, urllib3)"},
+  "S11": {"ghsa": "GHSA-wqvq-5m8c-6g24", "title": "GHSA-wqvq-5m8c-6g24 (CVE-2020-26137, urllib3)"}
+ },
+ "claims": [
+  {"id": "A7", "text": "PYSEC-2023-192 (CVE-2023-43804) for urllib3 is fixed in 1.26.17 on the 1.26 line.", "source": {"key": "S3"}, "location": "record"},
+  {"id": "A8", "text": "PYSEC-2023-192 (CVE-2023-43804) for urllib3 is fixed in 2.0.6 on the 2.x line.", "source": {"key": "S3"}, "location": "record"},
+  {"id": "A10", "text": "PYSEC-2023-212 (CVE-2023-45803) for urllib3 is fixed in 1.26.18 on the 1.26 line.", "source": {"key": "S4"}, "location": "record"},
+  {"id": "A11", "text": "PYSEC-2023-212 (CVE-2023-45803) for urllib3 is fixed in 2.0.7 on the 2.x line.", "source": {"key": "S4"}, "location": "record"},
+  {"id": "A20", "text": "Verdict: GHSA-g3rq-g295-4j3m (CVE-2020-28493), stated as < 2.11.3, does not affect jinja2 3.1.2; established.", "source": {"key": "S8"}, "location": "Finding 4"},
+  {"id": "A21", "text": "Verdict: GHSA-5phf-pp7p-vc2r (CVE-2021-28363), stated as >= 1.26.0, < 1.26.4, does not affect urllib3 1.26.15; established.", "source": {"key": "S10"}, "location": "Finding 4"}
+ ],
+ "conclusion": "Two urllib3 advisories (PYSEC-2023-192, fixed in 1.26.17; PYSEC-2023-212, fixed in 1.26.18) are documented for urllib3 1.26.15; three further advisories returned for the pinned versions could not be verified because their records are masked; older advisories are ruled out by their stated ranges."
+}

@@ -165,8 +165,19 @@ class Offline(unittest.TestCase):
                 if home is not None: os.environ['HOME'] = home
 
     def test_dates(self):
-        self.assertEqual(gw.date_upper('2024 Feb'), dt.date(2024, 2, 28)); self.assertEqual(gw.date_upper('2024 Spring'), dt.date(2024, 12, 30))
+        self.assertEqual(gw.date_upper('2024 Feb'), dt.date(2024, 2, 29)); self.assertEqual(gw.date_upper('2023 Feb'), dt.date(2023, 2, 28))
+        self.assertEqual(gw.date_upper('2024 Spring'), dt.date(2024, 12, 31))
         self.assertEqual(gw.date_upper('2024/04/12 00:00'), dt.date(2024, 4, 12)); self.assertIsNone(gw.date_upper(''))
+
+    def test_date_upper_last_day_of_month(self):
+        # the upper bound of a month is its last day (calendar.monthrange): 31 for 31-day months, never 30 (arXiv lane: 2401.xxxxx -> 2024-01-31)
+        for s, want in (('2024-01', (2024, 1, 31)), ('2024-03', (2024, 3, 31)), ('2024-04', (2024, 4, 30)), ('2024-12', (2024, 12, 31)),
+                        ('2025-02', (2025, 2, 28)), ('2024-02', (2024, 2, 29)), ('2024 Oct', (2024, 10, 31)), ('2024', (2024, 12, 31)),
+                        ('2024-02-30', (2024, 2, 29)), ('2024-10-31', (2024, 10, 31))):
+            self.assertEqual(gw.date_upper(s), dt.date(*want), s)
+        self.assertIsNone(gw.date_upper('2024-13'))
+        self.assertFalse(gw.Barrier('2024-01-31').ok(None, '2024-01'))   # a January date may be the 31st = T: not provably before T
+        self.assertTrue(gw.Barrier('2024-02-01').ok(None, '2024-01'))
 
     def test_lower_bound(self):
         B = gw.Barrier('2026-01-01', since=2020)
@@ -219,7 +230,8 @@ class Offline(unittest.TestCase):
                 self.assertEqual(sorted(s['engines'] + s['not_wired'] + list(s['served_by'])), sorted(set(p['engines'])))
                 for m in s['not_wired']: self.assertIn('refusal', gw.Gateway([f], T=T, run='t-' + f.stem, state=d / 'state').search(m, 'x'))
         every = gw.Gateway(shipped, T=T, run='t-all', state=d / 'state').sources()
-        self.assertEqual(every['engines'], sorted(gw.ENGINES)); self.assertEqual(every['cap'], 60)
+        PENDING = {'wayback'}   # wired sources not yet declared by any plugin (a plugin changes only by a duel): the maintainer's level-1 decision of 2026-11-01, declaration pending
+        self.assertEqual(every['engines'], sorted(set(gw.ENGINES) - PENDING)); self.assertEqual(every['cap'], 60)
         template = plugins_dir / '_TEMPLATE.md'
         if template.exists(): self.assertTrue(gw.read_plugin(template)['declared'])   # the template has a block, with engines to fill in
 

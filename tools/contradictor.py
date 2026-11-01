@@ -204,7 +204,7 @@ def extracts(refs, xb, yb, window=40, whole_below=400):
         if not r['exists']: continue
         b = (xb if r['side'] == 'X' else yb)[r['path']]; n = len(b['lines'])
         a, z = (1, n) if n <= whole_below else (max(1, r['l1'] - window), min(n, r['l2'] + window))
-        tag = f"@{b['sha'][:12]}" if b['sha'] else ''
+        tag = f"@{b['sha']}" if b['sha'] else ''                     # the SHA in full, as cited
         blocks.append(f"=== {r['path']} {tag} (lines {a}-{z} of {n}) ===\n" + '\n'.join(f'{i}\t{b["lines"][i - 1]}' for i in range(a, z + 1)))
     return '\n\n'.join(blocks) or '(no readable extract)'
 
@@ -328,7 +328,7 @@ def contradictor_call(spec, prompt, d, name):
 # ------------------------------------------------------------------ the run
 def build_prompt(a, report, y, x, xb, yb):
     g = (HERE / 'prompts' / 'CONTRADICTOR.md').read_text()
-    y_shas = sorted({b['sha'][:12] for b in yb.values() if b['sha']}); x_shas = sorted({b['sha'][:12] for b in xb.values() if b['sha']})
+    y_shas = sorted({b['sha'] for b in yb.values() if b['sha']}); x_shas = sorted({b['sha'] for b in xb.values() if b['sha']})   # 40 hex in the expected form
     y_form = f"<path>:<line>@{' or @'.join(y_shas)}" if y_shas else ('arxiv:<id> (line N)' if any(b['kind'] == 'paper' for b in yb.values()) else '<path>:<line>@<SHA of Y>')
     x_sha = ' or '.join(x_shas) or '<SHA of X>'
     return W.fill(g, {'T': a.T, 'REQUEST': a.request, 'TARGET': a.target, 'Y_FORM': y_form, 'X_SHA': x_sha,

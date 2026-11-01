@@ -1,0 +1,24 @@
+{
+ "source": "state/journal.jsonl",
+ "run": [
+  "c4"
+ ],
+ "T": [
+  "2026-10-31"
+ ],
+ "calls": 18,
+ "calls_per_command": {
+  "repo-info": 5,
+  "repo-head": 4,
+  "versions": 6,
+  "provenance": 1,
+  "repo-file": 1,
+  "code-file": 1
+ },
+ "errors": 1,
+ "ids_seen": 5,
+ "calls_per_pool": {
+  "search": 17,
+  "verifier": 1
+ }
+}

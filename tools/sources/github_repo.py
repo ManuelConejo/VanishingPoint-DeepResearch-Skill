@@ -4,9 +4,12 @@ licence (at the commit when a SHA is given; without a SHA also the deps.dev proj
 [repo:]<owner>/<name>/<path>@<SHA> -> the whole file at that commit (raw host), dated by the commit. Bases in config.json github_repo; keyless
 (GitHub core quota without a token), the read-only VP_GITHUB_TOKEN sent to the API host only when already resolvable (KEYS.md). Identifier
 kind repo:<owner>/<name>/<path>@<SHA> (result.json; the card's `code` field). Client: code_sources.GitHubRepo over CodeClient.
-A named repository without a SHA (banc code 2026-10-31, defect 1): repo-head <owner>/<name> -> the last commit of the default branch dated
+A named repository without a SHA (internal code bench 2026-10-31, defect 1): repo-head <owner>/<name> -> the last commit of the default branch dated
 before T (gated like any commit); repo-info <owner>/<name> also gives that commit (`at_T`: SHA, committer date, SPDX licence at it);
-repo-tree <owner>/<name>[/<dir>]@<SHA> -> the file paths at the commit. Served with the plugin source `github` (enabled_by), or `github-repo`."""
+repo-tree <owner>/<name>[/<dir>]@<SHA> -> the file paths at the commit. Served with the plugin source `github` (enabled_by), or `github-repo`.
+Licence at a commit (repo-info @SHA, at_T): GitHub's detection (`licence`) AND the files read at the SHA (`licence_read`: licence files at the
+root identified by their opening words, the manifest's licence field as an SPDX expression - a dual licence "MIT OR Apache-2.0" kept whole -,
+licence files below the root (a directory under its own licence), README lines mentioning a licence), never judged."""
 import re
 import code_sources as sc
 
@@ -18,15 +21,16 @@ FILE_FORM = r'(?:repo:)?(' + sc.GH_REPO + r')/(\S+)@([0-9a-f]{7,40})'
 REPO_ID_FORM = sc.GH_REPO + r'/\S+@[0-9a-f]{7,40}'                    # repo:<owner>/<name>/<path>@<SHA> (40 hex expected; shorter = warning)
 
 
+def gated(gh, repo, r, B, extra):
+    """The barrier of a resolved commit (code_sources.GitHubRepo.barrier: gate, committer date before T, backdate signals) -> refusal text or None."""
+    return gh.barrier(repo, r, B, extra)
+
+
 def head_at_T(gh, repo, B):
     """The last commit of the default branch before T, gated (GitHubRepo.gate, then B.ok on its committer date): the resolved commit, or
     {'refusal': ...}."""
-    r = gh.head_before(repo, B.T)
-    if r is None: return {'refusal': f"no commit of the default branch dated before T among the {sc.GH['head_candidates']} newest listed before T (github_repo.head_candidates)"}
-    why = gh.gate(r, B.T)
-    if why: return {'refusal': 'after T or not datable: ' + why}
-    if not B.ok(None, r.get('date')): return {'refusal': 'after T: commit dated on/after T (or undated)'}
-    return r
+    r, why = gh.head_gated(repo, B)                                     # a candidate that entered the branch on/after T is skipped
+    return {'refusal': why} if why else r
 
 
 def run_repo_head(g, arg, n, opt, B, extra):
@@ -46,11 +50,11 @@ def run_repo_tree(g, arg, n, opt, B, extra):
     if prefix and not sc.path_ok(prefix.rstrip('/')): return {'refusal': 'expected a repository-relative directory (no absolute path, no . or .. segment)'}
     gh = sc.GitHubRepo(g.client, extra)
     r = gh.resolve(repo, sha)
-    why = gh.gate(r, B.T)
-    if why: return {'refusal': 'after T or not datable: ' + why}
-    if not B.ok(None, r.get('date')): return {'refusal': 'after T: commit dated on/after T (or undated)'}
+    why = gated(gh, repo, r, B, extra)
+    if why: return {'refusal': why}
     t = gh.tree(repo, r['sha'], prefix or '')
-    return dict(t, id=f"repo:{repo}@{r['sha']}", repo=repo, sha=r['sha'], date=r['date'], directory=prefix or '', membership=r['membership'])
+    return dict(t, id=f"repo:{repo}@{r['sha']}", repo=repo, sha=r['sha'], date=r['date'], directory=prefix or '', membership=r['membership'],
+                backdate_check=r.get('backdate_check'))
 
 
 def run_repo_info(g, arg, n, opt, B, extra):
@@ -63,17 +67,26 @@ def run_repo_info(g, arg, n, opt, B, extra):
         x = gh.info(repo); x['licence'] = gh.licence(repo); x['deps_dev'] = gh.project(repo)   # deps.dev: licence + Scorecard, never blocking
         try:
             h = head_at_T(gh, repo, B)
-            at = h if 'refusal' in h else {'last_commit': {'sha': h['sha'], 'date': h['date'], 'id': f"repo:{repo}@{h['sha']}", 'membership': h['membership']},
-                                           'licence': gh.licence(repo, h['sha'])}
+            if 'refusal' in h: at = h
+            else:
+                lic = gh.licence(repo, h['sha'])
+                at = {'last_commit': {'sha': h['sha'], 'date': h['date'], 'id': f"repo:{repo}@{h['sha']}", 'membership': h['membership']},
+                      'licence': lic, 'licence_read': read_licence(gh, repo, h['sha'], lic)}
         except (ValueError, RuntimeError) as e: at = {'status': 'unavailable', 'reason': str(e)}
         extra['warning'] = ('repository metadata and licence are current (as_of "now"), not as of T (archived included: GitHub gives no archiving date); '
                             '`at_T` = last commit of the default branch before T and the licence at it')
         return dict(x, as_of='now', at_T=at)
     r = gh.resolve(repo, sha)
-    why = gh.gate(r, B.T)
-    if why: return {'refusal': 'after T or not datable: ' + why}
-    if not B.ok(None, r.get('date')): return {'refusal': 'after T: commit dated on/after T (or undated)'}
-    return dict(r, licence=gh.licence(repo, r['sha']), id=f"repo:{repo}@{r['sha']}")
+    why = gated(gh, repo, r, B, extra)
+    if why: return {'refusal': why}
+    lic = gh.licence(repo, r['sha'])
+    return dict(r, licence=lic, licence_read=read_licence(gh, repo, r['sha'], lic), id=f"repo:{repo}@{r['sha']}")
+
+
+def read_licence(gh, repo, sha, lic):
+    """GitHubRepo.licence_read at the commit (licence files, manifest field, licences per directory, README mentions): never blocks repo-info."""
+    try: return gh.licence_read(repo, sha, (lic or {}).get('spdx'))
+    except (ValueError, RuntimeError) as e: return {'status': 'unavailable', 'reason': str(e)}
 
 
 def run_repo_file(g, arg, n, opt, B, extra):
@@ -83,8 +96,8 @@ def run_repo_file(g, arg, n, opt, B, extra):
     if not sc.path_ok(path): return {'refusal': 'expected a repository-relative path (no absolute path, no . or .. segment)'}
     gh = sc.GitHubRepo(g.client, extra)
     f = gh.file_at(repo, sha, path)
-    why = gh.gate(f, B.T)
-    return {'refusal': 'after T or not datable: ' + why} if why else f
+    why = gh.barrier(repo, f, B, extra, date_check=False)                  # the committer date is checked by the gateway date filter
+    return {'refusal': why} if why else f
 
 
 SOURCE = {

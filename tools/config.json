@@ -36,7 +36,111 @@
   "rate_limit_wait_s": 3600,
   "note": "Engine github-repo (tools/sources/github_repo.py, code_sources.GitHubRepo): api = GitHub REST base (repos/<o>/<r>, /license?ref=, /commits/<sha>, /compare, /rate_limit), raw = file at a commit (raw.githubusercontent.com/<o>/<r>/<sha40>/<path>), web = base of the repository URLs (origin of a repo:<owner>/<name>/<path>@<sha> reference, permalinks). Keyless; the read-only VP_GITHUB_TOKEN is sent to the api host only when it is already resolvable by the key rule (KEYS.md). anonymous_requests_per_hour = documented GitHub core quota without a token (reported, never used to pace: the pacing is code_intervals); a 403/429 with X-RateLimit-Remaining 0 or Retry-After is typed rate_limited and no further GitHub API request is made in the process. Every commit is also checked by /compare/<default branch>...<sha> (one request per repository and commit; check_ancestry, an option until v0.6.15, is now always on): a commit served by /commits on a repository may belong to another fork of the same network; 'behind' or 'identical' = in the default branch history. Date barrier of a commit (security review of 2026-10-31, item 2): refused unless it is in the default branch history AND the repository was created before T; the committer date it is then dated by stays falsifiable (git lets a pusher set it), a residual limit. metadata_chars = longest repository metadata string served (full name, default branch, licence path and identifiers of GitHub, deps.dev and ecosyste.ms: tags stripped, one line, cut there). rate_limit_wait_s = how long an exhausted quota is remembered in the state dir (<state>/github-rate-limited.json) when GitHub sends neither X-RateLimit-Reset nor Retry-After (GitHub's core window is one hour); with either header, the stop lasts until that time. head_candidates = commits listed per request by repo-head and repo-info without a SHA (GET /commits?sha=<default branch>&until=<T>, newest first; the first with a committer date before T is taken, then resolved and gated like any commit: one request whatever the value, 20 covers a page of commits whose committer date is on/after T while their author date is before it); tree_paths_served = longest list of file paths repo-tree serves (GET /git/trees/<sha>?recursive=1, filtered by the directory asked; 400 paths of about 40 characters = the order of one served file, code_text.served_chars). Banc code of 2026-10-31: no command resolved a named repository without SHA (C4 15 abstentions, C5 UNDETERMINED).",
   "head_candidates": 20,
-  "tree_paths_served": 400
+  "tree_paths_served": 400,
+  "backdate_checks": ["dates", "parent", "pulls", "events"],
+  "backdate_pulls": 10,
+  "events_window_days": 90,
+  "head_backdate_retries": 3,
+  "backdate_note": "code_sources.GitHubRepo.backdate (security review of 2026-10-31, item 2: a backdated commit pushed to the default branch on/after T passes the committer-date barrier). Checks run after gate() on every commit served by repo-head, repo-tree, repo-file, repo-info @SHA, code-file and find-implementations, each at most one keyless GitHub REST request: dates = committer date earlier than author date (no request, suspect); parent = committer date of the first parent on/after T (definitive) or later than the commit (suspect); pulls = GET /commits/<sha>/pulls (backdate_pulls per page): the earliest pull request merged into the default branch carrying the commit was merged on/after T (definitive); events = GET /events, first page: a PushEvent to the default branch whose head is the commit, on/after T (definitive); only when T is within events_window_days of today (GitHub keeps 90 days of public events). Definitive = refused as after T; suspect = served with a warning; a check that cannot run is recorded, never a refusal, and never a negative: verdict unverified, served with a warning (Codex review of 2026-10-31, item 1). Remove a check from the list to save requests (anonymous quota: github_repo.anonymous_requests_per_hour). head_backdate_retries = further candidates of repo-head / find-implementations tried when the last commit before T is refused by these checks (Codex review of 2026-10-31, item 1: the next listed commit only after a refusal by pull requests; after a push on/after T, the head before that push (PushEvent before); after any other definitive signal, none; a retried candidate must have all its checks run) (observed 2026-10-31 on openai/openai-python: last commit dated before T, its pull request merged at 00:05Z on T). Residual: a backdated commit pushed directly (no pull request) on top of pre-T history, older than the events window, stays undetectable without an external observation (Software Heritage visit before T).",
+  "licence_read": {
+   "file_prefixes": ["LICENSE", "LICENCE", "COPYING", "COPYRIGHT", "UNLICENSE"],
+   "skip_suffixes": [".py", ".js", ".ts", ".go", ".rs", ".c", ".h", ".java", ".rb", ".php", ".sh"],
+   "manifests": ["Cargo.toml", "pyproject.toml", "package.json", "setup.cfg", "setup.py", "composer.json", "pom.xml", "DESCRIPTION"],
+   "manifest_suffixes": [".gemspec", ".nuspec", ".cabal"],
+   "max_files": 10,
+   "by_directory_max": 6,
+   "readme_lines": 5,
+   "text_chars": 4000,
+   "note": "code_sources.GitHubRepo.licence_read (audit 2026-10-31, items 3a and 3c): served by repo-info @SHA and at_T, read by check_code_facts. file_prefixes = names of licence files (root: the licence of the repository; below the root, outside implementations.vendored_paths: a directory under its own licence, by_directory_max listed); skip_suffixes = source files whose name starts like a licence file (licenses.py) and are not one; manifests / manifest_suffixes = root manifests whose licence field is read as text (never executed). max_files = raw files read per call (raw host, no API quota; the tree is one API request shared with repo-tree), readme_lines = README lines mentioning a licence served as text, text_chars = characters of a licence file searched for the canonical opening words (code_sources.LICENCE_TEXTS). Reading bounds, not measured optima. skip_dirs = directories that collect the licences of OTHER software (bundled notices) or test fixtures: their licence files are not the licence of the code beside them (observed 2026-10-31 on Significant-Gravitas/AutoGPT: single-container/licenses/redis/deps/...).",
+   "skip_dirs": "(^|/)(licenses|licences|third_party_licenses|LICENSES)/|(^|/)fixtures/"
+  },
+  "follow_api_redirects": 1,
+  "redirect_note": "follow_api_redirects (audit 2026-10-31, item 3d) = most redirections of api.github.com followed per request, for a renamed or transferred repository (GitHub answers 301 with the new location): only to the same host over https (the credential stays on that host), never another host; the answer says so (repository_moved: asked and current <owner>/<name>), and raw files are then read under the current name. 0 = every redirection refused (redirect_refused), as before."
+ },
+ "implementations": {
+  "max_alternatives": 4,
+  "language_ecosystems": {
+   "python": "pypi",
+   "javascript": "npm",
+   "typescript": "npm",
+   "rust": "cargo",
+   "go": "go",
+   "ruby": "rubygems",
+   "java": "maven",
+   "php": "packagist",
+   "c#": "nuget",
+   "elixir": "hex",
+   "dart": "pub",
+   "r": "cran"
+  },
+  "universe_sort": "downloads",
+  "universe_packages": 100,
+  "universe_page_size": 10,
+  "universe_count": 500,
+  "global_count": 200,
+  "sourcegraph_timeout_s": 20,
+  "github_per_page": 50,
+  "excluded_paths": "(^|/)(tests?|testing|docs?|examples?|benchmarks?)/|(^|/)(test_[^/]*|[^/]*_test\\.[A-Za-z]+|conftest\\.py)$",
+  "vendored_paths": "(^|/)(vendor|vendored|_vendor|third_party|thirdparty|third-party|node_modules|site-packages|extern|external)/",
+  "repos_served_max": 30,
+  "pinned_repos": 5,
+  "pinned_repos_with_token": 10,
+  "hits_per_repo": 5,
+  "lines_served": 12,
+  "copies_served": 20,
+  "path_max_chars": 400,
+  "matches_per_file_max": 50,
+  "hits_max": 2000,
+  "bounds_note": "Codex review of 2026-10-31, item 5: a Sourcegraph answer is bounded BEFORE any hit is built (each hit builds a permanent URL holding the path): a file whose path is longer than path_max_chars is skipped, at most matches_per_file_max line matches are read per file, and at most hits_max hits per query (then status truncated); search-code applies path_max_chars and stops at its --n. Item 3: the lines and snippets of a pinned repository are read again in the file at the dated commit (raw host, no API request), never taken from the provider. Orders of magnitude, not measured optima: 2000 hits = 10 times global_count, a file seldom holds 50 matching lines of one literal.",
+  "note": "tools/sources/implementations.py, command find-implementations \"<literal>[ OR <literal>...]\" [--language L] [--ecosystem E] [--path P] [--n N] (code_sources.Implementations; served with plugins/code.md through enabled_by sourcegraph/github). Built after the internal code bench of 2026-10-31, case C2 (2 expected repositories of 5 found by hand-made search-code calls). max_alternatives = literals joined by ' OR ' (one Sourcegraph query each stage). language_ecosystems = default ecosystem of a language when --ecosystem is not given: its universe = the universe_packages most used packages (ecosyste.ms packages API, sort universe_sort desc, pages of universe_page_size: a page of 25 PyPI packages weighed 4.9 MB on 2026-10-31, close to the 5 MB transport cap) mapped to their GitHub repositories, searched by ONE Sourcegraph query restricted to them (count universe_count); then one global Sourcegraph query (count global_count; forks and archived repositories excluded by Sourcegraph), then GitHub code search with a token only (github_per_page per literal). excluded_paths = Sourcegraph -file: regex and client filter of non-implementation files (tests, docs, examples, benchmarks); vendored_paths = copies inside another repository (attributed to the upstream of that name when listed). repos_served_max caps --n; pinned_repos (anonymous GitHub: each pinned repository costs about 3 to 8 core requests out of github_repo.anonymous_requests_per_hour, backdate checks included) / pinned_repos_with_token = repositories whose cited commit is dated through the barrier of repo-file (else the indexed commit is served undated). hits_per_repo, lines_served, copies_served = served list sizes. Orders of magnitude, not measured optima: on C2 (2026-10-31) the universe query alone held the 5 expected repositories."
+ },
+ "repo_grep": {
+  "cache_dir": "repo-cache",
+  "max_fetch_bytes": 300000000,
+  "fetch_timeout_s": 180,
+  "poll_s": 0.25,
+  "git_timeout_s": 30,
+  "grep_timeout_s": 60,
+  "max_matches": 2000,
+  "line_chars": 300,
+  "pattern_max_chars": 200,
+  "ls_paths_scanned": 50000,
+  "ls_paths_served": 2000,
+  "cache_max_entries": 8,
+  "cache_max_bytes": 1000000000,
+  "stale_tmp_s": 3600,
+  "stderr_chars": 300,
+  "record_max_bytes": 65536,
+  "output_max_bytes": 50000000,
+  "git_max_memory_bytes": 2000000000,
+  "bounds_note": "Codex review of 2026-10-31, item 6: git grep / ls-tree output read with byte bounds, not only a record count: one record (a matching line, a tree entry) is kept up to record_max_bytes (the rest of it dropped, the process goes on), and the process is killed (truncated) once output_max_bytes were read in all; every git process runs under an address-space limit of git_max_memory_bytes (POSIX setrlimit RLIMIT_AS; absent on Windows), so a small but highly compressible blob cannot inflate without bound. Orders of magnitude, not measured optima: line_chars (300) is served of each record, 64 KB leaves room for long paths; 2 GB of address space is far above what git needs for the mid-size snapshots of max_fetch_bytes.",
+  "note": "tools/repo_snapshot.py + tools/sources/repo_grep.py, commands repo-grep <owner>/<name>[@<SHA>] <fixed string> [--path P] [--n N] and repo-ls <owner>/<name>[@<SHA>] [--path P] (served with plugins/code.md through enabled_by github). The commit is resolved and dated by the github-repo barrier (GitHubRepo.resolve + barrier, or head_gated without a SHA: 2 to 8 GitHub REST requests), then ONE commit is fetched keyless over https (git fetch --depth 1 into a bare repository, no checkout, nothing of the repository executed) into <state>/<cache_dir>. max_fetch_bytes = size on disk of one snapshot at which the fetch is killed (too_large; the caller falls back on repo-tree / repo-file / search-code); fetch_timeout_s = whole fetch; poll_s = how often the size on disk is checked during the fetch; git_timeout_s = short git commands (init, rev-parse, cat-file); grep_timeout_s = one git grep or ls-tree. max_matches = matching lines read before git grep is stopped (truncated: true); the --n first are served (the gateway caps --n at 50), each text cut at line_chars; pattern_max_chars bounds the fixed string. ls_paths_scanned / ls_paths_served = entries read / paths served by repo-ls. cache_max_entries and cache_max_bytes = least recently used snapshots removed beyond them (shutil.rmtree of a checked child of the cache root only); stale_tmp_s = an unfinished fetch left over that long is removed. stderr_chars = git error text kept in a typed failure. Orders of magnitude, not measured optima: on 2026-10-31 one snapshot of urllib3 / tenacity weighed a few MB (internal measurement); max_fetch_bytes leaves room for mid-size repositories, not monorepos."
+ },
+ "github_issues": {
+  "per_page_max": 50,
+  "search_in": "title,body",
+  "title_chars": 300,
+  "body_chars": 6000,
+  "comment_chars": 2000,
+  "comments_served": 30,
+  "comments_page": 100,
+  "events_page": 100,
+  "note": "tools/sources/github_issues.py: search-issues \"<query>\" [--repo owner/name] [--type issue|pr] [--issue-state open|closed|merged] (gateway option --issue-state, since --state names the state dir; also typed state:<value> in the query) (GitHub REST search/issues: keyless search quota 10 requests/minute, more with the read-only VP_GITHUB_TOKEN; pacing code_intervals api.github.com) and read gh:<owner>/<name>#<number>. Every query carries created:<T (server filter) and every item is re-checked locally (created_at before T); --issue-state merged adds is:merged merged:<T, --issue-state closed adds is:closed closed:<T (closed before T and still closed = closed at T); --issue-state open keeps the items not established closed or merged at T (state at T not established from a search record: the current state is served, marked). Date qualifiers typed in the query (created:, updated:, closed:, merged:, pushed:) are refused: the tool sets them. search_in = the in: qualifier added when the query has none: title and body only, since a match in a comment written after T would leak (comments are filtered by date only at read). per_page_max caps --n. read: the issue (or pull request), its events (events_page per request, one page: state and title at T from closed / reopened / merged / renamed events dated before T; a full page whose last event is before T = not established) and its comments (comments_page per request, one page; those created before T, at most comments_served; a comment edited on/after T is masked). Texts written on GitHub are served on one line (tags and HTML comments removed, control and bidirectional characters folded), cut at title_chars / body_chars / comment_chars, under an explicit untrusted-data notice. Residual: the issue body (and the title when the events page is incomplete) is its current text; the REST API keeps no edit history of an issue body. Orders of magnitude, not measured optima."
+ },
+ "forks_ahead": {
+  "forks_listed": 100,
+  "forks_sort": "stargazers",
+  "forks_compared": 5,
+  "forks_compared_with_token": 15,
+  "commits_served": 20,
+  "files_served": 50,
+  "message_chars": 300,
+  "backdate_checks": null,
+  "note": "tools/sources/forks_ahead.py: forks-ahead <owner>/<name> -> the forks with commits of their own before T. 1. the upstream head at T (repo-head: last commit of the default branch before T, gated, backdate checks); 2. GET /repos/<o>/<r>/forks?sort=forks_sort&per_page=forks_listed (one request; stars and pushed_at observed now); a fork created on/after T, or never pushed after its creation (pushed_at <= created_at), is set aside without request; 3. the first forks_compared candidates (forks_compared_with_token with the token; each costs about 2 core requests plus the backdate checks): the fork head at T (GET /repos/<fork>/commits?sha=<its default branch>&until=T, first with a committer date before T), then GET /repos/<o>/<r>/compare/<upstream head at T>...<fork head at T>: commits ahead (each dated before T, else the fork is refused as backdated), files touched (names, status, additions, deletions; no patch), messages; a fork whose head is not ahead (behind, identical) or whose ahead commits are only merges is excluded (no commit of its own). The fork head passes GitHubRepo.backdate (backdate_checks: null = github_repo.backdate_checks); every ahead commit gets the dates check (no request). Ranked by own commits before T, then the server order. commits_served, files_served, message_chars = served list sizes. A rate limit stops the tool (typed, partial list kept)."
+ },
+ "licence_compat": {
+  "data": "licence_compat.json",
+  "note": "tools/sources/licence_compat.py: licence-compat <licence X> <licence Y> [--use link|copy|modify]; data = the versioned matrix (path relative to tools/): SPDX licences with publication dates, deprecated aliases, groups, rules Y -> X per use with conditions and sources (FSF, OSI, licence stewards, licence texts). A pair the table does not cover is unknown; the code holds no verdict."
  },
  "sourcegraph_limits": {
   "retry_waits_s": [
@@ -45,7 +149,7 @@
   ],
   "stop_s": 900,
   "challenge_stop_s": 1800,
-  "note": "code_sources.CodeSearch (search-code, Sourcegraph side, keyless). A 429 without challenge: one retry after each wait of retry_waits_s (Retry-After when Sourcegraph announces one no longer than the longest wait), then no Sourcegraph request before the announced reset or stop_s, recorded in <state>/sourcegraph-stopped.json so that later calls of the run make no request (no burst). A Cloudflare challenge (429 with cf-mitigated: challenge, observed 2026-10-31 from the VPS: every call of C5 and C4) is a technical block (ACCESS-POLICY.md level 3): no retry, stop challenge_stop_s (the __cf_bm cookie Cloudflare sets with it lasts 30 min). Orders of magnitude, not measured optima: banc code 2026-10-31 C2 had 13 answers then 8 x 429 at about one call per 6 s."
+  "note": "code_sources.CodeSearch (search-code, Sourcegraph side, keyless). A 429 without challenge: one retry after each wait of retry_waits_s (Retry-After when Sourcegraph announces one no longer than the longest wait), then no Sourcegraph request before the announced reset or stop_s, recorded in <state>/sourcegraph-stopped.json so that later calls of the run make no request (no burst). A Cloudflare challenge (429 with cf-mitigated: challenge, observed 2026-10-31 from the VPS: every call of C5 and C4) is a technical block (ACCESS-POLICY.md level 3): no retry, stop challenge_stop_s (the __cf_bm cookie Cloudflare sets with it lasts 30 min). Orders of magnitude, not measured optima: internal code bench 2026-10-31 C2 had 13 answers then 8 x 429 at about one call per 6 s."
  },
  "repo_metadata": {
   "ecosystems_repos": "https://repos.ecosyste.ms/api/v1/repositories/lookup",
@@ -58,6 +162,11 @@
   "snippet_min_chars": 12,
   "note": "tools/check_code_refs.py (mechanical check of code references in REPORT.md, card.json, mechanisms.json). snippet_window_lines = k: a quoted fragment attached to a reference must appear within the cited lines widened by k lines on each side (whitespace-normalised); snippet_min_chars = shortest quoted fragment checked (shorter quotes are words, not snippets). Reading budget, not a measured optimum."
  },
+ "code_facts": {
+  "current_value_days": 2,
+  "commit_date_tolerance_days": 1,
+  "note": "tools/check_code_facts.py (mechanical check of the repository facts of a code-plugin run: licence, archived, last commit before T, pushed_at, OSV advisories). current_value_days = most days between T and the check for which a current value (GitHub archived flag, an OSV record modified on/after T) stands for the value at T: within it, a disagreement is CONTRADICTED; beyond it, agreement is CONFIRMED (marked as_of now) and disagreement UNCHECKABLE (after_T), since the value may have changed after T (GitHub gives no archiving date). 2 = a run checked on the day of T or the next day (runs take T = the day they are launched); an order of magnitude, not a measured optimum. commit_date_tolerance_days = largest gap in days accepted between a claimed commit or push date and the observed committer (or author) date: GitHub serves UTC timestamps, a report may write the local date of the committer (one day covers any timezone); 0 = exact UTC day."
+ },
  "linked_sources": {
   "unpaywall_dois": 10,
   "opencitations_complement": true,
@@ -67,6 +176,16 @@
   "sec_text_chars": 20000,
   "ghsa_types": "reviewed",
   "note": "Sources wired in v0.5.7 (tools/sources/unpaywall.py, opencitations.py, edgar.py, ghsa.py, datacite.py). unpaywall_dois = most DOIs looked up by one search-unpaywall call (one request each). opencitations_complement = citing/references of a DOI add the OpenCitations works not already listed (after the existing ones, within n); false = the v0.5.6 output exactly. opencitations_max = most OpenCitations works per DOI and direction kept after the date filter and rechecked on Crossref (batches of 40; one OpenCitations request per direction reads every row). sec_interval = seconds between two calls to one SEC host (SEC fair access: at most 10 requests/s per user, all machines; 0.5 s = 2/s, under the 4/s of the lab prototype that saw no 429). sec_submission_files = older submissions files (beyond the recent 1,000 filings) scanned by read edgar:. sec_text_chars = characters of the filing's primary document served by read (start of the text). ghsa_types = GitHub advisory type listed by the advisories command (reviewed: curated by GitHub; unreviewed: raw NVD imports). Bounds of politeness and reading, not measured optima."
+ },
+ "http_limits": {
+  "socket_timeout_s": 30,
+  "total_timeout_s": 120,
+  "fetch_max_bytes": 100000000,
+  "fetch_total_timeout_s": 300,
+  "error_body_bytes": 65536,
+  "cache_max_bytes": 2000000000,
+  "receipts_max_bytes": 20000000,
+  "note": "Codex review of 2026-10-31, items 9 and 10. socket_timeout_s = inactivity timeout of one socket operation (CodeClient; sources use their host timeout); total_timeout_s = absolute deadline of one CodeClient request, headers and body (the request runs in a worker thread joined with this deadline; the body is read in chunks of what is available, so a server sending one byte at a time cannot hold the call longer); fetch_max_bytes / fetch_total_timeout_s = the same bounds for sources._common.fetch (the CodeClient keeps its 5 MB cap MAX_BYTES; 100 MB leaves room for the largest bulk file read by a source, the ACL Anthology bib.gz); error_body_bytes = most bytes read of an error body (key-rejection markers). cache_max_bytes = aggregate size of one state's HTTP cache (<state>/cache, shared by CodeClient and fetch): beyond it an answer is served but no longer written (nothing evicted: the cache is evidence read by evidence_bank and finish_run), the receipt says cache: full. receipts_max_bytes = size at which <state>/requests.jsonl is rotated to requests.jsonl.1 (one older generation kept). Orders of magnitude, not measured optima."
  },
  "code_intervals": {
   "api.github.com": 6.1,
@@ -153,7 +272,39 @@
   "y_cap_chars": 400000,
   "x_cap_chars": 200000,
   "max_usd": 2.5,
-  "timeout_s": 1500
+  "timeout_s": 1500,
+  "default_order": {
+   "first_root_files": ["pyproject.toml", "setup.py", "setup.cfg", "package.json", "Cargo.toml", "go.mod", "pom.xml", "build.gradle", "build.gradle.kts", "Gemfile", "composer.json", "CMakeLists.txt", "Makefile"],
+   "first_root_prefixes": ["README", "LICENSE", "LICENCE", "COPYING", "NOTICE"],
+   "last_dirs": [".github", ".circleci", "docs", "doc", "documentation", "test", "tests", "testing", "examples", "example", "samples", "benchmarks", "benchmark", "bench", "fixtures"]
+  },
+  "fallback_encoding": "latin-1",
+  "call_cap": 4,
+  "note": "tools/whole_reading.py and tools/condense_repo.py. y_cap_chars / x_cap_chars = characters of whole files of Y / X put in the material; max_usd and timeout_s bound the single reader call. default_order = order of the files of Y when they compete for the cap (audit 2026-10-31 item 1e: alphabetical order put .github/, benchmarks/ and docs/ before src/): root files named in first_root_files or starting with first_root_prefixes first, then the code, then the paths under a directory of last_dirs; a vocabulary of conventional names, not a measured ranking. fallback_encoding = decoding of a file that is not UTF-8 (marked in the tree) instead of dropping it. call_cap = gateway calls of the pool 'whole_reading' (--y-gateway: one repo-ls that dates the commit and fetches the snapshot; a few more for a retry), apart from the searches' cap (audit item 5a: own pool)."
+ },
+ "condense": {
+  "selection": "order",
+  "repo_map": {
+   "damping": 0.85,
+   "size_exponent": 0,
+   "stem_needs_definition": true,
+   "path_min_components": 2,
+   "capsule_paths_anchor": false,
+   "iterations": 100,
+   "tolerance": 1e-9,
+   "personal_share": 0.9,
+   "ident_min_len": 3,
+   "mention_min_len": 4,
+   "mentioned_mul": 10,
+   "well_named_mul": 10,
+   "well_named_min_len": 8,
+   "private_mul": 0.1,
+   "common_mul": 0.1,
+   "common_min_files": 6,
+   "max_definers": 60,
+   "package_stems": ["__init__", "index", "mod", "lib", "main", "package"]
+  },
+  "note": "tools/condense_repo.py and tools/repo_map.py. selection = how the files of Y compete for the cap of whole_reading.y_cap_chars: \"order\" (default, the order of whole_reading.default_order then alphabetical) or \"repo-map\" (inside each priority group and tier, decreasing score of a repository map after Aider, aider/repomap.py: per-file tags definition / reference, file graph weighted by the references to identifiers, PageRank personalised on the files and identifiers named in scope.md, searches/*.md and capsule.md; the files stay whole, only the order changes). Command line: --selection on condense_repo.py and whole_reading.py. Off by default until an internal duel has measured it. repo_map: damping, mentioned_mul (x10 for an identifier named in the request), well_named_mul (x10 for a snake/camel identifier of at least well_named_min_len characters), private_mul (x0.1 for a leading underscore), common_mul (x0.1 for an identifier defined in at least common_min_files files) are Aider's constants, none measured here. stem_needs_definition = the name of a module (file stem, or directory name for __init__ / index / mod...) is a definition only for a file that has at least one definition of its own; false = every code file defines its name (first measurement of 2026-11-01, which ranked empty __init__.py files high). path_min_components = a mentioned path anchors a file of Y only as the whole path or as a suffix of at least this many components (a bare file name such as cli.py names nothing); capsule_paths_anchor = false: the capsule describes the target X, so it gives identifiers only, never file anchors; identifiers anchor only the files that define them. size_exponent = exponent e of the size in the ranking (score / bytes^e; 0 = Aider's rule, 1 = density of a greedy knapsack; a very large central file, a generated one for example, takes the whole budget at 0), declared variants of the duel: 0, 0.5, 1. personal_share = share of the restart mass of the PageRank put on the files named (path, name stem, definition of a named identifier), the rest uniform; 0 mentions = uniform. ident_min_len / mention_min_len = shortest identifier tagged / taken from the text; max_definers = identifiers defined in more files are not edges (bound on the graph size); iterations / tolerance = bounds of the power iteration; package_stems = file names whose stem is the name of their directory (an import of the package is a reference to its file). Reading bounds, not measured optima."
  },
  "contradictor": {
   "families": [],
@@ -284,6 +435,30 @@
    "gap": 26,
    "chars_per_line": 46
   },
+  "s": {
+   "reference": "Rethlefsen ML, Kirtley S, Waffenschmidt S, et al. PRISMA-S: an extension to the PRISMA Statement for Reporting Literature Searches in Systematic Reviews. Systematic Reviews 10:39 (2021). doi:10.1186/s13643-020-01542-z",
+   "interface": "VanishingPoint gateway (tools/gateway.py), one command per engine",
+   "registry_engines": ["clinicaltrials"],
+   "items": [
+    {"n": 1, "section": "Information sources and methods", "title": "Database name"},
+    {"n": 2, "section": "Information sources and methods", "title": "Multi-database searching"},
+    {"n": 3, "section": "Information sources and methods", "title": "Study registries"},
+    {"n": 4, "section": "Information sources and methods", "title": "Online resources and browsing"},
+    {"n": 5, "section": "Information sources and methods", "title": "Citation searching"},
+    {"n": 6, "section": "Information sources and methods", "title": "Contacts"},
+    {"n": 7, "section": "Information sources and methods", "title": "Other methods"},
+    {"n": 8, "section": "Search strategies", "title": "Full search strategies"},
+    {"n": 9, "section": "Search strategies", "title": "Limits and restrictions"},
+    {"n": 10, "section": "Search strategies", "title": "Search filters"},
+    {"n": 11, "section": "Search strategies", "title": "Prior work"},
+    {"n": 12, "section": "Search strategies", "title": "Updates"},
+    {"n": 13, "section": "Search strategies", "title": "Dates of searches"},
+    {"n": 14, "section": "Peer review", "title": "Peer review"},
+    {"n": 15, "section": "Managing records", "title": "Total records"},
+    {"n": 16, "section": "Managing records", "title": "Deduplication"}
+   ],
+   "note": "PRISMA-S (tools/prisma.py prisma_s): numbering, section headings and titles of the 16 items as printed in the checklist of Rethlefsen et al. 2021 (read on PMC7839230 on 2026-11-01; note that item 11 is titled 'Prior work'). registry_engines = gateway engines that are study registries (item 3); interface = how the engines were reached (item 1). Labels and a list of engine names, not measured values."
+  },
   "note": "Optional PRISMA 2020 flow diagram (tools/prisma.py; finish_run.py --prisma, export_report.py --prisma). reasons_max = exclusion reasons listed in the 'Reports excluded' box, the rest summed as 'other recorded reasons'; reason_chars = longest reason shown (cut at a word); mark_window = characters around an 'excluded' mark searched for words saying it is not a screening decision (post-T, gateway, '-leaning'...). svg = layout of the plain SVG (pixels; chars_per_line = wrap width of the main boxes). Display bounds, not measured values."
  },
  "followups": {
@@ -411,5 +586,17 @@
   "journal_pool": "possibles",
   "note": "tools/read_possibles.py (SKILL.md section 4, before the stop). A candidate line of searches/*.md is one carrying an identifier and a verdict matching verdict_regex; its first identifier counts as already read when the line matches read_basis_regex (basis abstract), and any identifier read by the gateway (`read` in state/journal.jsonl) is already read. At most max_records candidates, in order of first appearance; abstracts by batches of pubmed_batch PMIDs (esummary for the date barrier, then efetch XML) and epmc_batch DOIs (Europe PMC core), then openalex_batch DOIs for those Europe PMC does not index (OpenAlex, abstract from its inverted index, OPENALEX_KEY optional); abstracts cut at abstract_chars and titles at title_chars in state/possibles.md. The batch is journaled under journal_pool (seen, never counted against the searches' cap). These are reading bounds, not measured optima.",
   "openalex_batch": 50
+ },
+ "usage": {
+  "dependents_per_page": 20,
+  "dependents_served": 10,
+  "dependents_sort": "downloads",
+  "note": "code_sources.Usage / sources/usage.py (audit 2026-10-31, items 2a-2d). dependents_per_page = dependent packages read in ONE request of packages.ecosyste.ms .../dependent_packages (sorted by dependents_sort, desc, observed now); only those whose first release is before T are served (at most dependents_served, the others counted), each marked 'dependency at T not established' (ecosyste.ms gives the current dependency, not its date): a package dependent is context, not a second use of a mechanism (read its code). Reading bounds, not measured optima (probe of 2026-10-31: faiss-cpu answered with name, repository_url and first release date)."
+ },
+ "paper_code": {
+  "date_github_repo": true,
+  "sort": "downloads",
+  "legacy_lookups": 3,
+  "note": "code_sources.PaperCode / sources/paper_code.py (audit 2026-10-31, items 4a-4d). date_github_repo = the githubRepo declared on Hugging Face Papers is dated on GitHub (repo-head: repository created before T, last commit of the default branch before T, same barrier as repo-file; 4 to 8 GitHub REST requests, keyless quota) instead of taking the paper's date; false = served undated (dating absent). sort = order of the models, datasets and spaces linked to the paper (Hub list API, descending; the provider's order otherwise decides what --n keeps). legacy_lookups = commit lookups for linked repositories carrying the Hub migration date (createdAt 2022-03-02), dated by their last commit before T as search-hf-models does. Orders of magnitude, not measured optima."
  }
 }

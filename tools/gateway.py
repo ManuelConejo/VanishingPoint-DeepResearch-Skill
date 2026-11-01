@@ -27,10 +27,37 @@ Command line:
   code engine github-repo (served when a plugin declares `github` or `github-repo`; GitHub REST keyless, 60 requests/h, read-only token optional):
     a NAMED repository without a SHA: 1. repo-head <owner>/<name> -> last commit of the default branch dated before T (sha, committer date; gated:
     default branch history, repository created before T); 2. repo-tree <owner>/<name>[/<dir>]@<SHA> -> file paths at that commit;
-    3. repo-file <owner>/<name>/<path>@<SHA> -> whole file at that commit (cite it as repo:<owner>/<name>/<path>:<a>-<b>@<SHA>).
+    3. repo-file <owner>/<name>/<path>@<SHA> [--lines A-B] -> whole file at that commit (cite it as repo:<owner>/<name>/<path>:<a>-<b>@<SHA>);
+       printed cut at config code_text.served_chars with the --lines range that reads on (the same file again = a repeat, not counted).
     repo-info <owner>/<name> -> SPDX licence, archived (both as_of "now"), created_at, pushed_at (a push date, not a commit date), and at_T:
     last commit of the default branch before T with the SPDX licence at it; repo-info <owner>/<name>@<SHA> -> that commit dated, licence at it.
     <owner>/<name> may also be written repo:<owner>/<name> or https://github.com/<owner>/<name>.
+    Every commit served there (and by code-file) also passes backdate checks (config.json github_repo.backdate_checks): definitive evidence that
+    it entered the default branch on/after T (pull request merged, push event, parent dated on/after T) = refused; a suspect one = warning.
+  code engine repo-grep (served when a plugin declares `github`): exact search in a NAMED repository at a commit, no search API ->
+    repo-grep <owner>/<name>[@<SHA>] <fixed string> [--path P] [--n N]: every line holding the string at that commit (git grep -F,
+    case-sensitive), each cited repo:<owner>/<name>/<path>:<line>@<SHA40>; no line = absent at that commit (exact negative);
+    repo-ls <owner>/<name>[@<SHA>] [--path P]: paths and sizes at the commit. Without a SHA: the last commit of the default branch before T;
+    the commit passes the repo-file barrier, then ONE commit is fetched keyless over https (shallow, bare, no checkout, nothing executed)
+    into <state>/repo-cache. A string starting with '-' is written after `--` on the command line (gateway.py repo-grep o/n@SHA -- -x).
+    git absent, fetch refused or too large -> `status` git_missing | fetch_failed | too_large and a `fallback` (repo-tree, repo-file,
+    search-code). Bounds: config.json repo_grep.
+  code engine implementations (served when a plugin declares `sourcegraph` or `github`): how other projects implement X ->
+    find-implementations "<literal>[ OR <literal>...]" [--language L] [--ecosystem pypi|npm|cargo...] [--path P] [--n N]: distinct repositories
+    (the most used packages of the ecosystem first, then stars; forks, vendored and same-content copies listed apart), each with its best
+    file cited repo:<owner>/<name>/<path>:<a>-<b>@<SHA40>; the first ones dated like repo-file, the others undated (live index). Read the cited
+    file with repo-file before any claim. Bounds: config.json implementations.
+  code engines github-issues, forks-ahead, licence-compat (served when a plugin declares `github`; bounds in config.json github_issues,
+    forks_ahead, licence_compat):
+    search-issues "<query>" [--repo <owner>/<name>] [--type issue|pr] [--issue-state open|closed|merged] -> issues and pull requests created before T
+    (server filter created:<T; merged:<T / closed:<T for those states), cited gh:<owner>/<name>#<number>, state at T when established (else the
+    current state, marked; --issue-state, since --state names the state dir, or state:<value> typed in the query); read gh:<owner>/<name>#<number> -> body, state and title at T (events before T), comments created before T; every
+    GitHub text is third-party data served on one line. Keyless search quota: 10 requests/minute.
+    forks-ahead <owner>/<name> -> forks holding commits of their own before T: fork head at T, compare <upstream head at T>...<fork head at T>
+    (commits ahead dated before T, files touched, messages), backdate checks on the fork head; forks without own commits excluded and counted.
+    licence-compat <licence X> <licence Y> [--use link|copy|modify] -> compatible / compatible_with_conditions / incompatible / unknown for code
+    of licence Y taken into a project of licence X (SPDX identifiers or expressions with OR / AND), each rule with its sources; the matrix is the
+    versioned file tools/licence_compat.json; not legal advice (said first in every answer); unknown pair or licence -> unknown.
   extra keyless engines: clinicaltrials (biology), dblp (cs-ai), econbiz (finance)   (id: nct:NCT01234567 | dblp:conf/acl/Xiong0LZ24 | econbiz:10011386660);
     code engine osv: vulns <pypi|npm|cargo|go|maven|rubygems|nuget|packagist>:<package>@<version> ; read osv:<id>
   preprint engines (plugins/biology.md): biorxiv, medrxiv (Europe PMC words, versions dated on api.biorxiv.org; id doi:<preprint DOI>; read biorxiv:<DOI> | medrxiv:<DOI>)
@@ -38,7 +65,8 @@ Command line:
     standards (rfc:<n> | pep:<n> | w3c:<shortname>), proceedings (acl:<Anthology id> | pmlr:v<vol>/<key> | cvf:content/<CONF>/html/<name>_paper)
   PISTE engines (plugins/law.md, credentials PISTE_CLIENT_ID + PISTE_CLIENT_SECRET, else skipped with 0 request): judilibre [--court cc|ca|tj|tcom]
     [--chamber civ1|soc|cr...] [--from] [--to], legifrance [--fund code|loda|jorf] (read judilibre:<id> | legi:LEGIARTI.../LEGITEXT... | jorf:JORFTEXT...)
-  AI engines (plugins/cs-ai.md): openreview, zenodo, hal-info (id: openreview:<forum id> | zenodo:<record id>); code engine usage <pypi|npm|cargo|...>:<package> (ecosyste.ms)
+  AI engines (plugins/cs-ai.md): openreview, zenodo, hal-info (id: openreview:<forum id> | zenodo:<record id>); code engine usage <pypi|npm|cargo|...>:<package> [--repo <owner>/<name>] (ecosyste.ms;
+    also the names of dependent packages released before T, the highest version before T, and repo_mismatch for a namesake package)
   finance data engines (plugins/finance.md): dbnomics (keyless; current values marked as_of "now"; read dbnomics:<provider>/<dataset>/<series>),
     fred (FRED_API_KEY, else skipped with 0 request; ALFRED vintage of the eve of T; read fred:<series id>); observations kept only when their period ends before T
     edgar (SEC EDGAR; e-mail in VP_CONTACT, else skipped with 0 request): search-edgar "<words> [form:<form>]" [--from] [--to] | "cik:<CIK> [form:<form>]";
@@ -301,16 +329,46 @@ class Gateway:
 TEXT_COMMANDS = ('repo-file', 'code-file')   # code commands that return a whole file under `text`
 
 
-def served_view(out, cmd):
+LINES_FORM = re.compile(r'(\d{1,9})(?:-(\d{1,9})?)?')                    # --lines A-B | A- | A (1-based, as git numbers lines)
+
+
+def _git_lines(text):
+    """Lines as git and GitHub number them (verifier/code_files.git_lines): split on \\n only, a final \\r dropped."""
+    lines = [x[:-1] if x.endswith('\r') else x for x in text.split('\n')]
+    return lines[:-1] if lines and lines[-1] == '' else lines
+
+
+def served_view(out, cmd, lines=None):
     """The answer as printed for the model: the whole file of repo-file / code-file cut to config.json code_text.served_chars characters with
-    an explicit elision mark (bytes and sha256 stay those of the whole file; the start is kept, so line numbers stay valid). In-process callers
-    (verifier, check_code_refs) call Gateway.call and keep the whole text."""
+    an explicit elision mark and the --lines range that reads on (bytes and sha256 stay those of the whole file; the start is kept, so line
+    numbers stay valid). lines = 'A-B' | 'A-' | 'A' (--lines): only those lines of the whole file (numbered as git numbers them), still
+    within served_chars (whole lines; `text_served` gives the first and last line served and the range that reads on): the rest of a file
+    cut at served_chars is readable (audit 2026-10-31, item 5b); the same file asked again is a repeat of the gateway (not counted while the
+    repeat bound allows). In-process callers (verifier, check_code_refs) call Gateway.call and keep the whole text."""
     r = out.get('results') if isinstance(out, dict) and cmd in TEXT_COMMANDS else None
     cap = int(CFG['code_text']['served_chars'])
-    if not isinstance(r, dict) or not isinstance(r.get('text'), str) or len(r['text']) <= cap: return out
+    if not isinstance(r, dict) or not isinstance(r.get('text'), str): return out
     t = r['text']
+    if lines:
+        m = LINES_FORM.fullmatch(str(lines).strip())
+        if not m or int(m.group(1)) < 1 or (m.group(2) and int(m.group(2)) < int(m.group(1))):
+            return dict(out, results={'refusal': '--lines expects A-B, A- or A (1-based line numbers, A <= B)'})
+        L = _git_lines(t); a = int(m.group(1))
+        b = min(int(m.group(2)) if m.group(2) else len(L) if '-' in str(lines) else a, len(L))
+        if a > len(L): return dict(out, results={'refusal': f'--lines {lines}: the file has {len(L)} lines'})
+        picked, size, last = [], 0, a - 1
+        for i in range(a, b + 1):
+            ln = L[i - 1]
+            if picked and size + len(ln) + 1 > cap: break
+            picked.append(ln[:cap]); size += len(ln[:cap]) + 1; last = i
+        served = dict(lines=[a, last], of_lines=len(L), chars=size, of_chars=len(t), limit='config.json code_text.served_chars')
+        if last < b: served['read_on'] = f'--lines {last + 1}-{b}'
+        return dict(out, results=dict(r, text='\n'.join(picked) + '\n', text_served=served))
+    if len(t) <= cap: return out
+    nxt = t[:cap].count('\n') + 1                                            # first line not served whole
     return dict(out, results=dict(r, text=t[:cap] + f'\n[... file cut at {cap:,} of {len(t):,} characters (config.json code_text.served_chars); '
-                                                f'bytes and sha256 are those of the whole file ...]', text_served={'chars': cap, 'of_chars': len(t)}))
+                                                f'bytes and sha256 are those of the whole file; read on with --lines {nxt}- ...]', text_served={'chars': cap, 'of_chars': len(t)},
+                                  read_on=f'--lines {nxt}-'))
 
 
 def main():
@@ -322,15 +380,20 @@ def main():
     ap.add_argument('--since', default=None)
     ap.add_argument('cmd'); ap.add_argument('arg', nargs='*'); ap.add_argument('--n', type=int, default=20)
     ap.add_argument('--language', default=None); ap.add_argument('--repo', default=None, help='search-code: language / owner/repo filters')
-    ap.add_argument('--path', default=None, help='search-code: file path filter (a path or a part of it)')
+    ap.add_argument('--path', default=None, help='search-code, find-implementations: file path filter (a path or a part of it)')
+    ap.add_argument('--lines', default=None, help='repo-file, code-file: line range A-B (or A-) of the whole file, served within code_text.served_chars (reads on past the cut)')
+    ap.add_argument('--ecosystem', default=None, help='find-implementations: ecosystem whose most used packages are searched first (pypi, npm, cargo...)')
+    ap.add_argument('--type', dest='issue_type', default=None, help='search-issues: issue or pr')
+    ap.add_argument('--issue-state', dest='issue_state', default=None, help='search-issues: open, closed or merged (state at T; --state names the state dir; also typed state:<value> in the query)')
+    ap.add_argument('--use', default=None, help='licence-compat: link, copy or modify (all three when absent)')
     ap.add_argument('--court', default=None, help='search-justice-administrative: exact court code (CE, TA75, CAA69)')
     ap.add_argument('--from', dest='date_from', default=None); ap.add_argument('--to', dest='date_to', default=None, help='search-justice-administrative: decision-date window YYYY-MM-DD')
     ap.add_argument('--chamber', default=None, help='search-judilibre: chamber key (civ1, soc, cr...); --court cc|ca|tj|tcom'); ap.add_argument('--fund', default=None, help='search-legifrance: code|loda|jorf')
     a = ap.parse_args()
     try: g = Gateway(a.plugin, T=a.T, case=a.case, run=a.run, state=a.state, cap=a.cap, since=a.since)
     except PluginNotFound as e: print(f'gateway.py: {e}', file=sys.stderr); sys.exit(2)
-    out = g.call(a.cmd, ' '.join(a.arg), a.n, language=a.language, repo=a.repo, path=a.path, court=a.court, date_from=a.date_from, date_to=a.date_to, chamber=a.chamber, fund=a.fund)
-    print(json.dumps(served_view(out, a.cmd), ensure_ascii=False))
+    out = g.call(a.cmd, ' '.join(a.arg), a.n, language=a.language, repo=a.repo, path=a.path, ecosystem=a.ecosystem, issue_type=a.issue_type, issue_state=a.issue_state, use=a.use, court=a.court, date_from=a.date_from, date_to=a.date_to, chamber=a.chamber, fund=a.fund)
+    print(json.dumps(served_view(out, a.cmd, a.lines), ensure_ascii=False))
 
 
 if __name__ == '__main__':

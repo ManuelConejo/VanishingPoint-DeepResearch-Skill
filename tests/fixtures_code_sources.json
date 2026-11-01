@@ -11,7 +11,7 @@
  "depsdev_version": {"versionKey": {"system": "PYPI", "name": "p", "version": "1.2"}, "publishedAt": "2020-02-02T00:00:00Z", "advisoryKeys": [{"id": "GHSA-xxxx"}]},
  "depsdev_deps": {"nodes": [{"versionKey": {"system": "PYPI", "name": "p", "version": "1.2"}, "relation": "SELF"}, {"versionKey": {"system": "PYPI", "name": "q", "version": "1.0"}, "relation": "DIRECT"}], "edges": [{"fromNode": 0, "toNode": 1, "requirement": ">=1"}]},
  "paper": {"id": "2507.19457", "githubRepo": "https://github.com/gepa-ai/gepa", "githubStars": 100, "publishedAt": "2025-07-25"},
- "hf_models": [{"id": "o/m-old", "likes": 3, "lastModified": "2025-07-30T00:00:00.000Z"}, {"id": "o/m-new", "likes": 1, "lastModified": "2025-09-01T00:00:00.000Z"}],
+ "hf_models": [{"id": "o/m-old", "likes": 3, "createdAt": "2025-07-26T00:00:00.000Z", "lastModified": "2025-07-30T00:00:00.000Z"}, {"id": "o/m-new", "likes": 1, "createdAt": "2025-09-01T00:00:00.000Z", "lastModified": "2025-09-01T00:00:00.000Z"}],
  "visit": {"snapshot": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "date": "2026-01-01", "status": "full"},
  "resolve": {"swhid": "swh:1:rev:cccccccccccccccccccccccccccccccccccccccc", "object_type": "revision", "object_id": "cccccccccccccccccccccccccccccccccccccccc"},
  "recordings": {"network_a": {"url": "https://sourcegraph.com/.api/search/stream?q=patterntype%3Aliteral+ProgramDatabase+count%3A10+timeout%3A10s&v=V3", "sha256": "d8d6b5845f31dcffe45470083f3fb45e39fff89ebd1bea975dde660dc82dc967"}, "network_b": {"url": "https://pypi.org/pypi/matplotlib/3.5.0/json", "sha256": "3f19a7ba0d65b40a1ceaeaf7e00c863cb8ab06d7e7a4ef46cc2884280bc48529"}},

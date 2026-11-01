@@ -1,0 +1,1318 @@
+{
+ "schema": "vp-licence-compat/1",
+ "version": "1",
+ "date": "2026-10-31",
+ "disclaimer": "Not legal advice: a reading aid built from the licence texts and the positions of the FSF, the OSI and the licence stewards; a lawyer decides. Patent, trademark, export and contributor-agreement questions are outside this table.",
+ "direction": "licence-compat <X> <Y>: X = licence of the receiving project (the one that takes code), Y = licence of the code taken from project Y. Rules are written for Y -> X and are not symmetric.",
+ "uses": {
+  "link": "X uses Y unmodified as a separate library or dependency (imported, linked statically or dynamically) and may distribute it with X",
+  "copy": "files or snippets of Y copied unmodified into the source of X",
+  "modify": "code of Y copied into X and changed"
+ },
+ "verdicts": {
+  "compatible": "no condition beyond what the licences ask of any distribution",
+  "compatible_with_conditions": "allowed when the listed conditions are met",
+  "incompatible": "the licences cannot both be honoured for this use while X keeps its licence",
+  "unknown": "no rule in this table (or a licence or expression it does not know): nothing is concluded"
+ },
+ "conditions": {
+  "attribution": "keep the copyright notices and the licence text of Y with the code and with any distribution of it",
+  "no_endorsement": "do not use the names of Y or of its contributors to endorse or promote X (BSD-3-Clause clause 3)",
+  "notice_file": "carry the attribution notices of Y's NOTICE file, if Y has one (Apache-2.0 section 4(d))",
+  "state_changes": "modified files carry prominent notices that they were changed (Apache-2.0 section 4(b))",
+  "state_changes_if_modified": "when Y's code is modified, modified files carry prominent notices that they were changed (Apache-2.0 section 4(b))",
+  "keeps_own_licence": "the code from Y stays under Y's licence inside X: X's licence does not cover those parts",
+  "file_level_copyleft": "Y's files and changes to them stay under MPL-2.0 and their source form is made available to recipients (MPL-2.0 sections 3.1, 3.2)",
+  "no_secondary_incompatibility": "valid only when Y's files do not carry the \"Incompatible With Secondary Licenses\" notice (MPL-2.0 Exhibit B)",
+  "mpl_also_available": "the MPL-covered files stay available under MPL-2.0 as well (MPL-2.0 section 3.3)",
+  "lgpl_library": "Y stays under its LGPL: its source (with any change to it) is provided and users may replace or relink it (LGPL-2.1 section 6, LGPL-3.0 section 4)",
+  "convert_lgpl21_to_gpl": "the LGPL-2.1 code is conveyed under the GNU GPL, as LGPL-2.1 section 3 permits",
+  "combined_under_x": "the combined work is distributed under X's licence, with its complete corresponding source",
+  "combined_under_y": "the combined work is distributed under Y's licence (the narrower one), with its complete corresponding source",
+  "combined_under_v3": "the combined work is distributed under version 3 of the GNU licence (using an \"or later\" option), with its complete corresponding source",
+  "network_source": "users interacting with the program over a network are offered its corresponding source (AGPL-3.0 section 13)"
+ },
+ "sources": {
+  "fsf-list": {
+   "title": "Free Software Foundation, Various Licenses and Comments about Them",
+   "url": "https://www.gnu.org/licenses/license-list.html"
+  },
+  "fsf-faq-matrix": {
+   "title": "Free Software Foundation, Frequently Asked Questions about the GNU Licenses: compatibility matrix",
+   "url": "https://www.gnu.org/licenses/gpl-faq.html#AllCompatibility"
+  },
+  "apache-gpl": {
+   "title": "Apache Software Foundation, Apache License v2.0 and GPL Compatibility",
+   "url": "https://www.apache.org/licenses/GPL-compatibility.html"
+  },
+  "osi-list": {
+   "title": "Open Source Initiative, OSI Approved Licenses",
+   "url": "https://opensource.org/licenses"
+  },
+  "mpl-faq": {
+   "title": "Mozilla, MPL 2.0 FAQ",
+   "url": "https://www.mozilla.org/en-US/MPL/2.0/FAQ/"
+  },
+  "text-mit": {
+   "title": "MIT License (SPDX text)",
+   "url": "https://spdx.org/licenses/MIT.html"
+  },
+  "text-bsd2": {
+   "title": "BSD 2-Clause License (SPDX text)",
+   "url": "https://spdx.org/licenses/BSD-2-Clause.html"
+  },
+  "text-bsd3": {
+   "title": "BSD 3-Clause License (SPDX text)",
+   "url": "https://spdx.org/licenses/BSD-3-Clause.html"
+  },
+  "text-isc": {
+   "title": "ISC License (SPDX text)",
+   "url": "https://spdx.org/licenses/ISC.html"
+  },
+  "text-apache2": {
+   "title": "Apache License, Version 2.0, section 4",
+   "url": "https://www.apache.org/licenses/LICENSE-2.0"
+  },
+  "text-mpl2": {
+   "title": "Mozilla Public License 2.0, sections 1.12, 3.1-3.3",
+   "url": "https://www.mozilla.org/en-US/MPL/2.0/"
+  },
+  "text-lgpl21": {
+   "title": "GNU Lesser General Public License v2.1, sections 2, 3, 6",
+   "url": "https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html"
+  },
+  "text-lgpl3": {
+   "title": "GNU Lesser General Public License v3.0, section 4",
+   "url": "https://www.gnu.org/licenses/lgpl-3.0.html"
+  },
+  "text-gpl2": {
+   "title": "GNU General Public License v2.0",
+   "url": "https://www.gnu.org/licenses/old-licenses/gpl-2.0.html"
+  },
+  "text-gpl3": {
+   "title": "GNU General Public License v3.0, section 13",
+   "url": "https://www.gnu.org/licenses/gpl-3.0.html"
+  },
+  "text-agpl3": {
+   "title": "GNU Affero General Public License v3.0, section 13",
+   "url": "https://www.gnu.org/licenses/agpl-3.0.html"
+  },
+  "text-unlicense": {
+   "title": "The Unlicense",
+   "url": "https://unlicense.org/"
+  },
+  "text-cc0": {
+   "title": "Creative Commons CC0 1.0 Universal, legal code",
+   "url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode"
+  }
+ },
+ "licences": {
+  "MIT": {
+   "name": "MIT License",
+   "published": null
+  },
+  "BSD-2-Clause": {
+   "name": "BSD 2-Clause \"Simplified\" License",
+   "published": null
+  },
+  "BSD-3-Clause": {
+   "name": "BSD 3-Clause \"New\" or \"Revised\" License",
+   "published": null
+  },
+  "ISC": {
+   "name": "ISC License",
+   "published": null
+  },
+  "Apache-2.0": {
+   "name": "Apache License 2.0",
+   "published": "2004-01"
+  },
+  "Unlicense": {
+   "name": "The Unlicense",
+   "published": "2010-01"
+  },
+  "CC0-1.0": {
+   "name": "Creative Commons Zero v1.0 Universal",
+   "published": "2009-03"
+  },
+  "MPL-2.0": {
+   "name": "Mozilla Public License 2.0",
+   "published": "2012-01-03"
+  },
+  "LGPL-2.1-only": {
+   "name": "GNU Lesser General Public License v2.1 only",
+   "published": "1999-02"
+  },
+  "LGPL-2.1-or-later": {
+   "name": "GNU Lesser General Public License v2.1 or later",
+   "published": "1999-02"
+  },
+  "LGPL-3.0-only": {
+   "name": "GNU Lesser General Public License v3.0 only",
+   "published": "2007-06-29"
+  },
+  "LGPL-3.0-or-later": {
+   "name": "GNU Lesser General Public License v3.0 or later",
+   "published": "2007-06-29"
+  },
+  "GPL-2.0-only": {
+   "name": "GNU General Public License v2.0 only",
+   "published": "1991-06"
+  },
+  "GPL-2.0-or-later": {
+   "name": "GNU General Public License v2.0 or later",
+   "published": "1991-06"
+  },
+  "GPL-3.0-only": {
+   "name": "GNU General Public License v3.0 only",
+   "published": "2007-06-29"
+  },
+  "GPL-3.0-or-later": {
+   "name": "GNU General Public License v3.0 or later",
+   "published": "2007-06-29"
+  },
+  "AGPL-3.0-only": {
+   "name": "GNU Affero General Public License v3.0 only",
+   "published": "2007-11-19"
+  },
+  "AGPL-3.0-or-later": {
+   "name": "GNU Affero General Public License v3.0 or later",
+   "published": "2007-11-19"
+  }
+ },
+ "aliases": {
+  "GPL-2.0": "GPL-2.0-only",
+  "GPL-2.0+": "GPL-2.0-or-later",
+  "GPL-3.0": "GPL-3.0-only",
+  "GPL-3.0+": "GPL-3.0-or-later",
+  "LGPL-2.1": "LGPL-2.1-only",
+  "LGPL-2.1+": "LGPL-2.1-or-later",
+  "LGPL-3.0": "LGPL-3.0-only",
+  "LGPL-3.0+": "LGPL-3.0-or-later",
+  "AGPL-3.0": "AGPL-3.0-only"
+ },
+ "aliases_note": "deprecated SPDX identifiers (SPDX License List): GPL-3.0 means GPL-3.0-only, GPL-3.0+ means GPL-3.0-or-later, and so on",
+ "groups": {
+  "notice_permissive": [
+   "MIT",
+   "BSD-2-Clause",
+   "ISC"
+  ],
+  "bsd3": [
+   "BSD-3-Clause"
+  ],
+  "apache": [
+   "Apache-2.0"
+  ],
+  "public_domain": [
+   "Unlicense",
+   "CC0-1.0"
+  ],
+  "mpl": [
+   "MPL-2.0"
+  ],
+  "lgpl21only": [
+   "LGPL-2.1-only"
+  ],
+  "lgpl21plus": [
+   "LGPL-2.1-or-later"
+  ],
+  "lgpl3": [
+   "LGPL-3.0-only",
+   "LGPL-3.0-or-later"
+  ],
+  "gpl2only": [
+   "GPL-2.0-only"
+  ],
+  "gpl2plus": [
+   "GPL-2.0-or-later"
+  ],
+  "gpl3": [
+   "GPL-3.0-only",
+   "GPL-3.0-or-later"
+  ],
+  "agpl3": [
+   "AGPL-3.0-only",
+   "AGPL-3.0-or-later"
+  ],
+  "permissive": [
+   "MIT",
+   "BSD-2-Clause",
+   "ISC",
+   "BSD-3-Clause",
+   "Apache-2.0"
+  ],
+  "lgpl21": [
+   "LGPL-2.1-only",
+   "LGPL-2.1-or-later"
+  ],
+  "lgpl": [
+   "LGPL-2.1-only",
+   "LGPL-2.1-or-later",
+   "LGPL-3.0-only",
+   "LGPL-3.0-or-later"
+  ],
+  "gpl": [
+   "GPL-2.0-only",
+   "GPL-2.0-or-later",
+   "GPL-3.0-only",
+   "GPL-3.0-or-later"
+  ],
+  "gnu_copyleft": [
+   "GPL-2.0-only",
+   "GPL-2.0-or-later",
+   "GPL-3.0-only",
+   "GPL-3.0-or-later",
+   "AGPL-3.0-only",
+   "AGPL-3.0-or-later"
+  ],
+  "non_gpl": [
+   "MIT",
+   "BSD-2-Clause",
+   "ISC",
+   "BSD-3-Clause",
+   "Apache-2.0",
+   "Unlicense",
+   "CC0-1.0",
+   "MPL-2.0",
+   "LGPL-2.1-only",
+   "LGPL-2.1-or-later",
+   "LGPL-3.0-only",
+   "LGPL-3.0-or-later"
+  ],
+  "all_but_pd": [
+   "MIT",
+   "BSD-2-Clause",
+   "ISC",
+   "BSD-3-Clause",
+   "Apache-2.0",
+   "MPL-2.0",
+   "LGPL-2.1-only",
+   "LGPL-2.1-or-later",
+   "LGPL-3.0-only",
+   "LGPL-3.0-or-later",
+   "GPL-2.0-only",
+   "GPL-2.0-or-later",
+   "GPL-3.0-only",
+   "GPL-3.0-or-later",
+   "AGPL-3.0-only",
+   "AGPL-3.0-or-later"
+  ],
+  "notice_or_pd": [
+   "MIT",
+   "BSD-2-Clause",
+   "ISC",
+   "BSD-3-Clause",
+   "Apache-2.0",
+   "Unlicense",
+   "CC0-1.0",
+   "MPL-2.0"
+  ]
+ },
+ "rules": [
+  {
+   "id": "permissive-into-licensed",
+   "y": [
+    "@notice_permissive"
+   ],
+   "x": [
+    "@all_but_pd"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "attribution"
+   ],
+   "sources": [
+    "text-mit",
+    "text-bsd2",
+    "text-isc",
+    "fsf-list"
+   ],
+   "note": "MIT, BSD-2-Clause and ISC ask only that the copyright and permission notice travel with copies; the FSF lists them as GPL-compatible."
+  },
+  {
+   "id": "bsd3-into-licensed",
+   "y": [
+    "@bsd3"
+   ],
+   "x": [
+    "@all_but_pd"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "attribution",
+    "no_endorsement"
+   ],
+   "sources": [
+    "text-bsd3",
+    "fsf-list"
+   ],
+   "note": "BSD-3-Clause adds the non-endorsement clause; the FSF lists it as GPL-compatible."
+  },
+  {
+   "id": "permissive-into-pd",
+   "y": [
+    "@notice_permissive"
+   ],
+   "x": [
+    "@public_domain"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "attribution",
+    "keeps_own_licence"
+   ],
+   "sources": [
+    "text-mit",
+    "text-bsd2",
+    "text-isc",
+    "text-unlicense",
+    "text-cc0"
+   ],
+   "note": "A public-domain dedication of X cannot cover code that Y only licensed: those parts keep their notice."
+  },
+  {
+   "id": "bsd3-into-pd",
+   "y": [
+    "@bsd3"
+   ],
+   "x": [
+    "@public_domain"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "attribution",
+    "no_endorsement",
+    "keeps_own_licence"
+   ],
+   "sources": [
+    "text-bsd3",
+    "text-unlicense",
+    "text-cc0"
+   ]
+  },
+  {
+   "id": "pd-into-any",
+   "y": [
+    "@public_domain"
+   ],
+   "x": [
+    "@all_but_pd",
+    "@public_domain"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible",
+   "conditions": [],
+   "sources": [
+    "text-unlicense",
+    "text-cc0",
+    "fsf-list"
+   ],
+   "note": "Unlicense and CC0-1.0 waive the rights (CC0 falls back to a permissive licence where a waiver is void; CC0 section 4(a) grants no patent licence). The FSF lists both as GPL-compatible."
+  },
+  {
+   "id": "apache-into-permissive",
+   "y": [
+    "@apache"
+   ],
+   "x": [
+    "@notice_permissive",
+    "@bsd3"
+   ],
+   "use": [
+    "link",
+    "copy"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "attribution",
+    "notice_file",
+    "keeps_own_licence"
+   ],
+   "sources": [
+    "text-apache2",
+    "osi-list"
+   ],
+   "note": "Apache-2.0 section 4: licence copy, NOTICE contents; the Apache-licensed parts stay under Apache-2.0 (patent clause included)."
+  },
+  {
+   "id": "apache-into-permissive-modify",
+   "y": [
+    "@apache"
+   ],
+   "x": [
+    "@notice_permissive",
+    "@bsd3"
+   ],
+   "use": [
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "attribution",
+    "notice_file",
+    "state_changes",
+    "keeps_own_licence"
+   ],
+   "sources": [
+    "text-apache2",
+    "osi-list"
+   ]
+  },
+  {
+   "id": "apache-into-apache",
+   "y": [
+    "@apache"
+   ],
+   "x": [
+    "@apache"
+   ],
+   "use": [
+    "link",
+    "copy"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "attribution",
+    "notice_file"
+   ],
+   "sources": [
+    "text-apache2"
+   ]
+  },
+  {
+   "id": "apache-into-apache-modify",
+   "y": [
+    "@apache"
+   ],
+   "x": [
+    "@apache"
+   ],
+   "use": [
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "attribution",
+    "notice_file",
+    "state_changes"
+   ],
+   "sources": [
+    "text-apache2"
+   ]
+  },
+  {
+   "id": "apache-into-mpl-pd",
+   "y": [
+    "@apache"
+   ],
+   "x": [
+    "@mpl",
+    "@public_domain"
+   ],
+   "use": [
+    "link",
+    "copy"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "attribution",
+    "notice_file",
+    "keeps_own_licence"
+   ],
+   "sources": [
+    "text-apache2",
+    "text-mpl2"
+   ]
+  },
+  {
+   "id": "apache-into-mpl-pd-modify",
+   "y": [
+    "@apache"
+   ],
+   "x": [
+    "@mpl",
+    "@public_domain"
+   ],
+   "use": [
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "attribution",
+    "notice_file",
+    "state_changes",
+    "keeps_own_licence"
+   ],
+   "sources": [
+    "text-apache2",
+    "text-mpl2"
+   ]
+  },
+  {
+   "id": "apache-into-gnu-v3",
+   "y": [
+    "@apache"
+   ],
+   "x": [
+    "@gpl3",
+    "@agpl3",
+    "@lgpl3"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "attribution",
+    "notice_file",
+    "state_changes_if_modified",
+    "combined_under_x"
+   ],
+   "sources": [
+    "fsf-list",
+    "apache-gpl",
+    "text-apache2"
+   ],
+   "note": "The FSF and the ASF: Apache-2.0 code may be included in GPLv3 works (one-way: the combination is distributed under the GNU licence)."
+  },
+  {
+   "id": "apache-into-gnu-or-later",
+   "y": [
+    "@apache"
+   ],
+   "x": [
+    "@gpl2plus",
+    "@lgpl21plus"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "attribution",
+    "notice_file",
+    "state_changes_if_modified",
+    "combined_under_v3"
+   ],
+   "sources": [
+    "fsf-list",
+    "apache-gpl"
+   ],
+   "note": "Only through the \"or later\" option of X: the combination is distributed under version 3 of X's licence."
+  },
+  {
+   "id": "apache-into-gpl2-only",
+   "y": [
+    "@apache"
+   ],
+   "x": [
+    "@gpl2only"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "incompatible",
+   "conditions": [],
+   "sources": [
+    "fsf-list",
+    "apache-gpl"
+   ],
+   "note": "FSF and ASF: Apache-2.0 is not compatible with GPL version 2 (patent termination and indemnification provisions); the FSF counts linking as forming a combined work."
+  },
+  {
+   "id": "apache-into-lgpl21-only",
+   "y": [
+    "@apache"
+   ],
+   "x": [
+    "@lgpl21only"
+   ],
+   "use": [
+    "copy",
+    "modify"
+   ],
+   "verdict": "incompatible",
+   "conditions": [],
+   "sources": [
+    "fsf-list",
+    "apache-gpl",
+    "text-lgpl21"
+   ],
+   "note": "While X stays LGPL-2.1-only; LGPL-2.1 section 3 lets X be converted to the GPL, which changes X's licence."
+  },
+  {
+   "id": "mpl-into-non-gnu",
+   "y": [
+    "@mpl"
+   ],
+   "x": [
+    "@notice_or_pd"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "file_level_copyleft",
+    "attribution"
+   ],
+   "sources": [
+    "text-mpl2",
+    "mpl-faq"
+   ],
+   "note": "MPL-2.0 section 3.3 (Larger Work): X may keep its licence for its own files; the MPL-covered files and changes to them stay MPL-2.0."
+  },
+  {
+   "id": "mpl-into-gnu",
+   "y": [
+    "@mpl"
+   ],
+   "x": [
+    "@gnu_copyleft",
+    "@lgpl"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "no_secondary_incompatibility",
+    "combined_under_x",
+    "mpl_also_available"
+   ],
+   "sources": [
+    "text-mpl2",
+    "mpl-faq",
+    "fsf-list"
+   ],
+   "note": "MPL-2.0 sections 1.12 and 3.3: GPL-2.0, LGPL-2.1, AGPL-3.0 \"or any later versions\" are Secondary Licenses."
+  },
+  {
+   "id": "lgpl-link-into-non-gnu",
+   "y": [
+    "@lgpl"
+   ],
+   "x": [
+    "@notice_or_pd"
+   ],
+   "use": [
+    "link"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "lgpl_library",
+    "attribution"
+   ],
+   "sources": [
+    "text-lgpl21",
+    "text-lgpl3",
+    "fsf-list"
+   ],
+   "note": "LGPL-2.1 section 6, LGPL-3.0 section 4: a work that uses the library may be under other terms."
+  },
+  {
+   "id": "lgpl-copy-into-non-gnu",
+   "y": [
+    "@lgpl"
+   ],
+   "x": [
+    "@notice_or_pd"
+   ],
+   "use": [
+    "copy",
+    "modify"
+   ],
+   "verdict": "incompatible",
+   "conditions": [],
+   "sources": [
+    "text-lgpl21",
+    "text-lgpl3",
+    "fsf-faq-matrix"
+   ],
+   "note": "Copied or modified LGPL code stays under the LGPL: X could no longer be distributed under its own licence alone. Keeping Y as a separate library is the link case."
+  },
+  {
+   "id": "lgpl21-into-gpl2-only",
+   "y": [
+    "@lgpl21"
+   ],
+   "x": [
+    "@gpl2only"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "convert_lgpl21_to_gpl",
+    "combined_under_x"
+   ],
+   "sources": [
+    "text-lgpl21",
+    "fsf-faq-matrix"
+   ]
+  },
+  {
+   "id": "lgpl21-into-gnu",
+   "y": [
+    "@lgpl21"
+   ],
+   "x": [
+    "@gpl2plus",
+    "@gpl3",
+    "@agpl3"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "convert_lgpl21_to_gpl",
+    "combined_under_x"
+   ],
+   "sources": [
+    "text-lgpl21",
+    "fsf-faq-matrix"
+   ],
+   "note": "LGPL-2.1 section 3: the code may be conveyed under the GPL version 2 or any newer version; AGPL-3.0 section 13 then allows the combination with GPLv3 code."
+  },
+  {
+   "id": "lgpl3-into-gpl3",
+   "y": [
+    "@lgpl3"
+   ],
+   "x": [
+    "@gpl3",
+    "@agpl3"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "combined_under_x"
+   ],
+   "sources": [
+    "text-lgpl3",
+    "fsf-faq-matrix"
+   ]
+  },
+  {
+   "id": "lgpl3-into-gpl2-plus",
+   "y": [
+    "@lgpl3"
+   ],
+   "x": [
+    "@gpl2plus"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "combined_under_v3"
+   ],
+   "sources": [
+    "fsf-faq-matrix"
+   ]
+  },
+  {
+   "id": "lgpl3-into-gpl2-only",
+   "y": [
+    "@lgpl3"
+   ],
+   "x": [
+    "@gpl2only"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "incompatible",
+   "conditions": [],
+   "sources": [
+    "fsf-faq-matrix"
+   ]
+  },
+  {
+   "id": "lgpl21only-into-lgpl21",
+   "y": [
+    "@lgpl21only"
+   ],
+   "x": [
+    "@lgpl21"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "combined_under_y"
+   ],
+   "sources": [
+    "text-lgpl21",
+    "fsf-faq-matrix"
+   ]
+  },
+  {
+   "id": "lgpl21plus-into-lgpl21",
+   "y": [
+    "@lgpl21plus"
+   ],
+   "x": [
+    "@lgpl21"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "combined_under_x"
+   ],
+   "sources": [
+    "text-lgpl21",
+    "fsf-faq-matrix"
+   ]
+  },
+  {
+   "id": "lgpl21plus-into-lgpl3",
+   "y": [
+    "@lgpl21plus"
+   ],
+   "x": [
+    "@lgpl3"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "combined_under_x"
+   ],
+   "sources": [
+    "text-lgpl21",
+    "fsf-faq-matrix"
+   ],
+   "note": "Through the \"or later\" option of Y."
+  },
+  {
+   "id": "lgpl3-into-lgpl3",
+   "y": [
+    "@lgpl3"
+   ],
+   "x": [
+    "@lgpl3"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "combined_under_x"
+   ],
+   "sources": [
+    "text-lgpl3"
+   ]
+  },
+  {
+   "id": "lgpl3-into-lgpl21-plus",
+   "y": [
+    "@lgpl3"
+   ],
+   "x": [
+    "@lgpl21plus"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "combined_under_v3"
+   ],
+   "sources": [
+    "fsf-faq-matrix"
+   ]
+  },
+  {
+   "id": "lgpl3-copy-into-lgpl21-only",
+   "y": [
+    "@lgpl3"
+   ],
+   "x": [
+    "@lgpl21only"
+   ],
+   "use": [
+    "copy",
+    "modify"
+   ],
+   "verdict": "incompatible",
+   "conditions": [],
+   "sources": [
+    "fsf-faq-matrix"
+   ]
+  },
+  {
+   "id": "lgpl21only-link-into-lgpl3",
+   "y": [
+    "@lgpl21only"
+   ],
+   "x": [
+    "@lgpl3"
+   ],
+   "use": [
+    "link"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "lgpl_library"
+   ],
+   "sources": [
+    "text-lgpl21"
+   ]
+  },
+  {
+   "id": "gnu-into-non-gpl",
+   "y": [
+    "@gnu_copyleft"
+   ],
+   "x": [
+    "@non_gpl"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "incompatible",
+   "conditions": [],
+   "sources": [
+    "text-gpl2",
+    "text-gpl3",
+    "text-agpl3",
+    "fsf-faq-matrix"
+   ],
+   "note": "The combined work would have to be distributed under the GNU licence of Y. The FSF counts linking as forming a combined work (a position not settled by courts for dynamic linking)."
+  },
+  {
+   "id": "gpl2only-into-gpl2",
+   "y": [
+    "@gpl2only"
+   ],
+   "x": [
+    "@gpl2only",
+    "@gpl2plus"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "combined_under_y"
+   ],
+   "sources": [
+    "text-gpl2",
+    "fsf-faq-matrix"
+   ]
+  },
+  {
+   "id": "gpl2only-into-v3",
+   "y": [
+    "@gpl2only"
+   ],
+   "x": [
+    "@gpl3",
+    "@agpl3"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "incompatible",
+   "conditions": [],
+   "sources": [
+    "fsf-faq-matrix",
+    "fsf-list"
+   ]
+  },
+  {
+   "id": "gpl2plus-into-gpl2only",
+   "y": [
+    "@gpl2plus"
+   ],
+   "x": [
+    "@gpl2only"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "combined_under_x"
+   ],
+   "sources": [
+    "fsf-faq-matrix"
+   ]
+  },
+  {
+   "id": "gpl2plus-into-gpl",
+   "y": [
+    "@gpl2plus"
+   ],
+   "x": [
+    "@gpl2plus",
+    "@gpl3"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "combined_under_x"
+   ],
+   "sources": [
+    "fsf-faq-matrix"
+   ]
+  },
+  {
+   "id": "gpl2plus-into-agpl",
+   "y": [
+    "@gpl2plus"
+   ],
+   "x": [
+    "@agpl3"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "combined_under_v3",
+    "network_source"
+   ],
+   "sources": [
+    "text-gpl3",
+    "text-agpl3",
+    "fsf-faq-matrix"
+   ]
+  },
+  {
+   "id": "gpl3-into-gpl3",
+   "y": [
+    "@gpl3"
+   ],
+   "x": [
+    "@gpl3"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "combined_under_y"
+   ],
+   "sources": [
+    "text-gpl3",
+    "fsf-faq-matrix"
+   ]
+  },
+  {
+   "id": "gpl3-into-gpl2plus",
+   "y": [
+    "@gpl3"
+   ],
+   "x": [
+    "@gpl2plus"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "combined_under_v3"
+   ],
+   "sources": [
+    "fsf-faq-matrix"
+   ]
+  },
+  {
+   "id": "gpl3-into-gpl2only",
+   "y": [
+    "@gpl3",
+    "@agpl3"
+   ],
+   "x": [
+    "@gpl2only"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "incompatible",
+   "conditions": [],
+   "sources": [
+    "fsf-faq-matrix",
+    "fsf-list"
+   ]
+  },
+  {
+   "id": "gpl3-into-agpl3",
+   "y": [
+    "@gpl3"
+   ],
+   "x": [
+    "@agpl3"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "combined_under_x",
+    "network_source"
+   ],
+   "sources": [
+    "text-gpl3",
+    "text-agpl3"
+   ],
+   "note": "GPL-3.0 section 13 and AGPL-3.0 section 13: each part keeps its licence, the network clause applies to the combination."
+  },
+  {
+   "id": "agpl3-into-agpl3",
+   "y": [
+    "@agpl3"
+   ],
+   "x": [
+    "@agpl3"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "combined_under_y",
+    "network_source"
+   ],
+   "sources": [
+    "text-agpl3"
+   ]
+  },
+  {
+   "id": "agpl3-into-gpl3",
+   "y": [
+    "@agpl3"
+   ],
+   "x": [
+    "@gpl3"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "network_source"
+   ],
+   "sources": [
+    "text-gpl3",
+    "text-agpl3"
+   ],
+   "note": "GPL-3.0 section 13: the AGPL part keeps its licence and its network clause applies to the combination as such."
+  },
+  {
+   "id": "agpl3-into-gpl2plus",
+   "y": [
+    "@agpl3"
+   ],
+   "x": [
+    "@gpl2plus"
+   ],
+   "use": [
+    "link",
+    "copy",
+    "modify"
+   ],
+   "verdict": "compatible_with_conditions",
+   "conditions": [
+    "combined_under_v3",
+    "network_source"
+   ],
+   "sources": [
+    "text-gpl3",
+    "text-agpl3"
+   ]
+  }
+ ]
+}

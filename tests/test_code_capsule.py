@@ -133,7 +133,7 @@ def test_never_imports_or_executes_repository_code(repo):
 def test_maps_modules_entry_points_tests_and_license(repo):
     r, shas, commit, run = repo
     doc = run(shas[1])[2]
-    s = shas[1][:12]
+    s = shas[1]                                  # citations carry the full SHA (audit 2026-10-31, item 1d)
     nbytes = sum(len(FILES_1[k].encode()) for k in ("pkg/__init__.py", "pkg/__main__.py"))
     assert doc["modules"] == {"list": [{"path": "pkg", "language": "python", "files": 2, "bytes": nbytes}], "total": 1, "truncated": False}
     got = {(p["type"], p["where"]) for p in doc["entry_points"]["list"]}
@@ -233,7 +233,7 @@ def test_auto_builds_a_marked_capsule_from_the_request(repo, tmp_path):
     assert (doc["mode"], doc["Y"]["repo"], doc["Y"]["sha"], doc["request_date"]) == ("Y given", "github.com/litl/backoff", "a" * 40, "2026-10-29")
     seams = doc["target_seam"]
     assert 1 <= len(seams) <= 3 and all(s["status"] == "proposed, not reviewed" for s in seams), seams
-    assert seams[0]["where"] == f"pkg/__main__.py:1@{shas[1][:12]}" and not any(s["where"].startswith("tests/") for s in seams), seams
+    assert seams[0]["where"] == f"pkg/__main__.py:1@{shas[1]}" and not any(s["where"].startswith("tests/") for s in seams), seams
     for s in seams:  # every proposed seam exists at the SHA
         assert subprocess.run(["git", "-C", str(r), "cat-file", "-e", f"{shas[1]}:{s['where'].split(':')[0]}"]).returncode == 0, s
     md = pathlib.Path(res["markdown"]).read_text()

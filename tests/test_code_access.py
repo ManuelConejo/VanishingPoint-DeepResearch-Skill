@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-"""Offline tests of the code ACCESS defects found by the code bench of 2026-10-31 (skill-vp/chantier-code/banc-code-31-10/RESULTATS.md,
+"""Offline tests of the code ACCESS defects found by the code bench of 2026-10-31 (internal report,
 defects a1-a5), each red on the code before the fix:
   1. github-repo served with plugins/code.md (source `github`): repo-head resolves a named repository to the last commit of its default
      branch before T (same gate as every commit: default branch history, repository created before T); repo-info gives SPDX licence,

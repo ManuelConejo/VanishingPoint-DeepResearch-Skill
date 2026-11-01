@@ -217,7 +217,7 @@ class Usage(Base):
         self.assertIn('ecosyste.ms', g.sources()['code_engines']); self.assertIn('usage', g.sources()['commands'])
         r = g.call('usage', 'pypi:faiss-cpu')
         x = r['results']
-        self.assertEqual(x['latest_release_before_T'], {'number': '1.2.0', 'date': V + 'T08:00:00.000Z'})
+        self.assertEqual(x['latest_release_before_T'], {'number': '1.2.0', 'date': V + 'T08:00:00.000Z', 'prerelease': False})
         self.assertEqual((x['as_of'], x['dependent_repos_count'], x['first_release_date']), ('now', 5592, '2019-07-17T05:18:53.000Z'))
         self.assertIn('not as of T', x['as_of_note']); self.assertIn('as_of', r['warning'])
         dump = json.dumps(x)
@@ -246,8 +246,9 @@ class CsAiPaperCode(Base):
         self.assertTrue({'openreview', 'zenodo', 'hal-info'} <= set(s['engines'])); self.assertNotIn('hal', s['engines'])   # law hal not pulled into cs-ai
         def send(client, url, headers):
             if '/api/papers/' in url: return 200, json.dumps({'publishedAt': V + 'T00:00:00Z', 'githubRepo': 'https://github.com/a/b', 'githubStars': 3}).encode()
-            return 200, json.dumps([{'id': 'm/old', 'lastModified': V + 'T00:00:00Z'}, {'id': 'm/late', 'lastModified': F + 'T00:00:00Z'},
-                                    {'id': 'm/dayT', 'lastModified': T.isoformat() + 'T00:00:00Z'}]).encode()
+            if 'huggingface.co' not in url: return 404, b'{}'                    # GitHub (dating of githubRepo): not read here, served undated
+            return 200, json.dumps([{'id': 'm/old', 'createdAt': V + 'T00:00:00Z', 'lastModified': F + 'T00:00:00Z'}, {'id': 'm/late', 'createdAt': F + 'T00:00:00Z'},
+                                    {'id': 'm/dayT', 'createdAt': T.isoformat() + 'T00:00:00Z'}]).encode()   # dated by creation, not lastModified
         send0 = sc.CodeClient._send; sc.CodeClient._send = send; self.addCleanup(setattr, sc.CodeClient, '_send', send0)
         g.client.sleep = lambda s: None
         x = g.call('paper-code', 'arxiv:2401.00001')['results']
@@ -255,7 +256,7 @@ class CsAiPaperCode(Base):
         def late(client, url, headers): return 200, json.dumps({'publishedAt': F + 'T00:00:00Z'} if '/api/papers/' in url else []).encode()
         sc.CodeClient._send = late
         g2 = gw.Gateway([P.parent / 'plugins' / 'cs-ai.md'], T=T, run='t-pc2', state=pathlib.Path(self.tmp.name) / 'state2'); g2.client.sleep = lambda s: None
-        self.assertEqual(g2.call('paper-code', 'arxiv:2401.00002')['results'], {'refusal': 'after T'})
+        self.assertEqual(g2.call('paper-code', 'arxiv:2403.00002')['results'], {'refusal': 'after T'})   # arXiv month and HF date both on/after T
 
 
 # ---------------------------------------------------------------- Stack Exchange: tos_forbidden, not wired; check_keys display

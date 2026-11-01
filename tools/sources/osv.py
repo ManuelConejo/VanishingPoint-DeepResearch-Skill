@@ -9,7 +9,7 @@ from sources._common import EXTRA_NO_CHAIN, RELATED_ONLY, value
 
 
 def osv_item(v, B, with_details=False):
-    """OSV advisory, dated by its publication: refused when `published` is absent or >= T (banc code 2026-10-31, defect 4: the barrier is
+    """OSV advisory, dated by its publication: refused when `published` is absent or >= T (internal code bench 2026-10-31, defect 4: the barrier is
     `published`, never `modified`). An advisory published before T but modified on/after T is served whole (summary, details, ranges,
     severity, references), marked `modified_after_T` with an explicit validity note: the current record may carry post-T edits (aliases,
     fixed versions, severity); its post-T modification date is not shown. Withdrawn shown only when the withdrawal is before T."""

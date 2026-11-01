@@ -1,0 +1,41 @@
+{
+ "card_id": "c1",
+ "question": "What could hynek/stamina (X) reuse from searxng/searxng (Y) at c15647b5a5921858d5147d291c658fbda3cba12c, in particular outgoing-request resilience (searx/network/, engine suspension after errors)? For each reusable mechanism: code references pinned to a commit; whether and how it can be reused.",
+ "sources": {
+  "S1": {"code": "LICENSE@c15647b5a5921858d5147d291c658fbda3cba12c", "title": "LICENSE (GNU Affero General Public License v3), searxng"},
+  "S2": {"code": "local:LICENSE@5c13c8e0b4bc5faa54914115a8c796934ba6da9d", "title": "LICENSE (MIT), stamina"},
+  "S3": {"code": "searx/search/processors/abstract.py@c15647b5a5921858d5147d291c658fbda3cba12c", "title": "searx/search/processors/abstract.py (SuspendedStatus, handle_exception, extend_container)"},
+  "S4": {"code": "searx/settings.yml@c15647b5a5921858d5147d291c658fbda3cba12c", "title": "searx/settings.yml (ban_time_on_fail, max_ban_time_on_fail, suspended_times)"},
+  "S5": {"code": "searx/search/processors/online.py@c15647b5a5921858d5147d291c658fbda3cba12c", "title": "searx/search/processors/online.py (OnlineProcessor.search exception ladder)"},
+  "S6": {"code": "searx/exceptions.py@c15647b5a5921858d5147d291c658fbda3cba12c", "title": "searx/exceptions.py (SearxEngineAccessDeniedException and subclasses)"},
+  "S7": {"code": "local:src/stamina/_core.py@5c13c8e0b4bc5faa54914115a8c796934ba6da9d", "title": "src/stamina/_core.py (retry loop, jitter, stop conditions)"},
+  "S8": {"code": "local:src/stamina/exceptions.py@5c13c8e0b4bc5faa54914115a8c796934ba6da9d", "title": "src/stamina/exceptions.py (TryAgain)"},
+  "S9": {"code": "searx/network/network.py@c15647b5a5921858d5147d291c658fbda3cba12c", "title": "searx/network/network.py (Network.call_client, cycles)"},
+  "S10": {"code": "searx/network/__init__.py@c15647b5a5921858d5147d291c658fbda3cba12c", "title": "searx/network/__init__.py (thread-local timeout, _get_timeout)"},
+  "S11": {"code": "searx/search/__init__.py@c15647b5a5921858d5147d291c658fbda3cba12c", "title": "searx/search/__init__.py (deadline table, thread join, _timeout flag)"},
+  "S12": {"code": "searx/metrics/error_recorder.py@c15647b5a5921858d5147d291c658fbda3cba12c", "title": "searx/metrics/error_recorder.py (ErrorContext, count_exception)"},
+  "S13": {"code": "searx/network/raise_for_httperror.py@c15647b5a5921858d5147d291c658fbda3cba12c", "title": "searx/network/raise_for_httperror.py (status to exception mapping)"},
+  "S14": {"code": "searx/settings_defaults.py@c15647b5a5921858d5147d291c658fbda3cba12c", "title": "searx/settings_defaults.py (schema defaults for suspended_times, retries, timeouts)"},
+  "S15": {"code": "tests/unit/test_exceptions.py@c15647b5a5921858d5147d291c658fbda3cba12c", "title": "tests/unit/test_exceptions.py"},
+  "S16": {"code": "tests/unit/network/test_network.py@c15647b5a5921858d5147d291c658fbda3cba12c", "title": "tests/unit/network/test_network.py"},
+  "S17": {"code": "searx/botdetection/__init__.py@c15647b5a5921858d5147d291c658fbda3cba12c", "title": "searx/botdetection/__init__.py (incoming bot detection)"}
+ },
+ "claims": [
+  {"id": "A1", "text": "The licence of searxng (Y) at the pinned commit is GNU AGPL version 3.", "source": {"key": "S1"}, "location": "Executive Summary"},
+  {"id": "A2", "text": "Stamina (X) is MIT-licensed.", "source": {"key": "S2"}, "location": "Executive Summary"},
+  {"id": "A3", "text": "searxng keeps a SuspendedStatus (end time, reason, continuous-error counter, lock) per engine network, checks it before each search and resets it on success; at this commit the continuous-error counter is incremented but never enters the ban duration, so the ban is constant.", "source": {"key": "S3"}, "location": "Executive Summary"},
+  {"id": "A4", "text": "searxng settings.yml sets ban_time_on_fail to 5 seconds and max_ban_time_on_fail to 120 seconds.", "source": {"key": "S4"}, "location": "Executive Summary"},
+  {"id": "A5", "text": "In online.py, SSL errors, timeouts, request exceptions and the access-denied-family exceptions suspend the engine, while a bare Exception is only recorded.", "source": {"key": "S5"}, "location": "Executive Summary"},
+  {"id": "A6", "text": "Three exception classes in searx/exceptions.py carry a suspended_time with a per-class default.", "source": {"key": "S6"}, "location": "Executive Summary"},
+  {"id": "A7", "text": "Stamina TryAgain accepts an after parameter, a wait hint inside one call.", "source": {"key": "S8"}, "location": "Executive Summary"},
+  {"id": "A8", "text": "A search of stamina source finds no suspension or circuit-breaker code; the retry loop is stateless per call. Verdict of Finding 1 (cross-call suspension of a failing target): WATCH (seam missing).", "source": {"key": "S7"}, "location": "Finding 1"},
+  {"id": "A9", "text": "raise_for_httperror maps HTTP 402 and 403 to the access-denied exception and 429 to the too-many-requests exception.", "source": {"key": "S13"}, "location": "Executive Summary"},
+  {"id": "A10", "text": "searx/settings_defaults.py gives schema defaults of 86400 seconds (access denied), 86400 (captcha) and 3600 (too many requests), whereas settings.yml gives 180, 3600 and 180.", "source": {"key": "S14"}, "location": "Executive Summary"},
+  {"id": "A11", "text": "searx/network/__init__.py _get_timeout subtracts the elapsed time from the timeout (timeout -= default_timer() - start_time).", "source": {"key": "S10"}, "location": "Finding 4"},
+  {"id": "A12", "text": "Stamina stops its retry loop with stop_before_delay(timeout), default timeout 45.0 seconds, so it bounds only the whole loop. Verdict of Finding 4 (propagating the remaining time budget into each attempt): WATCH.", "source": {"key": "S7"}, "location": "Finding 4"},
+  {"id": "A14", "text": "Verdict of Finding 3 (network retries with client, proxy and source-IP rotation): NO-GO; the retry loop retries immediately with no sleep and is tied to Y's Network object.", "source": {"key": "S9"}, "location": "Finding 3"},
+  {"id": "A15", "text": "Verdict of Finding 5 (error recording keyed by code location): NO-GO; ErrorContext relies on inspect.trace() frame inspection and Y's engine registry.", "source": {"key": "S12"}, "location": "Finding 5"},
+  {"id": "A16", "text": "Verdict of Finding 6 (composite capability, target-health registry, an inference): WATCH; the pieces share the target key and the suspension flow, the seam is missing, and the licence of the assembly is AGPL hence clean-room only.", "source": {"key": "S3"}, "location": "Finding 6"}
+ ],
+ "conclusion": "searxng's AGPL licence blocks copying and its suspension is constant, not escalating, so the only worthwhile borrowings are clean-room ideas, chiefly an opt-in target-suspension registry (WATCH)."
+}

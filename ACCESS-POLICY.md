@@ -3,7 +3,14 @@
 Chosen stance: retrieve as much as the open web lawfully offers, openly identified as a program, and never work around a technical protection.
 
 ## Level 1 -- Documented API
-Used according to its published terms and cadence (arXiv, PubMed E-utilities, HAL, Crossref, OpenAlex, deps.dev, ecosyste.ms, OSV, Cellar, European Parliament API...). The host's `robots.txt` does not apply to the API.
+Used according to its published terms and cadence (arXiv, PubMed E-utilities, HAL, Crossref, OpenAlex, deps.dev, ecosyste.ms, OSV, Cellar, European Parliament API, Internet Archive Wayback Machine...). The host's `robots.txt` does not apply to the API.
+
+Internet Archive (`web.archive.org`) is level 1 by decision of the owner (2026-11-01): the Wayback CDX server API (capture index) and the Memento (RFC 7089) playback of a capture's raw bytes (`/web/<timestamp>id_/<url>`) are documented interfaces. Conditions:
+- only the capture asked for is downloaded (the last one before T), never a site or a series of captures; a user agent with a contact as above;
+- at most 1 request per second to `web.archive.org`, sequential, declared in the adapter (`tools/sources/wayback.py`);
+- on 429 or 503 (and 403): stop at once, receipt `rate_limited`, `Retry-After` respected (no request to the archive before it expires), no retry loop, no workaround; no capture before T: receipt `not_found`;
+- a capture date is an upper bound of the existence of the content, never its publication date: every receipt says "captured before T" and carries `captured: <timestamp>`;
+- the archived content belongs to its original rights holders; the archive's own terms apply.
 
 ## Level 2 -- Public pages, including under a robots.txt `Disallow`
 We retrieve them, openly identified. Note for users in the EU: a machine-readable opt-out (such as `robots.txt`) can reserve text and data mining under Art. 4(3) of Directive (EU) 2019/790; whether it binds your use is your responsibility. Conditions to avoid being banned and to stay identifiable:
@@ -29,3 +36,6 @@ Each source of the `sources` block and of the table carries `access: api | page 
 
 ## Exceptions granted
 (none)
+
+## Decisions of the owner on levels
+- 2026-11-01: archive.org (Wayback CDX server API, Memento RFC 7089) is accepted as a level 1 source (documented API).

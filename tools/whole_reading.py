@@ -10,12 +10,18 @@ state/whole-reading/{PROMPT.md, material-X.txt, material-X.json, material-Y.txt,
 No clone, no checkout, no execution of any code of Y or X: git is used read-only (ls-tree, cat-file, show).
 
 Usage:
-  whole_reading.py RUN_DIR [--y-repo DIR --y-sha SHA [--y-name NAME] | --y-material FILE]
+  whole_reading.py RUN_DIR [--y-gateway OWNER/NAME[@SHA] [--state DIR] [--gateway-run NAME] | --y-repo DIR --y-sha SHA [--y-name NAME] | --y-material FILE]
                    [--x-repo DIR --x-sha SHA [--x-name NAME] [--x-prefix P/]] [--x2-repo DIR --x2-sha SHA [--x2-name NAME] [--x2-prefix P/]]
                    [--T DATE] [--request TEXT] [--target TEXT] [--model M] [--host claude|openai]
-                   [--y-cap N] [--x-cap N] [--priority P ...] [--exclude P ...] [--wait SECONDS] [--sync] [--material-only]
+                   [--y-cap N] [--x-cap N] [--priority P ...] [--exclude P ...] [--selection order|repo-map] [--wait SECONDS] [--sync] [--material-only]
   RUN_DIR holds scope.md (X@SHA, Y@SHA, T and the request are read there when not given), searches/*.md, capsule.md and,
-  optionally, state/calls.jsonl. Repositories are local git directories (bare or not) already present on the machine.
+  optionally, state/calls.jsonl. X repositories are local git directories (bare or not) already present on the machine. Y needs no
+  mirror: --y-gateway (or scope.md naming Y as <owner>/<name>@<SHA> without --y-repo) dates the commit through ONE gateway call
+  (repo-ls, pool `whole_reading`, config whole_reading.call_cap) and reads the files from the bare one-commit snapshot it fetched
+  (tools/repo_snapshot.py: no checkout, nothing executed). Line numbers are those of git (split on \n only), SHAs are written in full.
+  --selection: how the files of Y compete for the cap (config condense.selection, default "order": priority prefixes, tiers, alphabetical).
+  "repo-map" orders them inside each tier by the score of a repository map (tools/repo_map.py), personalised on the files and identifiers
+  named by scope.md, searches/*.md and capsule.md of RUN_DIR; the files stay whole and numbered as git numbers them.
 Behaviour: the first call builds the material without any model, then launches ONE model call in the background and waits
   up to --wait seconds (default 90); it prints a JSON status ("running" | "done" | "failed"). Calling the same command again
   waits again and prints the status; a run is launched once. --sync waits until the call ends. --material-only writes the
@@ -29,6 +35,8 @@ Model: --model, else VP_MODEL (environment), else the orchestrator's model is un
 import argparse, datetime as dt, hashlib, json, os, pathlib, re, shutil, subprocess, sys, tempfile, time
 
 HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE)); sys.path.insert(0, str(HERE / 'verifier'))
+from code_files import git_lines   # noqa: E402  (line numbering of git and GitHub, shared with the verifier and condense_repo)
 CFG = json.loads((HERE / 'config.json').read_text())
 WR = CFG.get('whole_reading', {})
 Y_CAP = int(WR.get('y_cap_chars', 400000)); X_CAP = int(WR.get('x_cap_chars', 200000))
@@ -128,15 +136,15 @@ def x_material(run, xs, x_cap=X_CAP):
     for X, p, n, motives in sel:
         rc, data = git(X['repo'], 'show', f"{X['sha']}:{X['prefix']}{p}")
         if rc: excluded.append((X['name'], p, 'absent at the SHA')); continue
-        text = data.decode('utf-8', 'replace'); lines = text.splitlines(); s12 = X['sha'][:12]
+        text = data.decode('utf-8', 'replace'); lines = git_lines(text)                # numbered as git, GitHub and the verifier number them
         if total + len(text) > x_cap: excluded.append((X['name'], p, f'not included (cap {x_cap})')); continue
         total += len(text); included.append((X['name'], p, len(lines), n, motives))
-        blocks.setdefault(X['name'], []).append(f'=== {p} @{s12} ({len(lines)} lines) ===\n' + '\n'.join(f'{i}\t{l}' for i, l in enumerate(lines, 1)) + '\n')
+        blocks.setdefault(X['name'], []).append(f"=== {p} @{X['sha']} ({len(lines)} lines) ===\n" + '\n'.join(f'{i}\t{l}' for i, l in enumerate(lines, 1)) + '\n')
     out = []
     for i, X in enumerate(xs):
-        s12 = X['sha'][:12]; fs = [f for f in included if f[0] == X['name']]
-        out.append(f"# {'X' if i == 0 else 'X2'} = {X['name']}@{s12}" + (f" (prefix {X['prefix']})" if X['prefix'] else '')
-                   + f" - {len(fs)} whole files (git show at the SHA), numbered: the files the searches read or cited, plus the seams of the capsule. Expected citation: <path>:<line>@{s12}")
+        fs = [f for f in included if f[0] == X['name']]
+        out.append(f"# {'X' if i == 0 else 'X2'} = {X['name']}@{X['sha']}" + (f" (prefix {X['prefix']})" if X['prefix'] else '')
+                   + f" - {len(fs)} whole files (git show at the SHA), numbered: the files the searches read or cited, plus the seams of the capsule. Expected citation: <path>:<line>@{X['sha']}")
         ex = [e for e in excluded if e[0] == X['name']]
         if ex: out.append('# Not included: ' + ' ; '.join(f'{p} [{r}]' for _, p, r in ex))
         out.append(''); out += blocks.get(X['name'], []); out.append('')
@@ -146,21 +154,66 @@ def x_material(run, xs, x_cap=X_CAP):
 
 
 # ------------------------------------------------------------------ Y material (condensed repository)
-def y_material(d, a):
+Y_GATEWAY = re.compile(r'(?:repo:|https://github\.com/)?([A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}?)(?:\.git)?(?:@([0-9a-f]{7,40}))?')
+
+
+def y_selection(a, run, sha):
+    """-> (selection, mentions) for condense_repo.condense: the mentions (files and identifiers of scope.md, searches, capsule) only for repo-map."""
+    import condense_repo as cr                               # noqa: E402
+    sel = a.selection or cr.DEFAULT_SELECTION
+    if sel != 'repo-map' or run is None: return sel, None
+    import repo_map                                          # noqa: E402
+    return sel, repo_map.mentions_from_run(run, sha)
+
+
+def y_from_gateway(d, a, run):
+    """Y read through the gateway, without any local mirror (audit 2026-10-31, item 1b): ONE gateway call `repo-ls <owner>/<name>[@<SHA>]`
+    in its own pool `whole_reading` (config whole_reading.call_cap, journaled, never counted against the searches) dates the commit
+    (repo-file barrier: default branch history, repository created before T, committer date before T, backdate checks; without a SHA the
+    last commit of the default branch before T) and fetches that one commit as a bare snapshot (tools/repo_snapshot.py: no checkout, no
+    hook, nothing executed); the files are then read from that snapshot by its guarded git (ls-tree, cat-file) and condensed like a local
+    mirror (condense_repo.condense). -> (text, info); a refusal or a typed failure stops with its reason."""
+    import gateway as gw                                     # noqa: E402  (in-process: same barrier, journal and cache as the searches)
+    import repo_snapshot as rs                               # noqa: E402
+    import condense_repo as cr                               # noqa: E402
+    m = Y_GATEWAY.fullmatch((a.y_gateway or '').strip())
+    if not m: raise SystemExit('--y-gateway expects <owner>/<name>[@<SHA, 7 to 40 hex>] (or repo:<owner>/<name>, or the github.com URL)')
+    repo, sha = m.group(1), m.group(2) or (a.y_sha if a.y_sha and re.fullmatch(r'[0-9a-f]{7,40}', a.y_sha) else None)
+    state = pathlib.Path(a.state).resolve() if a.state else run / 'state'
+    g = gw.Gateway(['code'], T=a.T, run=a.gateway_run or run.name, state=str(state), pool='whole_reading')
+    out = g.call('repo-ls', repo + (f'@{sha}' if sha else ''), 1)
+    r = out.get('results') if isinstance(out, dict) else None
+    if not isinstance(r, dict) or 'refusal' in r or r.get('status') or not re.fullmatch(r'[0-9a-f]{40}', str(r.get('sha') or '')):
+        why = (r or {}).get('refusal') or (r or {}).get('reason') or (out or {}).get('refusal') or (r or {}).get('error') or 'no answer'
+        raise SystemExit(f"Y through the gateway: {repo}{'@' + sha if sha else ''} not read ({(r or {}).get('status') or 'refused'}: {why}); "
+                         'whole reading: not run (give --y-repo DIR of a local mirror, or --y-material FILE)')
+    full = r['sha']
+    snap = rs.Snapshot(state / rs.RG['cache_dir'])
+    try: s = snap.ensure(repo, full)                         # cached by the repo-ls call above: no second fetch
+    except rs.SnapshotError as e: raise SystemExit(f'Y snapshot: {e.code}: {e.reason}')
+    sel, ment = y_selection(a, run, full)
+    text, summary = cr.condense(cr.SnapshotRepo(snap, s, int(a.y_cap) * 4), full, repo, a.y_cap, a.priority or [], a.exclude or [], sel, ment)
+    a.y_name, a.y_sha = repo, full
+    return text, dict(source=f'{repo}@{full}', chars=len(text), cap=a.y_cap, via='gateway repo-ls + bare snapshot (no mirror, no checkout)',
+                      commit_date=r.get('date'), membership=r.get('membership'), gateway_call=out.get('call'), pool='whole_reading',
+                      tree_files=summary['tree_files'], included=summary['included'], reasons=summary['reasons'], selection=summary['selection'])
+
+
+def y_material(d, a, run=None):
     if a.y_material:
         text = pathlib.Path(a.y_material).read_text(errors='replace'); src = str(pathlib.Path(a.y_material).name)
+        info = dict(source=src, chars=len(text), cap=a.y_cap)
+    elif a.y_gateway or (not a.y_repo and a.y_name and a.y_sha and Y_GATEWAY.fullmatch(a.y_name) and run is not None):
+        a.y_gateway = a.y_gateway or f'{a.y_name}@{a.y_sha}'   # scope.md names Y as <owner>/<name>@<SHA> and no mirror is given
+        text, info = y_from_gateway(d, a, run)
     else:
-        if not (a.y_repo and a.y_sha): raise SystemExit('Y: give --y-material FILE, or --y-repo DIR --y-sha SHA (read from scope.md when present)')
-        out = d / 'material-Y.txt'
-        cmd = [sys.executable, '-I', str(HERE / 'condense_repo.py'), '--repo', a.y_repo, '--sha', a.y_sha, '--name', a.y_name or pathlib.Path(a.y_repo).name,
-               '--out', str(out), '--cap', str(a.y_cap)]
-        if a.priority: cmd += ['--priority', *a.priority]
-        if a.exclude: cmd += ['--exclude', *a.exclude]
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
-        if r.returncode or not out.exists(): raise SystemExit(f'condense_repo.py failed (rc {r.returncode}): {(r.stderr or r.stdout)[-800:]}')
-        text = out.read_text(errors='replace'); src = f"{a.y_name or pathlib.Path(a.y_repo).name}@{a.y_sha[:12]}"
+        if not (a.y_repo and a.y_sha): raise SystemExit('Y: give --y-gateway <owner>/<name>[@<SHA>] (no mirror needed), --y-material FILE, or --y-repo DIR --y-sha SHA (read from scope.md when present)')
+        import condense_repo as cr                           # noqa: E402
+        sel, ment = y_selection(a, run, a.y_sha)
+        text, summary = cr.condense(cr.LocalRepo(a.y_repo), a.y_sha, a.y_name or pathlib.Path(a.y_repo).name, a.y_cap, a.priority or [], a.exclude or [], sel, ment)
+        info = dict(source=f"{a.y_name or pathlib.Path(a.y_repo).name}@{summary['sha']}", chars=len(text), cap=a.y_cap, selection=summary['selection'])
     (d / 'material-Y.txt').write_text(text)
-    return text, dict(source=src, chars=len(text), cap=a.y_cap)
+    return text, info
 
 
 # ------------------------------------------------------------------ scope.md reading
@@ -332,11 +385,15 @@ def status(run, d, receipt, pidf, wait):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('run'); ap.add_argument('--y-repo'); ap.add_argument('--y-sha'); ap.add_argument('--y-name'); ap.add_argument('--y-material')
+    ap.add_argument('--y-gateway', help='<owner>/<name>[@<SHA>]: Y read through the gateway (dated commit, bare snapshot), no local mirror')
+    ap.add_argument('--state', help='--y-gateway: state directory of the gateway (default <run dir>/state)')
+    ap.add_argument('--gateway-run', help='--y-gateway: gateway --run name (default: the run directory name)')
     ap.add_argument('--x-repo'); ap.add_argument('--x-sha'); ap.add_argument('--x-name'); ap.add_argument('--x-prefix', default='')
     ap.add_argument('--x2-repo'); ap.add_argument('--x2-sha'); ap.add_argument('--x2-name'); ap.add_argument('--x2-prefix', default='')
     ap.add_argument('--T'); ap.add_argument('--request'); ap.add_argument('--target'); ap.add_argument('--model'); ap.add_argument('--host', choices=['claude', 'openai'])
     ap.add_argument('--y-cap', type=int, default=Y_CAP); ap.add_argument('--x-cap', type=int, default=X_CAP)
     ap.add_argument('--priority', nargs='*'); ap.add_argument('--exclude', nargs='*')
+    ap.add_argument('--selection', choices=['order', 'repo-map'], help='order of the files of Y under the cap (default: config condense.selection)')
     ap.add_argument('--wait', type=int, default=WAIT); ap.add_argument('--sync', action='store_true'); ap.add_argument('--material-only', action='store_true')
     ap.add_argument('--execute', action='store_true', help=argparse.SUPPRESS)  # internal: foreground model call in the background process
     a = ap.parse_args(argv)
@@ -348,7 +405,7 @@ def main(argv=None):
         print(json.dumps(status(run, d, receipt, pidf, 0), ensure_ascii=False)); return 0
     if not pidf.exists():
         a = from_scope(run, a); xs = x_list(a)
-        y, yinfo = y_material(d, a); x, info = x_material(run, xs, a.x_cap); p = build_prompt(a, y, x)
+        y, yinfo = y_material(d, a, run); x, info = x_material(run, xs, a.x_cap); p = build_prompt(a, y, x)
         (d / 'PROMPT.md').write_text(p); (d / 'material-X.txt').write_text(x)
         (d / 'material-X.json').write_text(json.dumps(info, ensure_ascii=False, indent=1) + '\n'); (d / 'material-Y.json').write_text(json.dumps(yinfo, ensure_ascii=False) + '\n')
         (d / 'launch.json').write_text(json.dumps(dict(utc=utc(), T=a.T, host=host_name(a), model=model_name(a), prompt_chars=len(p),
