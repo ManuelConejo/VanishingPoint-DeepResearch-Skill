@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.6.17, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.6.18, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -211,6 +211,33 @@ python3 -I "$SKILL/tools/gateway.py" --T 2026-10-26 --run try --state /tmp/vp-st
 `tools/check_keys.py` prints the active mode at the start of a run; the report's Methodology Appendix states it. The law
 plugin recommends audit mode for binding conclusions; it never switches it on by itself.
 
+### Code study: which mode to use
+
+The code plugin has two ways in. In **Y given** you name the repository (or several) and VP reads it at a commit; in **need only**
+you describe the need and VP looks for the candidate repositories itself ("what would Y bring to X").
+
+Measured on 2026-11-01 (small private benches; the reference is what the projects actually did):
+- Finding candidates: on dated cases later than the model's own knowledge, VP in **need only** did not find the candidate
+  repositories better than the model alone, at a much higher cost.
+- State-of-the-art brief before planning: on 12 real performance tasks from open-source Python projects, an LLM planner given a
+  VP state-of-the-art brief did not plan better than the same planner simply asked to look for the state of the art
+  (1 win, 1 loss, 10 ties).
+- **Y given** report before planning: on 11 real cases where a project adopted code or a mechanism from another repository in
+  2026, an LLM planner given the VP report on Y did not plan better than the same planner allowed to read Y itself (1 win,
+  3 losses, 7 ties), for more than ten times the cost per case. The bench does separate plans: a planner given a short note
+  written from the adopted change beat the plain planner 7 wins to 0.
+
+Limits: 11 and 12 cases; the reference is what was adopted, so sound advice the author did not follow counts as a loss (in one
+case VP advised against copying GPL code into an MIT project; the author copied it).
+
+Recommended use:
+- To plan a code change, give the planner access to the candidate repositories (named by you or proposed by the model); a VP
+  report did not improve the plan.
+- Use the code plugin (**Y given**) when you want a verified report for a human reader: `file:line@SHA` references checked
+  mechanically, repository facts checked (licence, dates, existence of the cited files), and a licence review of what may be
+  copied.
+- Treat a **need only** candidate list as a lead to check, not a better search.
+
 ## What the skill delivers
 
 `REPORT.md` has exactly eight sections: Executive Summary (200-400 words), Introduction, Main Analysis (4 to 8 findings,
@@ -249,8 +276,10 @@ the shape of a context capsule.
    reference propagated).
 3. It costs about 2x the reference method in standard mode; the form (eight sections rewritten after verification) is
    most of that cost.
-4. On code, no variant beat a plain model on the "what would Y bring to X" task on our benches; the code plugin is kept for
-   its capsule, its seams and the whole reading, not as a better finder.
+4. On code, no variant beat a plain model on the "what would Y bring to X" task on our benches; finding candidate
+   repositories ("need only") did not do better than the model alone, and neither a state-of-the-art brief nor a "Y given"
+   report improved the plan of an LLM planner (see "Code study: which mode to use"). The code plugin is kept for its capsule,
+   its seams, the whole reading, the verified references and the checked repository facts, not as a better finder or planner.
 5. Sources without an API (level 2 pages) are declared in the plugins but not wired in the gateway;
    many "not wired" engines are listed as such in the `sources` output.
 
@@ -264,7 +293,7 @@ Measured (private benches, small n, judged by models of other families and by th
 - recall equal to the reference deep-research method it rewrites (10 questions); about 2x its cost;
 - whole reading before verdicts on code: exclusive verified findings in 5 of 6 code cases;
 - contradictor option: 6 code cases, three models of 2026-10-27;
-- every tool: an offline test suite (`tests/`, about 320 tests, standard library only, about one minute).
+- every tool: an offline test suite (`tests/`, about 700 tests, standard library only, about one minute).
 
 Not measured or not verified:
 - no public benchmark: the figures above cannot be reproduced from this repository yet;

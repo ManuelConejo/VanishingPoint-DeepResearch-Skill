@@ -911,6 +911,15 @@ class GitHubRepo:
         cap = int(GH['tree_paths_served'])
         return dict(paths=paths[:cap], count=len(paths), truncated=cut or len(paths) > cap)
 
+    def same_name(self, repo, sha, name):
+        """Paths of the commit whose file name is `name` (same /git/trees request as tree(), memoised; no cap on the search, so a large repository
+        is searched whole): dict(paths=[...], count=n, truncated=True when GitHub cut its own list). Used to locate a mis-cited path."""
+        refuse(not re.fullmatch(r'[0-9a-f]{40}', sha or ''), 'sha')
+        refuse(not name or '/' in name or not path_ok(name), 'reference')
+        allp, cut = self._blobs(repo, sha)
+        paths = [p for p in allp if p.rsplit('/', 1)[-1] == name]
+        return dict(paths=paths, count=len(paths), truncated=cut)
+
     def licence_read(self, repo, sha, detected=None):
         """The licence files of the commit READ, not judged (audit 2026-10-31, item 3a: GitHub answers NOASSERTION for a dual licence, a
         modified MIT, a licence per directory; a missing LICENSE leaves only the README). From the tree at the 40-hex SHA (one API request,

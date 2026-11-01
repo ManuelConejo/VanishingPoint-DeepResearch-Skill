@@ -1019,3 +1019,30 @@ Other additions
   `test_code_access.py`, `test_implementations.py`, `test_repo_grep.py`, `test_github_issues.py`, `test_forks_ahead.py`,
   `test_licence_compat.py`, `test_prisma_s.py`, `test_wayback.py`, `test_repo_map.py`, and extended existing tests. Fixtures of the checks
   are in `tests/fixtures/code_facts/` (GitHub answers recorded on 2026-10-31, trimmed to the fields used; no credential).
+
+## v0.6.18 - 2026-11-02 - Mis-cited code paths located, Python 3.9 run, code-mode guidance
+
+No change to `SKILL.md` or to any plugin instruction. The changes are in one verifier, the README and the offline tests.
+
+Verifier
+- `tools/check_code_refs.py`: a cited file absent at a full SHA (and not a directory) is looked up by file NAME in the tree of the commit
+  (`GitHubRepo.same_name` in `tools/code_sources.py`, same tree request as the directory check). Defects seen in real reports: path cut to
+  the file name, wrong directory, doubled prefix. Exactly one file of that name: status `relocated` (neither verified nor failed;
+  `resolved_path`; the cited lines are checked on that file, an out-of-bounds line is reported in `checks.lines` without failing the
+  reference). Several: status `ambiguous` with `candidates`. None, or a tree GitHub cut: `failed` as before. The report is never rewritten.
+  `summary` gains `relocated` / `ambiguous` only when non-zero (other outputs unchanged); the `finish_run.py` line shows them. Exit code
+  unchanged (relocated and ambiguous are not failures).
+- Tests: `tests/test_check_relocated.py` (offline).
+
+Python 3.9
+- The whole offline suite (695 tests) was run under Python 3.9 in a throw-away official `python:3.9` container (repository read-only,
+  non-root user, no network); no incompatibility found. Seven test files call `git`: an image without it (such as `python:3.9-slim`)
+  fails them for that reason only.
+
+README
+- "Code study: which mode to use" rewritten with the measures of 2026-11-01 (small private benches; the reference is what the projects
+  did): finding candidate repositories ("need only") is not better than the model alone; a VP state-of-the-art brief did not improve the
+  plan of an LLM planner over simply asking it to look for the state of the art (12 real performance tasks: 1 win, 1 loss, 10 ties); a
+  "Y given" report did not improve the plan of a planner that can read Y itself (11 real adoption cases of 2026: 1 win, 3 losses, 7 ties;
+  an oracle control won 7-0, so the bench separates plans) for more than ten times the cost. Recommended use: give the planner access to
+  the candidate repositories; use the code plugin when a verified report for a human reader is wanted. Limitation 4 updated to match.
