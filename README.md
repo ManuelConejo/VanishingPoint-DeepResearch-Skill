@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.6.16, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.6.17, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -281,7 +281,7 @@ The gateway reads, in the Sources section, a fenced block:
 
 ````
 ```sources
-engines: openalex, crossref, arxiv     # wired engines: pubmed, europepmc, crossref, openalex, arxiv, clinicaltrials, biorxiv, medrxiv, dblp, econbiz, dbnomics, fred (FRED_API_KEY), edgar (VP_CONTACT e-mail), opencitations, unpaywall (VP_CONTACT e-mail), datacite ; law: eurlex, justice-administrative, hal, theses-fr, hudoc, hudoc-feed, europarl, isidore, judilibre, legifrance (PISTE pair) ; ai: openreview, zenodo, hal-info, hf-models, hf-datasets, standards, proceedings ; code, versions, paper-code, provenance, osv, ecosyste.ms, github-advisory
+engines: openalex, crossref, arxiv     # wired engines: pubmed, europepmc, crossref, openalex, arxiv, clinicaltrials, biorxiv, medrxiv, dblp, econbiz, dbnomics, fred (FRED_API_KEY), edgar (VP_CONTACT e-mail), opencitations, unpaywall (VP_CONTACT e-mail), datacite ; law: eurlex, justice-administrative, hal, theses-fr, hudoc, hudoc-feed, europarl, isidore, judilibre, legifrance (PISTE pair) ; ai: openreview, zenodo, hal-info, hf-models, hf-datasets, standards, proceedings ; web archive: wayback (Internet Archive, last capture of a page URL before T; id wayback:<url>) ; code, versions, paper-code, provenance, osv, ecosyste.ms, github-advisory
 since: 2015                            # optional lower bound (year)
 cap: 60                                # optional safety cap on calls
 keys: OPENALEX_KEY                     # optional keys, resolved as in KEYS.md, never required
@@ -322,7 +322,7 @@ tools/finish_run.py all end steps in one command (checks, retractions, law check
 tools/followup.py, resume.py   follow-up in the conversation, resuming an interrupted run (v0.6.0)
 tools/export_report.py, export_data.py, passages.py, living_diff.py, law_checks.py   exports, cited passages, living review, legal rules
 tools/code_capsule.py, code_sources.py (library), condense_repo.py, whole_reading.py, contradictor.py   code plugin tools (capsule, Y condensation, whole reading); contradictor (every plugin)
-tools/prior_art.py, prisma.py, followups.py   optional sections of SKILL.md (prior art, PRISMA flow diagram, follow-up questions)
+tools/prior_art.py, prisma.py, followups.py   optional sections of SKILL.md (prior art, PRISMA flow diagram and PRISMA-S search report, follow-up questions)
 tools/evidence_bank.py, contradictions.py   command-line tools, not used by the skill by default; progress.py (run by the SKILL.md hook on Claude Code), report_lang.py, new_run.py, parse_date.py, summary.py (finish_run.py --summary), cost.py (budget): used by the skill
 tools/config.json   caps, models, host command profiles             tests/  examples/  KEYS.md  ACCESS-POLICY.md  CONTRIBUTING.md  CHANGELOG.md  USAGE.md  LICENSE  NOTICE
 .claude-plugin/     plugin.json + marketplace.json: the repository as a Claude Code plugin (the skill directory needs neither)

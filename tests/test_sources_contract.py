@@ -83,7 +83,8 @@ class Contract(unittest.TestCase):
                 self.assertTrue(pathlib.Path(s['_file']).resolve().is_relative_to(TOOLS / 'sources'))
                 if not s['wired']:
                     self.assertFalse(s['engines'] or s['commands'] or any(i['read'] for i in s['ids'])); self.assertTrue(s['key']); continue
-                self.assertIn(s['access'], ('api', 'page', 'browser'))
+                self.assertIn(s['access'], ('api', 'page', 'browser', 'local'))   # local: a file of the skill or of the user, no host (licence-compat)
+                if s['access'] == 'local': self.assertEqual(s['hosts'], {})
                 for h, v in s['hosts'].items():
                     self.assertRegex(h, r'^[a-z0-9.-]+\.[a-z]+$')
                     self.assertTrue(set(v) <= {'interval', 'stop', 'timeout'}, v)

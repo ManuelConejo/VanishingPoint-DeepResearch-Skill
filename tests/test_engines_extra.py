@@ -14,7 +14,7 @@ sys.path.insert(0, str(P.parent / 'tools')); import gateway as gw, code_sources 
 T = '2024-06-15'; V, F, D = '2024-06-14', '2024-06-16', '2024-06-15'           # before (eve), after, day T
 FORBIDDEN_DOI, FORBIDDEN_TITLE = '10.9/forbidden', 'A forbidden systematic review of everything that matters here'
 FAKE = 'FAKE-KEY-NOT-A-SECRET-0123456789'
-KEYS = ('NCBI_API_KEY', 'OPENALEX_KEY', 'SWH_TOKEN', 'VP_GITHUB_TOKEN', 'VP_CONTACT', 'HOME')
+KEYS = ('NCBI_API_KEY', 'OPENALEX_KEY', 'SWH_TOKEN', 'VP_GITHUB_TOKEN', 'VP_CONTACT', 'HOME', 'VP_OFFLINE')   # VP_OFFLINE: the transports are stubbed, an offline flag of the caller must not reach them
 
 
 def barrier(): return gw.Barrier(T, [FORBIDDEN_DOI], [FORBIDDEN_TITLE])
@@ -225,7 +225,7 @@ class Osv(Base):
         self.assertNotIn(FAKE, url + body.decode() + json.dumps(headers)); self.assertNotIn('@', url)
         x = r['vulns'][0]; self.assertEqual((x['summary'], x['affected'][0]['events'][1], x['validity']), ('Sandbox escape', {'fixed': '2.0'}, 'advisory unchanged since before T'))
 
-    def test_modified_after_T_is_served_marked_and_withdrawal_dated(self):   # barrier on published, not modified (banc code 31/10, defect 4)
+    def test_modified_after_T_is_served_marked_and_withdrawal_dated(self):   # barrier on published, not modified (internal code bench 31/10, defect 4)
         x = gw.osv_item(self.vuln('GHSA-m', '2020-01-01T00:00:00Z', modified=F, withdrawn=F), barrier(), with_details=True)
         self.assertEqual((x['summary'], x['affected'][0]['events'][1], x['date_modified'], x['modified_after_T'], x['withdrawn']),
                          ('Sandbox escape', {'fixed': '2.0'}, 'on/after T', True, None))

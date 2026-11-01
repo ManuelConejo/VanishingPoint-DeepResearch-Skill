@@ -18,7 +18,7 @@ def example_item(r, B):
     """One record -> the item served, or None when the barrier refuses it (B.excluded is counted by extra_ok / B.ok).
     Every date that may be on/after T is checked: publication AND indexing (or deposit, last version...). No usable date -> refused
     (strict): extra_ok / B.ok refuse a None date. Never fabricate precision: a year alone is passed through year_before_T (kept only when
-    strictly before the year of T); a partial date is read as its UPPER bound by date_upper (2024-05 -> 2024-05-30)."""
+    strictly before the year of T); a partial date is read as its UPPER bound by date_upper (2024-05 -> 2024-05-31, last day of the month)."""
     rid = r.get('id')
     if not rid or not extra_ok(B, [r.get('doi'), rid, 'example:' + rid], [r.get('published'), r.get('indexed')], [r.get('title')]): return None
     return {'id': 'example:' + rid, 'doi': r.get('doi'), 'title': r.get('title'), 'year': (r.get('published') or '')[:4], 'date': r.get('published'),

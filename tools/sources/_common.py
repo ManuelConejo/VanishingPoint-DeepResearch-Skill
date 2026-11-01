@@ -4,6 +4,7 @@ generic key_invalid fallback; key resolution; the date barrier (Barrier, date_up
 The host tables (INTERVAL, STOP, TIMEOUT, KEY_INTERVAL, KEY_REJECTED) are filled by the registry from each SOURCE['hosts'] and
 SOURCE['key'] (sources/__init__.py: apply_hosts). Sources import what they use: `from sources._common import fetch, jget, Barrier`.
 gateway.fetch = X / gateway.STATE = X (tests, tools) rebinds the same name here and in every source module (sources.rebind)."""
+import calendar
 import datetime as dt
 import fcntl
 import hashlib
@@ -70,7 +71,21 @@ def interval(host):
     return INTERVAL.get(host, 0.3)
 
 
+def _get_bounded(req, timeout):
+    """One request under config.json http_limits (Codex review 2026-10-31, item 9): fetch_total_timeout_s for the whole call (headers and body,
+    sc.with_deadline), the body read in chunks up to fetch_max_bytes + 1 bytes (sc.read_bounded)."""
+    total = float(sc.HL['fetch_total_timeout_s']); deadline = time.monotonic() + total
+
+    def go():
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return sc.read_bounded(r, int(sc.HL['fetch_max_bytes']), deadline)
+    return sc.with_deadline(go, total)
+
+
 def fetch(url, headers=None):
+    """Polite GET with cache: per-host interval, retries, stop codes, key-rejection fallback; bounded by http_limits (whole-call deadline,
+    body of at most fetch_max_bytes: beyond it ProviderError('response_too_large'), never retried; error bodies read up to error_body_bytes);
+    the answer cached in <state>/cache while that cache stays under http_limits.cache_max_bytes."""
     host = urllib.parse.urlparse(url).netloc
     cache = STATE / 'cache' / hashlib.sha256((url + (json.dumps(headers, sort_keys=True) if headers else '')).encode()).hexdigest()
     if cache.exists():
@@ -85,20 +100,23 @@ def fetch(url, headers=None):
             if wait > 0: time.sleep(wait)
             f.seek(0); f.truncate(); f.write(str(time.time()))
         try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers=dict(UA, **(headers or {}))), timeout=TIMEOUT.get(host, 40)) as r:
-                data = r.read()
-            cache.parent.mkdir(parents=True, exist_ok=True); cache.write_bytes(data)
-            return data
+            data = _get_bounded(urllib.request.Request(url, headers=dict(UA, **(headers or {}))), TIMEOUT.get(host, 40))
         except Exception as e:
             code = getattr(e, 'code', None) or ('timeout' if isinstance(e, TimeoutError) or isinstance(getattr(e, 'reason', None), TimeoutError) else None)
             rej = KEY_REJECTED.get(host)
-            if rej and code in rej[1] and 'api_key=' in url and (lambda b: any(m in b for m in rej[2]))((e.read() or b'').lower()):   # key rejected: once without it, then key-less
+            if rej and code in rej[1] and 'api_key=' in url and (lambda b: any(m in b for m in rej[2]))((e.read(int(sc.HL['error_body_bytes'])) or b'').lower()):   # key rejected: once without it, then key-less
                 sc.mark_invalid(STATE, rej[0]); url = strip_key(url)
                 cache = STATE / 'cache' / hashlib.sha256((url + (json.dumps(headers, sort_keys=True) if headers else '')).encode()).hexdigest()
                 if cache.exists(): return cache.read_bytes()
                 continue
             if attempt == 4 or code in STOP.get(host, ()): raise
             time.sleep(2 + 3 * attempt)
+            continue
+        if len(data) > int(sc.HL['fetch_max_bytes']):
+            raise ProviderError(f"response_too_large: over http_limits.fetch_max_bytes ({int(sc.HL['fetch_max_bytes']):,} bytes)")
+        if sc.cache_room(cache.parent, len(data)):
+            cache.parent.mkdir(parents=True, exist_ok=True); cache.write_bytes(data)
+        return data
 
 
 def jget(url): return json.loads(fetch(url))
@@ -116,9 +134,12 @@ def date_upper(s):
         mi = re.match(r'^\s*(\d{4})(?:[-/](\d{1,2}))?(?:[-/](\d{1,2}))?', s)
         parts = [int(x) for x in mi.groups() if x] if mi else []
     if not parts: return None
-    y = parts[0]; m = parts[1] if len(parts) > 1 else 12; day = parts[2] if len(parts) > 2 else 28 if m == 2 else 30
+    y = parts[0]; m = parts[1] if len(parts) > 1 else 12
+    if not 1 <= m <= 12: return None
+    last = calendar.monthrange(y, m)[1]                                   # last day of the month (31, 30, 29 in a leap February, 28)
+    day = min(parts[2], last) if len(parts) > 2 and parts[2] >= 1 else last
     try: return dt.date(y, m, day)
-    except ValueError: return dt.date(y, m, 28)
+    except ValueError: return None
 
 
 def tokens(t):

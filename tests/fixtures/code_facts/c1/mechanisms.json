@@ -1,0 +1,74 @@
+[
+ {
+  "mechanism": "Cross-call suspension of a failing target: a per-network SuspendedStatus (end time, reason, error counter, lock) is checked before each search, the engine is skipped while suspended, and the state is reset on success; the ban is constant (5 s, max 120 s) because the counter never enters the duration.",
+  "y_side": "searx/search/processors/abstract.py@c15647b5a5921858d5147d291c658fbda3cba12c [3] (lines approximate ~); searx/settings.yml@c15647b5a5921858d5147d291c658fbda3cba12c [4]; searx/search/processors/online.py@c15647b5a5921858d5147d291c658fbda3cba12c [5] (~). Tests: none found for the suspension loop; unit tests [15][16] cover exception attributes and network retries only. Reuse elsewhere: 0 found (not proof).",
+  "x_seam": "Retry context machinery of local:src/stamina/_core.py@5c13c8e0b4bc5faa54914115a8c796934ba6da9d [7]; seam absent, a registry keyed by target would be new API with the caller supplying the key.",
+  "already_in_x": "not found (absence established by a search of stamina source for suspend, circuit, breaker, ban, cooldown, consecutive [7])",
+  "verdict": "WATCH; criterion that prevails: seam missing and licence forces clean-room.",
+  "do_not_borrow": "The global dictionary and thread-lock design [3]; any AGPL text [1]; the idea of an escalating ban (absent from Y at this commit).",
+  "licence": "clean-room mandatory; Y is AGPL-3.0 [1], X is MIT [2], so no AGPL text may be copied; capsule not reviewed.",
+  "before_after_test": "With a fake call that always fails, after N failures the next calls must return the suspension outcome without invoking the callee until the injected clock passes the end time, and a success must clear it; a counter-fixture where a different key keeps being called turns it red.",
+  "wake_up": "A stamina issue or maintainer decision accepting shared state in a library, before 2027-04-30.",
+  "verified_status": "pending verification"
+ },
+ {
+  "mechanism": "Exceptions and HTTP statuses carrying a suspension or wait hint: access-denied, captcha and too-many-requests exceptions with a per-class suspended_time default; 402/403 and 429 mapped to typed exceptions.",
+  "y_side": "searx/exceptions.py@c15647b5a5921858d5147d291c658fbda3cba12c [6]; searx/network/raise_for_httperror.py@c15647b5a5921858d5147d291c658fbda3cba12c [13] (lines 32-75); defaults disagree between searx/settings_defaults.py@c15647b5a5921858d5147d291c658fbda3cba12c [14] (86400/86400/3600) and searx/settings.yml@c15647b5a5921858d5147d291c658fbda3cba12c [4] (180/3600/180). Test: tests/unit/test_exceptions.py@c15647b5a5921858d5147d291c658fbda3cba12c [15] (lines 11-34). Reuse elsewhere: 0 found.",
+  "x_seam": "local:src/stamina/exceptions.py@5c13c8e0b4bc5faa54914115a8c796934ba6da9d [8] (TryAgain with after; jitter added in local:src/stamina/_core.py@5c13c8e0b4bc5faa54914115a8c796934ba6da9d [7]).",
+  "already_in_x": "partial (TryAgain.after carries a wait hint inside one call; no status-code classification)",
+  "verdict": "WATCH; criterion that prevails: the transferable part is a documented recipe, no code; the value rises only if Finding 1 is accepted.",
+  "do_not_borrow": "Cloudflare/reCAPTCHA body classification (scraping-specific) [13]; Y's unresolved default durations [14][4].",
+  "licence": "clean-room mandatory; Y is AGPL-3.0 [1], X is MIT [2]; capsule not reviewed.",
+  "before_after_test": "A fake HTTP 429 with a Retry-After of 2 seconds must produce a wait of at least 2 seconds plus jitter, never the default backoff.",
+  "wake_up": "Becomes relevant if Finding 1 is accepted (the same hint could feed the suspension duration); no date set in the report.",
+  "verified_status": "pending verification"
+ },
+ {
+  "mechanism": "Network retries with client, proxy and source-IP rotation: an immediate retry loop taking the next source address and proxy from two cycles at each attempt, with one free retry after a server-closed connection; retries default to 0.",
+  "y_side": "searx/network/network.py@c15647b5a5921858d5147d291c658fbda3cba12c [9] (lines 206-207 and 271-302). Tests: tests/unit/network/test_network.py@c15647b5a5921858d5147d291c658fbda3cba12c [16] (fake client failing N times then succeeding; retry_on_http_error as int, list or bool). Reuse elsewhere: 0 found.",
+  "x_seam": "local:src/stamina/_core.py@5c13c8e0b4bc5faa54914115a8c796934ba6da9d [7]; stamina has no client object, so there is no seam for rotation.",
+  "already_in_x": "present (a richer exponential backoff with jitter already exists in stamina [7])",
+  "verdict": "NO-GO; criterion that prevails: already present and transport-bound.",
+  "do_not_borrow": "Rotation of proxies and addresses (belongs to the HTTP client); curl_cffi coupling and process-global test settings [16]; the loop without backoff.",
+  "licence": "clean-room mandatory; Y is AGPL-3.0 [1], X is MIT [2]; capsule not reviewed.",
+  "before_after_test": "Only the test design is reusable: a fake callee failing N times then succeeding, status filter as int, list or bool; no test of the mechanism itself is proposed.",
+  "wake_up": "none (NO-GO)",
+  "verified_status": "pending verification"
+ },
+ {
+  "mechanism": "Propagating the remaining time budget into each attempt: a thread-local start time lets every HTTP call receive the remaining timeout (timeout -= default_timer() - start_time, 0.2 s overhead, 120 s fallback); the scheduler joins threads against a deadline and abandons late ones.",
+  "y_side": "searx/network/__init__.py@c15647b5a5921858d5147d291c658fbda3cba12c [10] (lines 57-106); searx/search/__init__.py@c15647b5a5921858d5147d291c658fbda3cba12c [11] (~). Tests: none cited. Reuse elsewhere: 0 found.",
+  "x_seam": "local:src/stamina/_core.py@5c13c8e0b4bc5faa54914115a8c796934ba6da9d [7]: stop_before_delay(timeout), default 45.0 s, bounds the whole retry loop; a remaining-time accessor was only searched in the core module.",
+  "already_in_x": "partial (whole-loop timeout present; per-attempt exposure of the remaining time appears absent, not established)",
+  "verdict": "WATCH; criterion that prevails: small library-appropriate capability, absence not fully established.",
+  "do_not_borrow": "The thread-abandon hard cut (it cannot cancel a blocking call) [11]; thread-local state and Y's own constants [10].",
+  "licence": "clean-room mandatory; Y is AGPL-3.0 [1], X is MIT [2]; capsule not reviewed.",
+  "before_after_test": "With a 10-second timeout and an attempt that takes 4 seconds, the third attempt must see at most about 2 seconds remaining.",
+  "wake_up": "Check the attempt API of X for an existing remaining-time accessor, before 2026-12-31.",
+  "verified_status": "pending verification"
+ },
+ {
+  "mechanism": "Error recording keyed by code location: a hashable ErrorContext (file, function, line, code, exception class, message, parameters, secondary flag) counted per engine, innermost frame picked via inspect.trace().",
+  "y_side": "searx/metrics/error_recorder.py@c15647b5a5921858d5147d291c658fbda3cba12c [12] (lines approximate ~). Tests: none cited. Reuse elsewhere: 0 found.",
+  "x_seam": "local:src/stamina/_core.py@5c13c8e0b4bc5faa54914115a8c796934ba6da9d [7]: stamina exposes events through instrumentation hooks, no aggregator; no seam needed.",
+  "already_in_x": "partial (instrumentation hooks exist; aggregation is left to the application [7])",
+  "verdict": "NO-GO; criterion that prevails: application concern, mechanism coupled to Y.",
+  "do_not_borrow": "Frame inspection, curl_cffi exception types and Y's engine registry [12]; the only idea worth noting, deduplicating identical errors into one counter, is available to any user of stamina hooks.",
+  "licence": "clean-room mandatory; Y is AGPL-3.0 [1], X is MIT [2]; capsule not reviewed.",
+  "before_after_test": "None proposed (NO-GO).",
+  "wake_up": "none (NO-GO)",
+  "verified_status": "pending verification"
+ },
+ {
+  "mechanism": "Composite capability, an inference of the report: a target-health registry assembling the pieces of Findings 1 and 2, where a classified exception carries a duration, a registry stores the end time and a gate consults it before the next call.",
+  "y_side": "Pieces: searx/search/processors/abstract.py@c15647b5a5921858d5147d291c658fbda3cba12c [3], searx/search/processors/online.py@c15647b5a5921858d5147d291c658fbda3cba12c [5], searx/exceptions.py@c15647b5a5921858d5147d291c658fbda3cba12c [6]. Reuse elsewhere: none seen.",
+  "x_seam": "Retry context in local:src/stamina/_core.py@5c13c8e0b4bc5faa54914115a8c796934ba6da9d [7]; hint carrier TryAgain.after in local:src/stamina/exceptions.py@5c13c8e0b4bc5faa54914115a8c796934ba6da9d [8]; registry seam missing.",
+  "already_in_x": "not found (capability absent; the hint carrier is partial)",
+  "verdict": "WATCH; criterion that prevails: seam missing and the capability is an inference.",
+  "do_not_borrow": "Y's thread safety (a lock around global state [3]) and its process-local persistence; network rotation (Finding 3) and the error recorder (Finding 5) were examined and rejected.",
+  "licence": "clean-room mandatory; the licence of the assembly is the most restrictive of its pieces (AGPL-3.0 [1] versus MIT [2]); capsule not reviewed.",
+  "before_after_test": "A capability test: two logical targets, one failing; calls to the failing one are skipped for the hinted duration while the other proceeds.",
+  "wake_up": "Same condition as Finding 1: a maintainer decision accepting shared state, before 2027-04-30.",
+  "verified_status": "pending verification"
+ }
+]

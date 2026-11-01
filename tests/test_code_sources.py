@@ -299,7 +299,7 @@ class CodeSources(unittest.TestCase):
         code_plugin = self.d / 'code-full.md'
         code_plugin.write_text(CODE_PLUGIN, encoding='utf-8')
         full = gw.Gateway([code_plugin], T='2026-10-26', run='r', state=self.d / 'state').sources()
-        self.assertEqual(full['code_engines'], ['code', 'github-repo', 'paper-code', 'provenance', 'versions'])   # github enables github-repo (banc code 31/10)
+        self.assertEqual(full['code_engines'], ['code', 'forks-ahead', 'github-issues', 'github-repo', 'implementations', 'licence-compat', 'paper-code', 'provenance', 'repo-grep', 'versions'])   # github enables github-repo and repo-grep (internal code bench 31/10), github-issues, forks-ahead, licence-compat; sourcegraph/github enable implementations
         self.assertEqual(full['engines'], [])
         self.assertNotIn('github', full['not_wired']); self.assertEqual(full['served_by'].get('github'), 'code')   # served by the code engine
         self.assertNotIn('GITHUB', full['keys_present'], 'no token in the environment nor in the temporary home')
@@ -336,7 +336,9 @@ class CodeSources(unittest.TestCase):
         sc.CodeClient.get = fake_get(F)
         r = self.gateway(T='2025-08-01', run='t3').call('paper-code', '2507.19457v2')
         self.assertEqual([m['id'] for m in r['results']['models']], ['o/m-old'])
-        self.assertEqual((r['excluded_post_T_or_forbidden'], r['results']['repos'][0]['date'], r['results']['arxiv']), (1, '2025-07-25', '2507.19457'))
+        self.assertEqual((r['excluded_post_T_or_forbidden'], r['results']['arxiv']), (1, '2507.19457'))
+        self.assertIsNone(r['results']['repos'][0]['date'])               # audit 2026-10-31 4a: never dated by the paper's date
+        self.assertTrue(r['results']['repos'][0]['dating'].startswith('absent'))
         r = self.gateway(T='2025-07-25', run='t4').call('paper-code', '2507.19457')
         self.assertEqual(r['results'], {'refusal': 'after T'})
         r = self.gateway(T='2026-01-01', run='t5').call('provenance', 'https://github.com/o/r')   # the only visit is on T: none before T

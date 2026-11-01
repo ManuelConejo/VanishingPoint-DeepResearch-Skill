@@ -27,7 +27,7 @@ def run_code_file(g, arg, n, opt, B, extra):
         gh = sc.GitHubRepo(g.client, extra)
         try:
             f = gh.file_at(repo, sha, path)
-            why = gh.gate(f, B.T)                       # a definite answer: no Software Heritage fallback
+            why = gh.barrier(repo, f, B, extra, date_check=False)   # date: gateway filter; a definite answer: no Software Heritage fallback (gate, date, backdate signals)
             return {'refusal': f'GitHub: after T or not datable: {why} ({repo}@{sha[:12]}, {path})'} if why else f
         except ValueError as e:
             if str(e) in GITHUB_FINAL: return {'refusal': f'GitHub: {e} ({repo}@{sha[:12]}, {path})'}

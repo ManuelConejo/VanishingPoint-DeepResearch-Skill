@@ -715,7 +715,7 @@ Five sources that the plugins already declared as `not_wired` are now served by 
 ## v0.6.0 - 2026-10-29 - follow-up and resume in the conversation
 
 Eight ergonomics changes were built and trialled on one frozen candidate (protocol and amendments written before reading
-the results; n = 1 per cell; Claude Code, gmail subscription). Two are adopted into the skill; six stay on a waiting list:
+the results; n = 1 per cell; Claude Code, subscription). Two are adopted into the skill; six stay on a waiting list:
 their tools ship as command-line tools, not used by the skill by default.
 
 ### Measured and adopted
@@ -967,3 +967,55 @@ No change to `SKILL.md` or to any plugin instruction; every change below is in t
   others implement X" 0/5 to 2/5 repositories found. No invented reference in any case. Small sample; read as a direction.
 - Tests: `test_github_repo.py`, `test_check_code_refs.py`, `test_code_access.py`, `test_arxiv_only.py`, and extended existing
   tests. Full offline suite green, including on Python 3.9.
+
+## v0.6.17 - 2026-11-01 - More code mode tools, fixed verifiers, PRISMA-S, Wayback source (tools only)
+
+No change to `SKILL.md` or to any plugin instruction. Every change below is in the tools, `tools/config.json` and the offline tests. New code
+engines are served only when `plugins/code.md` already declares the source that enables them (`enabled_by`).
+
+New code engines and commands
+- `check_code_facts.py`: mechanical check, with no model, of the repository facts a code run asserts (licence, archived, last commit before
+  T, `pushed_at`, OSV advisories), read from `card.json`, `mechanisms.json` or the prose (`--prose`). Each fact is CONFIRMED, CONTRADICTED
+  or UNCHECKABLE with a typed reason; a failed access is never CONTRADICTED and no value dated after T is used. `finish_run.py` runs it,
+  with `check_code_refs.py`, for a code run and writes `code-refs.json`, `code-facts.json` and `code-guards.json` (labels only; the run
+  files are never rewritten).
+- `find-implementations` (`tools/sources/implementations.py`): how other projects implement X, from the most used packages of the ecosystem
+  and a Sourcegraph search; results grouped by repository, vendored and same-content copies set apart, each repository cited at a dated commit.
+- `repo-grep` and `repo-ls` (`tools/sources/repo_grep.py`, `tools/repo_snapshot.py`): exact search and listing in a named repository at a
+  commit, from one shallow fetch into a bare snapshot; nothing of the repository is executed; output and memory bounded.
+- `search-issues` and `read gh:<owner>/<name>#<n>` (`tools/sources/github_issues.py`): issues and pull requests created before T, with
+  their state and title at T taken from the events; later comments dropped; bodies and comments served cleaned, under the untrusted notice.
+- `forks-ahead` (`tools/sources/forks_ahead.py`): forks with commits of their own before T, compared with the upstream head at T.
+- `licence-compat` (`tools/sources/licence_compat.py`, data in `tools/licence_compat.json`): licence compatibility of Y into X from a table
+  with rules and sources; a disclaimer opens every answer; an unknown licence or pair is never compatible by default.
+- Backdating checks on the GitHub barrier (`GitHubRepo.backdate`): a pull request merged, a push or a parent commit on or after T makes a
+  commit refused; a committer date earlier than the author date is served with a warning.
+- `date_upper` returns the last day of the month for a month date (including leap years).
+
+Fixes
+- Audit of the "what would Y bring to X" mode: line numbers of the condensed code are git line numbers (form feed, lone CR), headers carry
+  the full SHA, code comes before docs and CI in the default order; `whole_reading.py` can read Y through the gateway; dual licences kept
+  whole; a renamed repository is followed on the same host only; `usage`, `paper-code` and `provenance` corrections (dating by the host,
+  not by the paper).
+- Independent security review of 2026-10-31 (11 items): HTTP reads under a total deadline and a byte cap, caches under an aggregate cap,
+  Sourcegraph answers bounded before any hit is built, a refused backdated head is followed by the head before that push, an undated
+  `find-implementations` result carries no citation form, `forks-ahead` refuses a comparison GitHub listed only in part.
+- Verifiers `check_code_refs.py` and `check_code_facts.py`, after a pass over 44 real code reports: a bibliography year is no longer read as a
+  cited line; lines of another file are not attached to an entry; every failure carries a typed reason; a directory cited as a file or an
+  unreadable file is no longer a false failure; a "GitHub reports NOASSERTION" note is not read as the asserted licence; a cited manifest
+  decides the licence; a repository named in the subject of a fact but unknown to the sources gives `no_target`.
+
+Other additions
+- PRISMA-S: `tools/prisma.py` also writes `PRISMA-S.md` (key `prisma_s` of `prisma.json`): the 16 items of PRISMA-S (Rethlefsen et al.,
+  Systematic Reviews 10:39, 2021) filled from the gateway journal; an item the journal shows was not done is printed "not done", one the run
+  holds no trace of "not recorded"; nothing is estimated. `export_report.py --prisma` appends the section to `REPORT.html`. Item titles are
+  in `tools/config.json` `prisma.s`.
+- Source `wayback` (`tools/sources/wayback.py`): the last Internet Archive capture of a page URL before T (CDX index and Memento raw
+  playback), identifier `wayback:<url>`. Level 1 in `ACCESS-POLICY.md`: one request per second, one capture only, stop on 429 / 503 / 403, and
+  every answer says "captured before T". It is wired but not declared by any plugin, so no run uses it until a plugin does.
+- Optional repository map (`tools/repo_map.py`, `condense_repo.py --selection repo-map`, `whole_reading.py --selection`): ranks the files of
+  Y by a PageRank over definitions and mentions. Off by default (`condense.selection` = `order`); not measured.
+- Tests: `test_check_code_facts.py`, `test_check_verif_fixes.py`, `test_code_audit_fixes.py`, `test_codex_review_fixes.py`,
+  `test_code_access.py`, `test_implementations.py`, `test_repo_grep.py`, `test_github_issues.py`, `test_forks_ahead.py`,
+  `test_licence_compat.py`, `test_prisma_s.py`, `test_wayback.py`, `test_repo_map.py`, and extended existing tests. Fixtures of the checks
+  are in `tests/fixtures/code_facts/` (GitHub answers recorded on 2026-10-31, trimmed to the fields used; no credential).

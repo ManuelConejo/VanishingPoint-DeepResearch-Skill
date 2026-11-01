@@ -17,9 +17,14 @@ How the run maps onto the PRISMA 2020 boxes (stated in the outputs too):
   reports excluded = assessed and not cited in card.json, with the reasons the searchers wrote next to an "excluded" mark (else "reason not
     recorded"); included = card.json sources (reports) and result.json studies (studies); cited without a read (basis title, or the
     abstract served by the search) are counted apart.
-Outputs: DIR/PRISMA.md (text/Markdown), DIR/PRISMA.svg (plain SVG, no script, no external resource), DIR/prisma.json (the numbers).
+Outputs: DIR/PRISMA.md (text/Markdown), DIR/PRISMA.svg (plain SVG, no script, no external resource), DIR/prisma.json (the numbers),
+  DIR/PRISMA-S.md (PRISMA-S, the 16-item checklist for reporting the literature searches, Rethlefsen et al., Systematic Reviews 10:39, 2021;
+  prisma_s(dir) -> dict, markdown_s(dict) -> str; also under the key `prisma_s` of prisma.json). Each item is filled from the gateway journal
+  (engines, exact queries verbatim, limits T / n / engine filters, first and last call dates, citation searching, direct reads), from the
+  counts above (item 15) and from tools/study_family.py (item 16), or printed "not done" (the journal shows the step was not taken through the
+  gateway) or "not recorded" (the run holds no trace either way). Never estimated. Numbering and titles: config.json prisma.s.items.
 Usage: prisma.py RUN_DIR [--out DIR] [--json]     Exit: 0 written; 2 not a directory.
-Import: build(dir) -> dict ; markdown(data) -> str ; svg(data) -> str ; journal(dir) -> [entries] ; norm_id(str) -> str ;
+Import: build(dir) -> dict ; prisma_s(dir) -> dict ; markdown(data) -> str ; svg(data) -> str ; journal(dir) -> [entries] ; norm_id(str) -> str ;
         search_summary(dir) -> dict (engines, queries, counts: also the denominator of tools/prior_art.py)."""
 import argparse, html, json, pathlib, re, sys
 
@@ -33,7 +38,10 @@ def _cfg():
     try: c = json.loads((P / 'config.json').read_text(encoding='utf-8')).get('prisma') or {}
     except (OSError, ValueError): c = {}
     svg = c.get('svg') or {}
-    return {'reasons_max': int(c.get('reasons_max', 8)), 'reason_chars': int(c.get('reason_chars', 80)), 'mark_window': int(c.get('mark_window', 40)),
+    s = c.get('s') or {}
+    return {'s': {'items': [i for i in (s.get('items') or []) if isinstance(i, dict) and i.get('n')], 'interface': str(s.get('interface') or ''),
+                  'registry_engines': [str(x) for x in (s.get('registry_engines') or [])], 'reference': str(s.get('reference') or '')},
+            'reasons_max': int(c.get('reasons_max', 8)), 'reason_chars': int(c.get('reason_chars', 80)), 'mark_window': int(c.get('mark_window', 40)),
             'svg': {k: int(svg.get(k, v)) for k, v in (('box_w', 330), ('side_w', 300), ('line_h', 16), ('font_px', 12), ('pad', 10), ('gap', 26), ('chars_per_line', 46))}}
 
 
@@ -376,6 +384,140 @@ def markdown(data):
     return '\n'.join(L)
 
 
+# ---------------------------------------------------------------- PRISMA-S (checklist of the literature searches)
+ND = 'not done'
+
+
+def _day(u): return str(u or '')[:10]
+
+
+def prisma_s(d):
+    """PRISMA-S items from the run's own records: {'items': [{'n', 'section', 'title', 'status': 'filled'|'not done'|'not recorded', 'text': [lines]}],
+    'reference', 'dir'}. Search pool of the journal only (the verifier's pool is left out). Nothing is estimated."""
+    d = pathlib.Path(d); S = CFG['s']
+    J = journal(d); data = build(d)
+    srch = [e for e in J if _kind(e) == 'search']
+    chain = [e for e in J if _kind(e) == 'chain']
+    reads = [e for e in J if _kind(e) == 'read']
+    out = {}
+
+    def put(n, status, *lines): out[n] = (status, [l for l in lines if l])
+    engines = {}
+    for e in srch:
+        r = engines.setdefault(_source_name(e), {'calls': 0, 'first': None, 'last': None, 'records': 0})
+        r['calls'] += 1; r['records'] += len(e.get('ids') or [])
+        u = str(e.get('utc') or '')
+        if u: r['first'] = min(r['first'] or u, u); r['last'] = max(r['last'] or u, u)
+    reg = [k for k in engines if k in S['registry_engines']]
+    dbs = [k for k in engines if k not in reg]
+    seen_ids = {norm_id(i) for e in J if _kind(e) != 'read' for i in e.get('ids') or [] if i}
+    direct = sorted({norm_id(e.get('query')) for e in reads if norm_id(e.get('query'))} - seen_ids)
+    if not J:
+        for n in range(1, 17): put(n, NR, 'no state/journal.jsonl in the run')
+        put(11, NR); put(14, NR); put(6, NR)
+    else:
+        # 1 database name
+        if engines:
+            put(1, 'filled', f'Interface: {S["interface"] or NR}.', 'Sources queried (' + str(len(engines)) + '): ' + '; '.join(f'{k} ({v["calls"]} call{"s" if v["calls"] != 1 else ""})' for k, v in sorted(engines.items())) + '.')
+        else: put(1, ND, 'no search command in the journal')
+        # 2 multi-database searching
+        if len(engines) > 1: put(2, 'filled', f'{len(engines)} sources searched through the same interface, each by its own commands and queries (item 8); no single query was run across several sources at once.')
+        elif engines: put(2, ND, 'a single source was searched')
+        else: put(2, ND, 'no search command in the journal')
+        # 3 registries
+        if reg: put(3, 'filled', 'Registries searched: ' + ', '.join(sorted(reg)) + '.')
+        else: put(3, ND, 'no registry engine (' + (', '.join(S['registry_engines']) or 'none declared') + ') queried through the gateway')
+        # 4 online resources and browsing
+        put(4, NR, 'Browsing of web pages outside the gateway is not journaled.' + (f' Identifiers read through the gateway: {len({norm_id(e.get("query")) for e in reads if e.get("query")})}.' if reads else ''))
+        # 5 citation searching
+        if chain:
+            by = {}
+            for e in chain: by.setdefault(str(e.get('call')), []).append(str(e.get('query')))
+            put(5, 'filled', *[f'{c}: {len(q)} call{"s" if len(q) != 1 else ""} from ' + ', '.join(f'`{x}`' for x in q) for c, q in sorted(by.items())])
+        else: put(5, ND, 'no citing / references / related call in the journal')
+        put(6, NR, 'The run holds no record of contacts with authors, experts or organisations.')
+        # 7 other methods
+        if direct: put(7, 'filled', f'Records read directly, by an identifier that no search or citation command had returned: {len(direct)} (' + ', '.join(f'`{i}`' for i in direct) + ').')
+        else: put(7, NR, 'no direct read of an identifier outside the search results; other methods are not journaled')
+        # 8 full strategies
+        if srch or chain:
+            L = []
+            for k, e in enumerate(srch + chain, 1):
+                f = e.get('filters'); extra = f' filters={json.dumps(f, ensure_ascii=False, sort_keys=True)}' if f else ''
+                L.append(f'{k}. `{e.get("call")}` n={e.get("n")}{extra} ({_day(e.get("utc"))}): ' + json.dumps(str(e.get('query')), ensure_ascii=False) + (f' [error: {str(e["error"])[:80]}]' if e.get('error') else '') + (' [repeat]' if e.get('repeat') else ''))
+            put(8, 'filled', 'Exact arguments as sent to the gateway, in journal order:', *L)
+        else: put(8, ND, 'no search command in the journal')
+        # 9 limits
+        Ts = sorted({str(e.get('T')) for e in J if e.get('T')}); sinces = sorted({str(e.get('since')) for e in J if e.get('since')})
+        ns = sorted({int(e['n']) for e in srch + chain if isinstance(e.get('n'), int)})
+        fl = sorted({json.dumps(e['filters'], ensure_ascii=False, sort_keys=True) for e in J if e.get('filters')})
+        ex = sum(int(e.get('excluded') or 0) for e in srch + chain)
+        put(9, 'filled', 'Date limit: documents dated strictly before T = ' + (', '.join(Ts) or NR) + f' (the gateway barrier removed {ex} record{"s" if ex != 1 else ""} dated on/after T or forbidden).',
+            'Lower date bound (since): ' + (', '.join(sinces) if sinces else NR + ' in the journal') + '.',
+            'Records requested per call (n): ' + (', '.join(map(str, ns)) if ns else NR) + '.',
+            'Engine filters (language, repository, court, dates...): ' + ('; '.join(fl) if fl else 'none recorded') + '.',
+            'Language and publication-type limits other than the above: ' + NR + '.')
+        put(10, NR, 'The journal keeps the exact queries (item 8); whether any of them embeds a published search filter is not recorded.')
+        put(11, NR, 'The run holds no record of search strategies adapted from previous work.')
+        # 12 updates
+        up = [f for f in ('UPDATE.md', 'update.json') if (d / f).is_file()]
+        if up: put(12, 'filled', 'This directory holds ' + ', '.join(up) + ' (tools/living_diff.py): the run is an update of an earlier run; see that file for the earlier T.')
+        else: put(12, NR, 'no UPDATE.md / update.json in the run')
+        # 13 dates
+        if engines:
+            put(13, 'filled', 'First and last call (UTC) per source: ' + '; '.join(f'{k} {_day(v["first"])}' + (f' to {_day(v["last"])}' if _day(v["last"]) != _day(v["first"]) else '') for k, v in sorted(engines.items())) + '.',
+                'Citation searching: ' + (', '.join(sorted({_day(e.get('utc')) for e in chain if e.get('utc')})) or ND) + '.' if chain else '')
+        else: put(13, ND, 'no search command in the journal')
+        put(14, NR, 'The run holds no record of a peer review of the search strategies.')
+        # 15 totals
+        idf = data.get('identification'); sc = data.get('screening')
+        if idf:
+            rb = idf['removed_before_screening']
+            put(15, 'filled', f'Records identified: {idf["identified"]} (' + '; '.join(f'{k}: {v["records"]}' for k, v in sorted(idf['per_source'].items())) + ').',
+                f'Removed before screening: duplicates {rb["duplicates"]}, date barrier {rb["date_barrier"]}; records screened (distinct): {sc["screened"]}.',
+                'Counts as defined in the flow diagram (PRISMA.md).')
+        else: put(15, NR, 'no journal')
+        # 16 deduplication
+        L = ['Records: by normalised identifier (DOI lower-cased, URL forms of doi.org stripped, arXiv version suffix dropped); a record without identifier is counted once per occurrence and cannot be deduplicated'
+             + (f' ({idf["records_without_identifier"]} here)' if idf and idf['records_without_identifier'] else '') + '. Software: tools/prisma.py (offline, no model); no reference manager.']
+        try:
+            sys.path.insert(0, str(P)); import study_family as _sf
+            fam = _sf.of_dir(d)
+            sig = {}
+            for g in fam.get('groups', []):
+                for l in g['links']: sig[l['signal']] = sig.get(l['signal'], 0) + 1
+            cfg = getattr(_sf, 'CFG', {}) or {}
+            L.append(f'Reports to studies (tools/study_family.py): {fam.get("entries")} bibliography entries grouped into {fam.get("studies")} studies; links found by signal: ' + (', '.join(f'{k} {v}' for k, v in sorted(sig.items())) or 'none') + '.')
+            L.append('Signals used: identifier, relation (Crossref-style), registry number, title+author word overlap' + (f' >= {cfg.get("title_min_similarity")}' if cfg.get('title_min_similarity') is not None else '')
+                     + ', title-only overlap' + (f' >= {cfg.get("title_only_min_similarity")}' if cfg.get('title_only_min_similarity') is not None else '') + '; transitive closure.')
+        except Exception:
+            L.append('Reports to studies (tools/study_family.py): ' + NR + ' (no card.json / report in the run).')
+        L.append('Automation tools for record screening: ' + NR + '.')
+        put(16, 'filled', *L)
+    items = []
+    for it in S['items']:
+        st, lines = out.get(it['n'], (NR, ['item not covered by this tool']))
+        items.append({'n': it['n'], 'section': it.get('section', ''), 'title': it.get('title', ''), 'status': st, 'text': lines})
+    return {'dir': str(d), 'reference': S['reference'], 'items': items}
+
+
+def markdown_s(ps):
+    L = ['# PRISMA-S: reporting of the literature searches', '', f'Run: `{pathlib.Path(ps["dir"]).name}`. Checklist: {ps["reference"]}', '',
+         'Derived by tools/prisma.py from the gateway journal (searchers only), card.json and the study-family signals; "not done" = the journal shows the step was not taken through the gateway; "not recorded" = the run holds no trace either way. Nothing is estimated.', '']
+    sec = None
+    for it in ps['items']:
+        if it['section'] != sec: sec = it['section']; L += [f'## {sec}', '']
+        head = f'{it["n"]}. {it["title"]}'
+        if it['status'] == 'filled':
+            L.append(f'**{head}**'); L.append('')
+            for x in it['text']: L.append(x if re.match(r'^\d+\. ', x) else f'- {x}')
+        else:
+            L.append(f'**{head}**: {it["status"]}.')
+            for x in it['text']: L.append(f'- {x[:1].upper() + x[1:]}' + ('' if x.endswith('.') else '.'))
+        L.append('')
+    return '\n'.join(L)
+
+
 def _wrap(s, width):
     words, out, cur = s.split(' '), [], ''
     lead = len(s) - len(s.lstrip(' '))
@@ -426,8 +568,10 @@ def write(d, out=None):
     data = build(d)
     (o / 'PRISMA.md').write_text(markdown(data), encoding='utf-8')
     (o / 'PRISMA.svg').write_text(svg(data), encoding='utf-8')
-    (o / 'prisma.json').write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding='utf-8')
-    return data, [o / 'PRISMA.md', o / 'PRISMA.svg', o / 'prisma.json']
+    ps = prisma_s(d)
+    (o / 'PRISMA-S.md').write_text(markdown_s(ps), encoding='utf-8')
+    (o / 'prisma.json').write_text(json.dumps({**data, 'prisma_s': ps}, ensure_ascii=False, indent=1), encoding='utf-8')
+    return data, [o / 'PRISMA.md', o / 'PRISMA.svg', o / 'prisma.json', o / 'PRISMA-S.md']
 
 
 def main(argv=None):

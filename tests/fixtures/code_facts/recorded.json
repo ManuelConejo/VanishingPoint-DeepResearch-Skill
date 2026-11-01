@@ -1,0 +1,1845 @@
+{
+ "https://api.github.com/repos/hynek/stamina": {
+  "json": {
+   "archived": false,
+   "created_at": "2022-09-30T17:23:17Z",
+   "default_branch": "main",
+   "fork": false,
+   "full_name": "hynek/stamina",
+   "license": {
+    "spdx_id": "MIT"
+   },
+   "pushed_at": "2026-10-19T18:20:01Z"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/hynek/stamina/commits/5c13c8e0b4bc5faa54914115a8c796934ba6da9d": {
+  "json": {
+   "commit": {
+    "author": {
+     "date": "2026-10-19T18:19:58Z"
+    },
+    "committer": {
+     "date": "2026-10-19T18:19:58Z"
+    }
+   },
+   "sha": "5c13c8e0b4bc5faa54914115a8c796934ba6da9d"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/hynek/stamina/commits?sha=main&until=2026-10-31T00%3A00%3A00Z&per_page=20": {
+  "json": [
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-19T18:19:58Z"
+     },
+     "committer": {
+      "date": "2026-10-19T18:19:58Z"
+     }
+    },
+    "sha": "5c13c8e0b4bc5faa54914115a8c796934ba6da9d"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-18T09:52:10Z"
+     },
+     "committer": {
+      "date": "2026-10-18T09:52:10Z"
+     }
+    },
+    "sha": "22e52e03e1cfcff65eed6f809ef6c43731af9ddb"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-18T09:44:18Z"
+     },
+     "committer": {
+      "date": "2026-10-18T09:44:18Z"
+     }
+    },
+    "sha": "3227cb6b81437c0f28a4b2daf8f2eb13aa360bee"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-13T11:59:51Z"
+     },
+     "committer": {
+      "date": "2026-10-13T11:59:51Z"
+     }
+    },
+    "sha": "1dbd15fbe5a356a917a6b0660805072dad3698e4"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-13T11:00:34Z"
+     },
+     "committer": {
+      "date": "2026-10-13T11:00:34Z"
+     }
+    },
+    "sha": "08bd4678ab92166951a393f644b13821f6425627"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-13T06:47:24Z"
+     },
+     "committer": {
+      "date": "2026-10-13T06:47:24Z"
+     }
+    },
+    "sha": "42ceb4941a35c7c1925fd6136728e5f35b4ab37d"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-10T10:08:43Z"
+     },
+     "committer": {
+      "date": "2026-10-10T10:08:43Z"
+     }
+    },
+    "sha": "1961acf2ef880fbdbcd81acfe036e84cbc268e17"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-10T10:08:35Z"
+     },
+     "committer": {
+      "date": "2026-10-10T10:08:35Z"
+     }
+    },
+    "sha": "f434c96521021f6ed74d5ff965d4d3c42b5a517c"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-10T05:41:52Z"
+     },
+     "committer": {
+      "date": "2026-10-10T05:41:52Z"
+     }
+    },
+    "sha": "991a502217de2e2f93d1e035135320d50361d1fa"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-10T05:37:49Z"
+     },
+     "committer": {
+      "date": "2026-10-10T05:37:49Z"
+     }
+    },
+    "sha": "2575599dd31247127f83a2a73245e7a0c4070ab4"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-10T05:15:14Z"
+     },
+     "committer": {
+      "date": "2026-10-10T05:15:14Z"
+     }
+    },
+    "sha": "ee964eb09ed80f70ed397db7097b4cfe13561f86"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-05T18:00:03Z"
+     },
+     "committer": {
+      "date": "2026-10-05T18:00:03Z"
+     }
+    },
+    "sha": "e685d967933ffd9cb85a60c38fa19a3d26b993cc"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-04T10:42:46Z"
+     },
+     "committer": {
+      "date": "2026-10-04T10:42:46Z"
+     }
+    },
+    "sha": "c02e2e6802fa5b5d1183500aa6c3afded716de2d"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-01T14:58:57Z"
+     },
+     "committer": {
+      "date": "2026-10-01T14:58:57Z"
+     }
+    },
+    "sha": "7836f460e7740064f5fae5d22750eba1e05e74a9"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-01T14:37:03Z"
+     },
+     "committer": {
+      "date": "2026-10-01T14:37:03Z"
+     }
+    },
+    "sha": "e4a2705b1d2cdcadd9351313f0e82f210f5b4a3a"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-09-07T18:44:51Z"
+     },
+     "committer": {
+      "date": "2026-09-07T18:44:51Z"
+     }
+    },
+    "sha": "ae777564650fda1c6ec24c09d0e73db75eef6dd8"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-09-01T15:29:12Z"
+     },
+     "committer": {
+      "date": "2026-09-01T15:29:12Z"
+     }
+    },
+    "sha": "e6be0aa7df2d573dbc16d35d658d66c96581334a"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-08-04T08:14:50Z"
+     },
+     "committer": {
+      "date": "2026-08-04T08:14:50Z"
+     }
+    },
+    "sha": "caede7b57124e20e355431ddd14dfc2e5660156f"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-08-04T08:13:09Z"
+     },
+     "committer": {
+      "date": "2026-08-04T08:13:09Z"
+     }
+    },
+    "sha": "19616d0ef9ca1d96df2cf3fcffae6c0a81c343af"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-08-02T13:47:06Z"
+     },
+     "committer": {
+      "date": "2026-08-02T13:47:06Z"
+     }
+    },
+    "sha": "e83670e8a03b75bb247ec118aa418e8e6045fa42"
+   }
+  ],
+  "status": 200
+ },
+ "https://api.github.com/repos/hynek/stamina/compare/main...5c13c8e0b4bc5faa54914115a8c796934ba6da9d?per_page=1": {
+  "json": {
+   "status": "identical"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/hynek/stamina/license?ref=5c13c8e0b4bc5faa54914115a8c796934ba6da9d": {
+  "json": {
+   "license": {
+    "spdx_id": "MIT"
+   },
+   "path": "LICENSE"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/invl/retry": {
+  "json": {
+   "archived": false,
+   "created_at": "2014-05-21T04:21:55Z",
+   "default_branch": "master",
+   "fork": false,
+   "full_name": "invl/retry",
+   "license": {
+    "spdx_id": "NOASSERTION"
+   },
+   "pushed_at": "2024-07-05T13:16:48Z"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/invl/retry/commits/c3f386aa279b130b37a4a4e91e758c7f02ec898c": {
+  "json": {
+   "commit": {
+    "author": {
+     "date": "2016-05-12T08:20:51Z"
+    },
+    "committer": {
+     "date": "2016-05-12T08:20:51Z"
+    }
+   },
+   "sha": "c3f386aa279b130b37a4a4e91e758c7f02ec898c"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/invl/retry/commits?sha=master&until=2026-10-31T00%3A00%3A00Z&per_page=20": {
+  "json": [
+   {
+    "commit": {
+     "author": {
+      "date": "2016-05-12T08:20:51Z"
+     },
+     "committer": {
+      "date": "2016-05-12T08:20:51Z"
+     }
+    },
+    "sha": "c3f386aa279b130b37a4a4e91e758c7f02ec898c"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2016-05-12T08:19:22Z"
+     },
+     "committer": {
+      "date": "2016-05-12T08:19:22Z"
+     }
+    },
+    "sha": "dd88d2bd52f6cab19367552472c4f25ee1416a34"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2016-05-12T08:16:38Z"
+     },
+     "committer": {
+      "date": "2016-05-12T08:16:38Z"
+     }
+    },
+    "sha": "f42899cfa938769e89d8639af963754e1edf0483"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2016-05-12T08:15:06Z"
+     },
+     "committer": {
+      "date": "2016-05-12T08:15:06Z"
+     }
+    },
+    "sha": "ec6b3f57c72acfc6299a29cee0c29460203b8575"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2016-05-12T08:10:51Z"
+     },
+     "committer": {
+      "date": "2016-05-12T08:10:51Z"
+     }
+    },
+    "sha": "a6c0a13e3c31cf7dc588dc2a7045d738ee752262"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2016-05-12T08:09:32Z"
+     },
+     "committer": {
+      "date": "2016-05-12T08:09:32Z"
+     }
+    },
+    "sha": "bacf7ed81607683e8c42b54e2ebb1fd40d8df97b"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2016-05-11T14:14:44Z"
+     },
+     "committer": {
+      "date": "2016-05-11T14:14:44Z"
+     }
+    },
+    "sha": "0bd0854e461c0ddb45d753dc6556fb6e9fc6ef32"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2016-05-11T13:56:36Z"
+     },
+     "committer": {
+      "date": "2016-05-11T13:56:36Z"
+     }
+    },
+    "sha": "00b2e8bd5934937b18457c2ae9b5793fb09e0597"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2016-05-11T13:52:07Z"
+     },
+     "committer": {
+      "date": "2016-05-11T13:52:07Z"
+     }
+    },
+    "sha": "c7bef02051165019453373e2180ec6c6678538fd"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2016-05-11T13:48:32Z"
+     },
+     "committer": {
+      "date": "2016-05-11T13:48:32Z"
+     }
+    },
+    "sha": "a71698c5b3dc8ed761e7d368928bbf4504f42de7"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2016-05-11T13:48:02Z"
+     },
+     "committer": {
+      "date": "2016-05-11T13:48:02Z"
+     }
+    },
+    "sha": "d7733ae1fcc745589daddf35fdd2276e7463366e"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2016-05-11T13:41:15Z"
+     },
+     "committer": {
+      "date": "2016-05-11T13:41:15Z"
+     }
+    },
+    "sha": "4dd3e3735a047a5e6b89a8d7360418d662562ba2"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2015-11-17T01:58:16Z"
+     },
+     "committer": {
+      "date": "2015-11-17T01:58:16Z"
+     }
+    },
+    "sha": "9ff1730d2ecfdf2be0cd6bea5e0e2f6c3a304dc1"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2015-11-16T20:30:18Z"
+     },
+     "committer": {
+      "date": "2015-11-16T20:30:18Z"
+     }
+    },
+    "sha": "eb97b99aa57f2635c904a88c6434efc60f1dbc2b"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2015-07-03T00:43:56Z"
+     },
+     "committer": {
+      "date": "2015-07-03T00:43:56Z"
+     }
+    },
+    "sha": "fb4a4a07b72856bc0a79f9b2a4886e0edb78c022"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2015-06-30T14:38:33Z"
+     },
+     "committer": {
+      "date": "2015-06-30T14:38:33Z"
+     }
+    },
+    "sha": "66b842102d8eaf0c22d21cb4ae3bf38e490ec4e7"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2015-06-30T14:35:22Z"
+     },
+     "committer": {
+      "date": "2015-06-30T14:35:22Z"
+     }
+    },
+    "sha": "ebd2dffa90c8e2a6440d31ddac59d9be4657776a"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2015-06-30T14:32:16Z"
+     },
+     "committer": {
+      "date": "2015-06-30T14:32:16Z"
+     }
+    },
+    "sha": "b1b64c7c9fada467ba5530261d33245a0553d652"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2015-04-26T03:48:43Z"
+     },
+     "committer": {
+      "date": "2015-04-26T03:48:43Z"
+     }
+    },
+    "sha": "d56f5f9644e38307831f1546399f34a282baa3be"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2015-04-26T03:21:31Z"
+     },
+     "committer": {
+      "date": "2015-04-26T03:21:31Z"
+     }
+    },
+    "sha": "c9b69bd20d84029f0257a2bef50491c5c3f4aed7"
+   }
+  ],
+  "status": 200
+ },
+ "https://api.github.com/repos/invl/retry/compare/master...c3f386aa279b130b37a4a4e91e758c7f02ec898c?per_page=1": {
+  "json": {
+   "status": "identical"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/invl/retry/license?ref=c3f386aa279b130b37a4a4e91e758c7f02ec898c": {
+  "json": {
+   "license": {
+    "spdx_id": "NOASSERTION"
+   },
+   "path": "LICENSE"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/jd/tenacity": {
+  "json": {
+   "archived": false,
+   "created_at": "2016-08-11T12:44:02Z",
+   "default_branch": "main",
+   "fork": false,
+   "full_name": "jd/tenacity",
+   "license": {
+    "spdx_id": "Apache-2.0"
+   },
+   "pushed_at": "2026-10-12T13:10:05Z"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/jd/tenacity/commits/32ac68f0941319c0d2f4fb927f96e4ee29bb46c6": {
+  "json": {
+   "commit": {
+    "author": {
+     "date": "2026-10-12T13:10:02Z"
+    },
+    "committer": {
+     "date": "2026-10-12T13:10:02Z"
+    }
+   },
+   "sha": "32ac68f0941319c0d2f4fb927f96e4ee29bb46c6"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/jd/tenacity/commits?sha=main&until=2026-10-31T00%3A00%3A00Z&per_page=20": {
+  "json": [
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-12T13:10:02Z"
+     },
+     "committer": {
+      "date": "2026-10-12T13:10:02Z"
+     }
+    },
+    "sha": "32ac68f0941319c0d2f4fb927f96e4ee29bb46c6"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-07T14:31:43Z"
+     },
+     "committer": {
+      "date": "2026-10-07T14:31:43Z"
+     }
+    },
+    "sha": "58c45dc02b33012be37ea634c81e01ae9ccd05a0"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-07T14:29:27Z"
+     },
+     "committer": {
+      "date": "2026-10-07T14:29:27Z"
+     }
+    },
+    "sha": "fd84b4bad1305f52c23bff9f4055cd2e3a156410"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-07T11:34:04Z"
+     },
+     "committer": {
+      "date": "2026-10-07T11:34:04Z"
+     }
+    },
+    "sha": "4410996dd9a96864a2733ce0778bcaa112b72811"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-07T11:32:15Z"
+     },
+     "committer": {
+      "date": "2026-10-07T11:32:15Z"
+     }
+    },
+    "sha": "b23844175feb8c62f4ebb0ef0833d993f439fa1f"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-07T09:44:30Z"
+     },
+     "committer": {
+      "date": "2026-10-07T09:44:30Z"
+     }
+    },
+    "sha": "b6201eceedfc719e996dcbc3f6c17f21011fb236"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-07T09:24:44Z"
+     },
+     "committer": {
+      "date": "2026-10-07T09:24:44Z"
+     }
+    },
+    "sha": "4a74682e0186b5f2d25906aa190cd639c705a958"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-07T09:22:04Z"
+     },
+     "committer": {
+      "date": "2026-10-07T09:22:04Z"
+     }
+    },
+    "sha": "91169719f4fd127d680cafe026f1f95f04292094"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-07T09:19:23Z"
+     },
+     "committer": {
+      "date": "2026-10-07T09:19:23Z"
+     }
+    },
+    "sha": "2374b61424aab29769c3428b06d576ffc1a5a1d9"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-07T09:13:07Z"
+     },
+     "committer": {
+      "date": "2026-10-07T09:13:07Z"
+     }
+    },
+    "sha": "6df1aab1a2df84f2779f5f308c6171df9d051a35"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-07T09:05:54Z"
+     },
+     "committer": {
+      "date": "2026-10-07T09:05:54Z"
+     }
+    },
+    "sha": "5f540fad77cbd90b4bcb21a9b859d5b07c08ba54"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-10-01T19:49:18Z"
+     },
+     "committer": {
+      "date": "2026-10-01T19:49:18Z"
+     }
+    },
+    "sha": "8be01b1daf2010566fd936a5c2214efefa43edff"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-09-01T19:49:51Z"
+     },
+     "committer": {
+      "date": "2026-09-01T19:49:51Z"
+     }
+    },
+    "sha": "3e58094d3bc414975aad9eadf343a32bdb3b89b3"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-08-06T06:51:32Z"
+     },
+     "committer": {
+      "date": "2026-08-06T06:51:32Z"
+     }
+    },
+    "sha": "26f719dc73d3c5612b9c1b8d18a7883837790ad8"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-08-06T06:51:02Z"
+     },
+     "committer": {
+      "date": "2026-08-06T06:51:02Z"
+     }
+    },
+    "sha": "949dcfa6c0a4f0109dbbd019ff58208a580d185b"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-08-06T06:44:12Z"
+     },
+     "committer": {
+      "date": "2026-08-06T06:44:12Z"
+     }
+    },
+    "sha": "389aab8b2688f7a1df41c2dd7797eeb18c8baff9"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-08-05T16:01:15Z"
+     },
+     "committer": {
+      "date": "2026-08-05T16:01:15Z"
+     }
+    },
+    "sha": "a09999688c8d3bb3d4ca1716748009954cc7c4d0"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-08-05T16:00:54Z"
+     },
+     "committer": {
+      "date": "2026-08-05T16:00:54Z"
+     }
+    },
+    "sha": "b189e156164c970c15a3ffc54842c878f3695289"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-08-05T15:49:15Z"
+     },
+     "committer": {
+      "date": "2026-08-05T15:49:15Z"
+     }
+    },
+    "sha": "d6690dc06a0beebef9d91018d31fe42db11c2640"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2026-08-05T15:48:25Z"
+     },
+     "committer": {
+      "date": "2026-08-05T15:48:25Z"
+     }
+    },
+    "sha": "e6ef84a1cebc01963106b1aecd598393054e0277"
+   }
+  ],
+  "status": 200
+ },
+ "https://api.github.com/repos/jd/tenacity/compare/main...32ac68f0941319c0d2f4fb927f96e4ee29bb46c6?per_page=1": {
+  "json": {
+   "status": "identical"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/jd/tenacity/license?ref=32ac68f0941319c0d2f4fb927f96e4ee29bb46c6": {
+  "json": {
+   "license": {
+    "spdx_id": "Apache-2.0"
+   },
+   "path": "LICENSE"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/litl/backoff": {
+  "json": {
+   "archived": true,
+   "created_at": "2014-05-13T16:23:01Z",
+   "default_branch": "master",
+   "fork": false,
+   "full_name": "litl/backoff",
+   "license": {
+    "spdx_id": "MIT"
+   },
+   "pushed_at": "2024-05-02T21:50:08Z"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/litl/backoff/commits/d82b23c42d7a7e2402903e71e7a7f03014a00076": {
+  "json": {
+   "commit": {
+    "author": {
+     "date": "2023-01-20T19:02:28Z"
+    },
+    "committer": {
+     "date": "2023-01-20T19:02:28Z"
+    }
+   },
+   "sha": "d82b23c42d7a7e2402903e71e7a7f03014a00076"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/litl/backoff/commits?sha=master&until=2026-10-31T00%3A00%3A00Z&per_page=20": {
+  "json": [
+   {
+    "commit": {
+     "author": {
+      "date": "2023-01-20T19:02:28Z"
+     },
+     "committer": {
+      "date": "2023-01-20T19:02:28Z"
+     }
+    },
+    "sha": "d82b23c42d7a7e2402903e71e7a7f03014a00076"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2023-01-16T14:09:52Z"
+     },
+     "committer": {
+      "date": "2023-01-16T14:09:52Z"
+     }
+    },
+    "sha": "a33a3f20764e1fb86201bac52d0cba6510921b91"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2023-01-16T14:06:42Z"
+     },
+     "committer": {
+      "date": "2023-01-16T14:06:42Z"
+     }
+    },
+    "sha": "48fa04eaccf2b9617cd702676fd5b3be39efa18e"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2022-10-20T11:23:39Z"
+     },
+     "committer": {
+      "date": "2022-10-20T11:23:39Z"
+     }
+    },
+    "sha": "a1e19d96a8bd6a4cfb44c88f42f0d8e0415998ac"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2022-10-05T20:45:52Z"
+     },
+     "committer": {
+      "date": "2022-10-05T20:45:52Z"
+     }
+    },
+    "sha": "54e78572e95aed5f4749ae1b245fe05ac3d642ef"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2022-10-05T19:16:50Z"
+     },
+     "committer": {
+      "date": "2022-10-05T19:16:50Z"
+     }
+    },
+    "sha": "d9d80a92d5a4483373acdaf9faa4068c85b3d268"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2022-10-05T19:11:17Z"
+     },
+     "committer": {
+      "date": "2022-10-05T19:15:18Z"
+     }
+    },
+    "sha": "6cb1a4ecaf6905fe46069a0676e25c5bd5b6883a"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2022-10-05T14:31:37Z"
+     },
+     "committer": {
+      "date": "2022-10-05T14:31:37Z"
+     }
+    },
+    "sha": "9a20a7fe9fc13621ab966f151d6324649bd1e814"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2022-10-05T14:28:57Z"
+     },
+     "committer": {
+      "date": "2022-10-05T14:28:57Z"
+     }
+    },
+    "sha": "d322dc46a7f3ee6d03e5a0153d8015c3076f8bbb"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2022-10-05T14:25:01Z"
+     },
+     "committer": {
+      "date": "2022-10-05T14:25:01Z"
+     }
+    },
+    "sha": "3f491cabd3e950fb46df965075310824d2520463"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2022-10-05T14:22:46Z"
+     },
+     "committer": {
+      "date": "2022-10-05T14:22:46Z"
+     }
+    },
+    "sha": "77f4209b63ac47daa7db9798ce4ce28a54fae1ee"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2022-10-05T14:08:04Z"
+     },
+     "committer": {
+      "date": "2022-10-05T14:08:04Z"
+     }
+    },
+    "sha": "31d973f1b4fd6c039c40bd721ceedc5274a4fa10"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2022-10-05T14:06:10Z"
+     },
+     "committer": {
+      "date": "2022-10-05T14:06:10Z"
+     }
+    },
+    "sha": "d9b9f01b4a40ee6b82f3e6b8b7caf7360e6e0ea8"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2022-10-05T13:29:55Z"
+     },
+     "committer": {
+      "date": "2022-10-05T13:29:55Z"
+     }
+    },
+    "sha": "e7677e8770e6f9da1f54108018022574fc4e8078"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2022-10-03T22:53:09Z"
+     },
+     "committer": {
+      "date": "2022-10-03T22:53:09Z"
+     }
+    },
+    "sha": "52aef92a1d44de03c84d65b3e4eeedaf40221547"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2022-10-03T22:45:46Z"
+     },
+     "committer": {
+      "date": "2022-10-03T22:45:46Z"
+     }
+    },
+    "sha": "c810d70914603c2054bd9904d718d234b0ca2342"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2022-08-23T19:58:33Z"
+     },
+     "committer": {
+      "date": "2022-08-23T19:58:33Z"
+     }
+    },
+    "sha": "15613afc62a5b14ce406a72fa76847422222c28f"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2022-07-19T18:08:10Z"
+     },
+     "committer": {
+      "date": "2022-07-19T18:08:10Z"
+     }
+    },
+    "sha": "32e9223fc1758efc857fc8541e814d4c11aba444"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2022-07-19T18:00:37Z"
+     },
+     "committer": {
+      "date": "2022-07-19T18:00:37Z"
+     }
+    },
+    "sha": "fe0383aaa597fa1a33294ca8eb864fa6a7614b27"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2022-07-19T17:59:05Z"
+     },
+     "committer": {
+      "date": "2022-07-19T17:59:05Z"
+     }
+    },
+    "sha": "36aba2ca507120501ce26ec8c51b9b66d6050800"
+   }
+  ],
+  "status": 200
+ },
+ "https://api.github.com/repos/litl/backoff/compare/master...d82b23c42d7a7e2402903e71e7a7f03014a00076?per_page=1": {
+  "json": {
+   "status": "identical"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/litl/backoff/license?ref=d82b23c42d7a7e2402903e71e7a7f03014a00076": {
+  "json": {
+   "license": {
+    "spdx_id": "MIT"
+   },
+   "path": "LICENSE"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/rholder/retrying": {
+  "json": {
+   "archived": false,
+   "created_at": "2013-01-22T06:13:26Z",
+   "default_branch": "master",
+   "fork": false,
+   "full_name": "rholder/retrying",
+   "license": {
+    "spdx_id": "Apache-2.0"
+   },
+   "pushed_at": "2021-08-15T10:32:43Z"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/rholder/retrying/commits/1d5699348d707e377aad7488da6a8a1b48a65933": {
+  "json": {
+   "commit": {
+    "author": {
+     "date": "2016-06-07T04:02:12Z"
+    },
+    "committer": {
+     "date": "2016-06-07T04:02:12Z"
+    }
+   },
+   "sha": "1d5699348d707e377aad7488da6a8a1b48a65933"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/rholder/retrying/commits?sha=master&until=2026-10-31T00%3A00%3A00Z&per_page=20": {
+  "json": [
+   {
+    "commit": {
+     "author": {
+      "date": "2016-06-07T04:02:12Z"
+     },
+     "committer": {
+      "date": "2016-06-07T04:02:12Z"
+     }
+    },
+    "sha": "1d5699348d707e377aad7488da6a8a1b48a65933"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2016-06-07T03:45:05Z"
+     },
+     "committer": {
+      "date": "2016-06-07T03:45:05Z"
+     }
+    },
+    "sha": "3a435e8ba85d85d7300a3609cb6f3ba8cb4bc170"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2016-06-06T03:21:29Z"
+     },
+     "committer": {
+      "date": "2016-06-06T03:21:29Z"
+     }
+    },
+    "sha": "855db168d38493a1607066b127a6c93d4920371a"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2016-06-05T21:15:13Z"
+     },
+     "committer": {
+      "date": "2016-06-05T21:15:13Z"
+     }
+    },
+    "sha": "deaa38460aa802552d8bbb641e6171f60b258125"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2016-06-05T20:34:38Z"
+     },
+     "committer": {
+      "date": "2016-06-05T20:34:38Z"
+     }
+    },
+    "sha": "37b322221cd5e92221672c3b919c52e00dfd95b4"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2016-06-05T20:32:56Z"
+     },
+     "committer": {
+      "date": "2016-06-05T20:32:56Z"
+     }
+    },
+    "sha": "ecef4c2d95140a62b41664d3381ecd79fe4244db"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2015-12-18T20:49:38Z"
+     },
+     "committer": {
+      "date": "2015-12-18T20:49:38Z"
+     }
+    },
+    "sha": "6311fd38973cb824c57c3cd74b4e44ab1f09d15e"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2015-09-10T22:57:35Z"
+     },
+     "committer": {
+      "date": "2015-09-10T22:57:35Z"
+     }
+    },
+    "sha": "6a55573d588e4a817986c8964d97dceb8c46585a"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2015-06-24T01:22:53Z"
+     },
+     "committer": {
+      "date": "2015-06-24T01:22:53Z"
+     }
+    },
+    "sha": "2a84101c9a84e3006624ba14d7779c99fb0ef354"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2015-06-24T01:15:41Z"
+     },
+     "committer": {
+      "date": "2015-06-24T01:19:07Z"
+     }
+    },
+    "sha": "919d6e0011f2c725e0bf613d8b5fcf7e48b41cce"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2015-06-07T05:06:24Z"
+     },
+     "committer": {
+      "date": "2015-06-07T05:06:24Z"
+     }
+    },
+    "sha": "da33537e0850f997aea75c4dec010e2b5594071f"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2015-06-01T15:38:25Z"
+     },
+     "committer": {
+      "date": "2015-06-01T15:38:25Z"
+     }
+    },
+    "sha": "918fc72fc199cace94581979dfc3afc3e38bfa66"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2014-12-15T01:07:01Z"
+     },
+     "committer": {
+      "date": "2014-12-15T01:07:01Z"
+     }
+    },
+    "sha": "3659c70b1f0d0e4f3a262d6b76075a8eb082c73d"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2014-12-15T01:06:27Z"
+     },
+     "committer": {
+      "date": "2014-12-15T01:06:27Z"
+     }
+    },
+    "sha": "650688df3cc6a2236830831e8201ba959c51269c"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2014-12-15T01:05:54Z"
+     },
+     "committer": {
+      "date": "2014-12-15T01:05:54Z"
+     }
+    },
+    "sha": "c3b2d302cd90231a5a48bec21acc0358a752e2c7"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2014-12-15T00:42:26Z"
+     },
+     "committer": {
+      "date": "2014-12-15T00:42:26Z"
+     }
+    },
+    "sha": "5cb2c24f3065cf1bfaa4943959e28ea0dad5b184"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2014-11-19T19:29:31Z"
+     },
+     "committer": {
+      "date": "2014-11-19T19:29:31Z"
+     }
+    },
+    "sha": "0a3eb6eae1a1a15978d02eec74d5215e5c3a259d"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2014-11-10T04:26:41Z"
+     },
+     "committer": {
+      "date": "2014-11-10T04:26:41Z"
+     }
+    },
+    "sha": "2cd062edcb522b37c49e5b693e69d5fa8d6d2437"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2014-11-10T04:26:15Z"
+     },
+     "committer": {
+      "date": "2014-11-10T04:26:15Z"
+     }
+    },
+    "sha": "7dea034d806f54d14e6cded57bc50575c138291c"
+   },
+   {
+    "commit": {
+     "author": {
+      "date": "2014-11-10T04:22:33Z"
+     },
+     "committer": {
+      "date": "2014-11-10T04:22:33Z"
+     }
+    },
+    "sha": "394ea5b4921ae8ef90d3a38ed4605e285b87610c"
+   }
+  ],
+  "status": 200
+ },
+ "https://api.github.com/repos/rholder/retrying/compare/master...1d5699348d707e377aad7488da6a8a1b48a65933?per_page=1": {
+  "json": {
+   "status": "identical"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/rholder/retrying/license?ref=1d5699348d707e377aad7488da6a8a1b48a65933": {
+  "json": {
+   "license": {
+    "spdx_id": "Apache-2.0"
+   },
+   "path": "LICENSE"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/searxng/searxng": {
+  "json": {
+   "archived": false,
+   "created_at": "2021-04-12T15:18:15Z",
+   "default_branch": "master",
+   "fork": false,
+   "full_name": "searxng/searxng",
+   "license": {
+    "spdx_id": "AGPL-3.0"
+   },
+   "pushed_at": "2026-10-30T18:10:36Z"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/searxng/searxng/commits/c15647b5a5921858d5147d291c658fbda3cba12c": {
+  "json": {
+   "commit": {
+    "author": {
+     "date": "2026-10-29T18:50:18Z"
+    },
+    "committer": {
+     "date": "2026-10-29T18:50:18Z"
+    }
+   },
+   "sha": "c15647b5a5921858d5147d291c658fbda3cba12c"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/searxng/searxng/compare/master...c15647b5a5921858d5147d291c658fbda3cba12c?per_page=1": {
+  "json": {
+   "status": "behind"
+  },
+  "status": 200
+ },
+ "https://api.github.com/repos/searxng/searxng/license?ref=c15647b5a5921858d5147d291c658fbda3cba12c": {
+  "json": {
+   "license": {
+    "spdx_id": "AGPL-3.0"
+   },
+   "path": "LICENSE"
+  },
+  "status": 200
+ },
+ "https://api.osv.dev/v1/query\n{\"package\": {\"name\": \"jinja2\", \"ecosystem\": \"PyPI\"}, \"version\": \"3.1.2\"}": {
+  "json": {
+   "vulns": [
+    {
+     "aliases": [
+      "CVE-2025-27516",
+      "PYSEC-2026-1471"
+     ],
+     "id": "GHSA-cpwx-vrp4-4pq7",
+     "modified": "2026-09-10T03:49:48.526758681Z",
+     "published": "2025-03-05T20:40:14Z"
+    },
+    {
+     "aliases": [
+      "CVE-2024-56201",
+      "PYSEC-2026-1472"
+     ],
+     "id": "GHSA-gmj6-6f8f-6699",
+     "modified": "2026-09-10T03:50:56.152882717Z",
+     "published": "2024-12-23T17:54:12Z"
+    },
+    {
+     "aliases": [
+      "CVE-2024-22195",
+      "PYSEC-2026-1473"
+     ],
+     "id": "GHSA-h5c8-rqwp-cp95",
+     "modified": "2026-09-10T03:50:00.236017440Z",
+     "published": "2024-01-11T15:20:48Z"
+    },
+    {
+     "aliases": [
+      "CVE-2024-34064",
+      "PYSEC-2026-1474"
+     ],
+     "id": "GHSA-h75v-3vvj-5mfj",
+     "modified": "2026-09-10T03:50:13.786450101Z",
+     "published": "2024-05-06T14:20:59Z"
+    },
+    {
+     "aliases": [
+      "CVE-2024-56326",
+      "PYSEC-2026-1475"
+     ],
+     "id": "GHSA-q2x7-8rv6-6q7h",
+     "modified": "2026-09-10T03:50:21.662855250Z",
+     "published": "2024-12-23T17:56:08Z"
+    },
+    {
+     "aliases": [
+      "CVE-2025-27516",
+      "GHSA-cpwx-vrp4-4pq7"
+     ],
+     "id": "PYSEC-2026-1471",
+     "modified": "2026-07-07T17:46:43.358335981Z",
+     "published": "2026-07-07T14:34:50.446969Z"
+    },
+    {
+     "aliases": [
+      "CVE-2024-56201",
+      "GHSA-gmj6-6f8f-6699"
+     ],
+     "id": "PYSEC-2026-1472",
+     "modified": "2026-07-07T17:46:46.013371684Z",
+     "published": "2026-07-07T14:34:47.677447Z"
+    },
+    {
+     "aliases": [
+      "CVE-2024-22195",
+      "GHSA-h5c8-rqwp-cp95"
+     ],
+     "id": "PYSEC-2026-1473",
+     "modified": "2026-07-07T17:46:13.853151947Z",
+     "published": "2026-07-07T11:45:29.949639Z"
+    },
+    {
+     "aliases": [
+      "CVE-2024-34064",
+      "GHSA-h75v-3vvj-5mfj"
+     ],
+     "id": "PYSEC-2026-1474",
+     "modified": "2026-07-07T17:46:13.832160246Z",
+     "published": "2026-07-07T11:45:41.875280Z"
+    },
+    {
+     "aliases": [
+      "CVE-2024-56326",
+      "GHSA-q2x7-8rv6-6q7h"
+     ],
+     "id": "PYSEC-2026-1475",
+     "modified": "2026-07-07T17:46:13.842466429Z",
+     "published": "2026-07-07T14:34:47.732576Z"
+    }
+   ]
+  },
+  "status": 200
+ },
+ "https://api.osv.dev/v1/query\n{\"package\": {\"name\": \"urllib3\", \"ecosystem\": \"PyPI\"}, \"version\": \"1.26.15\"}": {
+  "json": {
+   "vulns": [
+    {
+     "aliases": [
+      "CVE-2025-66471",
+      "PYSEC-2026-1994"
+     ],
+     "id": "GHSA-2xpw-w6gg-jr37",
+     "modified": "2026-09-25T17:15:05.968189421Z",
+     "published": "2025-12-05T18:15:54Z"
+    },
+    {
+     "aliases": [
+      "CVE-2024-37891",
+      "PYSEC-2026-1995"
+     ],
+     "id": "GHSA-34jh-p97f-mpxf",
+     "modified": "2026-09-10T03:50:14.811193644Z",
+     "published": "2024-06-17T21:37:20Z"
+    },
+    {
+     "aliases": [
+      "CVE-2026-21441",
+      "PYSEC-2026-1996"
+     ],
+     "id": "GHSA-38jv-5279-wg99",
+     "modified": "2026-09-10T03:50:32.562010895Z",
+     "published": "2026-01-07T19:18:14Z"
+    },
+    {
+     "aliases": [
+      "CVE-2026-97687",
+      "PYSEC-2026-4175"
+     ],
+     "id": "GHSA-8988-9cw3-xx77",
+     "modified": "2026-10-01T17:55:53.793608550Z",
+     "published": "2026-09-30T14:46:04Z"
+    },
+    {
+     "aliases": [
+      "CVE-2023-45803",
+      "PYSEC-2023-212"
+     ],
+     "id": "GHSA-g4mx-q9vg-27p4",
+     "modified": "2026-09-10T03:50:03.706889410Z",
+     "published": "2023-10-17T20:15:25Z"
+    },
+    {
+     "aliases": [
+      "CVE-2025-66418",
+      "PYSEC-2026-1998"
+     ],
+     "id": "GHSA-gm62-xv2j-4w53",
+     "modified": "2026-09-10T03:50:58.741847479Z",
+     "published": "2025-12-05T18:15:19Z"
+    },
+    {
+     "aliases": [
+      "CVE-2025-50181",
+      "PYSEC-2026-1999"
+     ],
+     "id": "GHSA-pq67-6m6q-mj2v",
+     "modified": "2026-09-10T03:50:25.299291456Z",
+     "published": "2025-06-18T17:50:00Z"
+    },
+    {
+     "aliases": [
+      "CVE-2026-44431",
+      "PYSEC-2026-141"
+     ],
+     "id": "GHSA-qccp-gfcp-xxvc",
+     "modified": "2026-09-10T03:50:47.272765640Z",
+     "published": "2026-05-11T14:51:20Z"
+    },
+    {
+     "aliases": [
+      "CVE-2023-43804",
+      "PYSEC-2023-192"
+     ],
+     "id": "GHSA-v845-jxx5-vc9f",
+     "modified": "2026-09-10T03:49:24.753610811Z",
+     "published": "2023-10-02T23:27:05Z"
+    },
+    {
+     "aliases": [
+      "CVE-2026-97689",
+      "PYSEC-2026-4177"
+     ],
+     "id": "GHSA-vxq7-64xx-v4gw",
+     "modified": "2026-10-01T17:55:57.514829071Z",
+     "published": "2026-09-30T14:46:18Z"
+    },
+    {
+     "aliases": [
+      "CVE-2023-43804",
+      "GHSA-v845-jxx5-vc9f"
+     ],
+     "id": "PYSEC-2023-192",
+     "modified": "2023-11-08T04:13:33.452167Z",
+     "published": "2023-10-04T17:15:00Z"
+    },
+    {
+     "aliases": [
+      "CVE-2023-45803",
+      "GHSA-g4mx-q9vg-27p4"
+     ],
+     "id": "PYSEC-2023-212",
+     "modified": "2023-11-08T04:13:39.165450Z",
+     "published": "2023-10-17T20:15:00Z"
+    },
+    {
+     "aliases": [
+      "CVE-2026-44431",
+      "GHSA-qccp-gfcp-xxvc"
+     ],
+     "id": "PYSEC-2026-141",
+     "modified": "2026-05-20T09:19:20.983812Z",
+     "published": "2026-05-13T16:16:57.150Z"
+    },
+    {
+     "aliases": [
+      "CVE-2025-66471",
+      "GHSA-2xpw-w6gg-jr37"
+     ],
+     "id": "PYSEC-2026-1994",
+     "modified": "2026-07-07T17:48:15.379954669Z",
+     "published": "2026-07-07T16:03:12.332335Z"
+    },
+    {
+     "aliases": [
+      "CVE-2024-37891",
+      "GHSA-34jh-p97f-mpxf"
+     ],
+     "id": "PYSEC-2026-1995",
+     "modified": "2026-07-07T17:48:15.400192088Z",
+     "published": "2026-07-07T14:34:34.848392Z"
+    },
+    {
+     "aliases": [
+      "CVE-2026-21441",
+      "GHSA-38jv-5279-wg99"
+     ],
+     "id": "PYSEC-2026-1996",
+     "modified": "2026-07-07T17:48:15.382053236Z",
+     "published": "2026-07-07T16:03:16.841533Z"
+    },
+    {
+     "aliases": [
+      "CVE-2025-66418",
+      "GHSA-gm62-xv2j-4w53"
+     ],
+     "id": "PYSEC-2026-1998",
+     "modified": "2026-07-07T17:47:54.140852492Z",
+     "published": "2026-07-07T16:03:12.278581Z"
+    },
+    {
+     "aliases": [
+      "CVE-2025-50181",
+      "GHSA-pq67-6m6q-mj2v"
+     ],
+     "id": "PYSEC-2026-1999",
+     "modified": "2026-07-07T17:47:54.161376347Z",
+     "published": "2026-07-07T16:02:55.519678Z"
+    },
+    {
+     "aliases": [
+      "CVE-2026-97687",
+      "GHSA-8988-9cw3-xx77"
+     ],
+     "id": "PYSEC-2026-4175",
+     "modified": "2026-10-01T17:45:18.542387510Z",
+     "published": "2026-10-01T16:38:40.937127Z"
+    },
+    {
+     "aliases": [
+      "CVE-2026-97689",
+      "GHSA-vxq7-64xx-v4gw"
+     ],
+     "id": "PYSEC-2026-4177",
+     "modified": "2026-10-01T17:45:18.336090182Z",
+     "published": "2026-10-01T16:38:41.098900Z"
+    }
+   ]
+  },
+  "status": 200
+ },
+ "https://api.osv.dev/v1/vulns/GHSA-5phf-pp7p-vc2r": {
+  "json": {
+   "affected": [
+    {
+     "package": {
+      "ecosystem": "PyPI",
+      "name": "urllib3",
+      "purl": "pkg:pypi/urllib3"
+     },
+     "ranges": [
+      {
+       "events": [
+        {
+         "introduced": "1.26.0"
+        },
+        {
+         "fixed": "1.26.4"
+        }
+       ],
+       "type": "ECOSYSTEM"
+      }
+     ]
+    }
+   ],
+   "aliases": [
+    "CVE-2021-28363",
+    "PYSEC-2021-59"
+   ],
+   "id": "GHSA-5phf-pp7p-vc2r",
+   "modified": "2026-07-08T06:28:26.820684687Z",
+   "published": "2021-03-19T19:42:11Z"
+  },
+  "status": 200
+ },
+ "https://api.osv.dev/v1/vulns/GHSA-g3rq-g295-4j3m": {
+  "json": {
+   "affected": [
+    {
+     "package": {
+      "ecosystem": "PyPI",
+      "name": "jinja2",
+      "purl": "pkg:pypi/jinja2"
+     },
+     "ranges": [
+      {
+       "events": [
+        {
+         "introduced": "0"
+        },
+        {
+         "fixed": "2.11.3"
+        }
+       ],
+       "type": "ECOSYSTEM"
+      }
+     ]
+    }
+   ],
+   "aliases": [
+    "CVE-2020-28493",
+    "PYSEC-2021-66",
+    "SNYK-PYTHON-JINJA2-1012994"
+   ],
+   "id": "GHSA-g3rq-g295-4j3m",
+   "modified": "2025-02-14T05:26:14.565160Z",
+   "published": "2021-03-19T21:28:05Z"
+  },
+  "status": 200
+ },
+ "https://api.osv.dev/v1/vulns/PYSEC-2023-192": {
+  "json": {
+   "affected": [
+    {
+     "package": {
+      "ecosystem": "PyPI",
+      "name": "urllib3",
+      "purl": "pkg:pypi/urllib3"
+     },
+     "ranges": [
+      {
+       "events": [
+        {
+         "introduced": "0"
+        },
+        {
+         "fixed": "644124ecd0b6e417c527191f866daa05a5a2056d"
+        },
+        {
+         "fixed": "01220354d389cd05474713f8c982d05c9b17aafb"
+        }
+       ],
+       "repo": "https://github.com/urllib3/urllib3",
+       "type": "GIT"
+      },
+      {
+       "events": [
+        {
+         "introduced": "2.0.0"
+        },
+        {
+         "fixed": "2.0.6"
+        },
+        {
+         "introduced": "0"
+        },
+        {
+         "fixed": "1.26.17"
+        }
+       ],
+       "type": "ECOSYSTEM"
+      }
+     ]
+    }
+   ],
+   "aliases": [
+    "CVE-2023-43804",
+    "GHSA-v845-jxx5-vc9f"
+   ],
+   "id": "PYSEC-2023-192",
+   "modified": "2023-11-08T04:13:33.452167Z",
+   "published": "2023-10-04T17:15:00Z"
+  },
+  "status": 200
+ },
+ "https://api.osv.dev/v1/vulns/PYSEC-2023-212": {
+  "json": {
+   "affected": [
+    {
+     "package": {
+      "ecosystem": "PyPI",
+      "name": "urllib3",
+      "purl": "pkg:pypi/urllib3"
+     },
+     "ranges": [
+      {
+       "events": [
+        {
+         "introduced": "0"
+        },
+        {
+         "fixed": "4e98d57809dacab1cbe625fddeec1a290c478ea9"
+        }
+       ],
+       "repo": "https://github.com/urllib3/urllib3",
+       "type": "GIT"
+      },
+      {
+       "events": [
+        {
+         "introduced": "2.0.0"
+        },
+        {
+         "fixed": "2.0.7"
+        },
+        {
+         "introduced": "0"
+        },
+        {
+         "fixed": "1.26.18"
+        }
+       ],
+       "type": "ECOSYSTEM"
+      }
+     ]
+    }
+   ],
+   "aliases": [
+    "CVE-2023-45803",
+    "GHSA-g4mx-q9vg-27p4"
+   ],
+   "id": "PYSEC-2023-212",
+   "modified": "2023-11-08T04:13:39.165450Z",
+   "published": "2023-10-17T20:15:00Z"
+  },
+  "status": 200
+ }
+}

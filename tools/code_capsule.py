@@ -270,7 +270,7 @@ def map_modules(blobs, max_modules):
 def map_entry_points(repo, sha, blobs):
     points, limits = [], []
     def cite(path, line, kind, text):
-        points.append({"type": kind, "where": f"{path}:{line}@{sha[:12]}", "text": text.strip()[:200]})
+        points.append({"type": kind, "where": f"{path}:{line}@{sha}", "text": text.strip()[:200]})   # full SHA: citable as is
     for path, size in blobs:
         base = path.rpartition("/")[2]
         if base == "__main__.py":
@@ -405,7 +405,7 @@ def question_words(question):
 DEF_RE = r"^(def |class |async def |function |export function |export class |func |pub fn |fn )"  # first top-level definition: the line cited for a file seam
 
 def propose_seams(repo, doc, blobs, sha, question):  # 1 to 3 seams from the module map: a hint for the engine, never a reading of X
-    words, s12, eps = question_words(question), sha[:12], doc["entry_points"]["list"]
+    words, s12, eps = question_words(question), sha, doc["entry_points"]["list"]   # s12: the full SHA (citations in 40 hex)
     def usable(path):
         return not (set(path.lower().split("/")) & NOT_SEAM_PARTS)
     def score(path):

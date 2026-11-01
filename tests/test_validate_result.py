@@ -43,7 +43,7 @@ class Test(unittest.TestCase):
                'cvf:content/CVPR2024/html/Zeng_Unmixing_Diffusion_CVPR_2024_paper',
                'judilibre:5fca56cd0a790c1ec36ddc07', 'legi:LEGIARTI000006438819', 'jorf:JORFTEXT000032004939',
                'dbnomics:ECB/ICP/M.U2.N.000000.4.ANR', 'fred:UNRATE', 'edgar:320193/0000320193-19-000119', 'ghsa:GHSA-462w-v97r-4m45', 'hudoc:001-229320', 'europarl:TA-8-2018-0529',
-               'isidore:10670/1.3904e8dea2beef818dcfe30152cf9d7bde121ebc', 'isidore:20.500.13089/16ds9']
+               'isidore:10670/1.3904e8dea2beef818dcfe30152cf9d7bde121ebc', 'isidore:20.500.13089/16ds9', 'gh:urllib3/urllib3#1338', 'wayback:https://example.org/page?x=1&y=2']
         kinds = {i.split(':', 1)[0] for i in ids if ':' in i} | {'code'}
         self.assertEqual(sorted(set(C.IDS) - kinds - {'pmid', 'doi', 'arxiv'}), [], 'a kind of validate_card.IDS without a test id')
         r = good(); r['studies'] = [dict(r['studies'][0], id=i, confidence=0.5) for i in ids]

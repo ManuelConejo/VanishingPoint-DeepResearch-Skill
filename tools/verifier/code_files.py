@@ -120,10 +120,10 @@ def read_local(ref, repos):
         spec = f"{full}:{ref['path']}"
         rc, data = git_show(gd, spec)
         base = {'method': 'git show', 'repo': r['repo'], 'repo_from': r['from'], 'commit': full, 'commit_date': date, 'path': ref['path']}
-        if rc: return None, dict(base, reason=f"file absent at the SHA ({ref['path']}@{full[:12]})")
-        if data.startswith(f'tree {spec}\n'.encode()): return None, dict(base, reason=f"a directory, not a file, at the SHA ({ref['path']})")
-        if len(data) > MAX_BYTES: return None, dict(base, reason=f'file larger than the code transport bound ({MAX_BYTES} bytes)')
-        if b'\0' in data: return None, dict(base, reason='binary file')
+        if rc: return None, dict(base, problem='absent', reason=f"file absent at the SHA ({ref['path']}@{full[:12]})")
+        if data.startswith(f'tree {spec}\n'.encode()): return None, dict(base, problem='directory', reason=f"a directory, not a file, at the SHA ({ref['path']})")
+        if len(data) > MAX_BYTES: return None, dict(base, problem='unreadable', reason=f'file larger than the code transport bound ({MAX_BYTES} bytes)')
+        if b'\0' in data: return None, dict(base, problem='unreadable', reason='binary file')
         return data.decode('utf-8', 'replace'), dict(base, bytes=len(data), sha256=hashlib.sha256(data).hexdigest())
     return None, {'tried': tried, 'reason': (f"commit {ref['sha'][:12]} not found in the local git directories ({len(tried)} tried)" if tried
                                              else 'no local git directory (capsule, scope.md, --repo)')}

@@ -98,7 +98,7 @@ class CheckCodeRefs(unittest.TestCase):
         self.assertEqual(sn, {'base * 2**n seconds between attempts': 'found', "raise RuntimeError('gave up')": 'found',
                               'a sentence that is not in the file': 'not_found', 'def wait_forever(step)': 'found_outside_cited_lines',
                               'def call_with_retry(fn)': 'unchecked', 'time.sleep(base * 2 ** n)': 'found_outside_cited_lines'})
-        self.assertEqual(rep['summary'], {'references': 7, 'verified': 2, 'failed': 4, 'unchecked': 1, 'snippets': 6, 'snippets_found': 2,
+        self.assertEqual(rep['summary'], {'references': 7, 'verified': 2, 'failed': 4, 'unchecked': 1, 'directory': 0, 'snippets': 6, 'snippets_found': 2,
                                           'snippets_outside_cited_lines': 2, 'snippets_not_found': 1, 'snippets_unchecked': 1,
                                           'refs_with_lines': 4, 'refs_with_prose_lines': 0, 'prose_lines_unattached': 0})
         self.assertEqual(rep['licences'], {'o/lib': {SHA: {'spdx': 'MIT', 'path': 'LICENSE'}}})

@@ -15,19 +15,26 @@ same bibliography entry or JSON string, else --repo, else capsule.json Y.repo, e
 `local:<path>[:line[-end]]@<SHA>` (host code X: local git directories only, verifier/code_files.py run_repos and --x-repo);
 GitHub permalinks `<web>/<owner>/<name>/blob/<SHA>/<path>#L<a>[-L<b>]` with the anchors that follow (` ; #L<c>`); `l.<a>[-<b>]` after a
 reference in the same text adds a range; `<owner>/<name>@<SHA>` (a known repository) checks the commit only.
-Lines written in prose (banc code 2026-10-31, defect 5: 0/17 lines checked in C1): "line 12", "lines 206-207 and 271-302", "lines 57-106",
+Lines written in prose (internal code bench 2026-10-31, defect 5: 0/17 lines checked in C1): "line 12", "lines 206-207 and 271-302", "lines 57-106",
 "L120", "L120-L135" belong to a reference when that is unambiguous: in a segment (bibliography line, JSON string) with exactly one reference,
 every "line(s) ..." range; otherwise (and always for the L<n> form) only "lines A-B of|in <ref>" / "L12 in <ref>" (just before it) and
 "<ref> (lines A-B)" / "<ref>, L12" (just after it). The others
 are counted `prose_lines_unattached` (not guessed). Ranges from prose are marked on the reference (`ranges_from_prose`).
 In REPORT.md a fragment ("...", “...”, «...», `...`) belongs to the sentence that carries it and is checked against the references of the
 bibliography entries [n] that sentence cites (found in any of them = found); in a JSON file, against the references of the same string.
-Status per reference: verified | failed (repository, commit or file absent, line out of bounds) | unchecked (no repository named, rate
+Prose lines: a bare year after a comma ("lines 104-144, 2025, ...": the year of a bibliography entry) is not a line; "lines ..." written right after
+ANOTHER file name than the reference's belong to that file and are left unattached.
+Status per reference: verified | failed (repository, commit or file absent, line out of bounds) | directory (the path cited as a file is a
+directory at the commit: neither verified nor failed) | unchecked (no repository named, rate
 limit, offline, no local X directory; a bare path whose commit is not in the default repository: ambiguous, not failed). A bare path also
 cited `local:` with the same commit is host code X. A snippet not found is a warning (prose quotes may paraphrase). GitHub quota: anonymous requests
 are paced by config.json code_intervals; a rate-limited answer stops the GitHub API calls (raw reads of full SHAs go on) and leaves the
 rest unchecked. The token VP_GITHUB_TOKEN is used only if already resolvable by the key rule (KEYS.md), never printed.
 Usage: check_code_refs.py DIR [--file PATH ...] [--repo OWNER/NAME] [--x-repo PATH ...] [--x-prefix SUBDIR ...] [--state DIR] [--offline] [--strict]
+Every failed or unchecked reference carries `why` (typed: repository_absent, commit_not_in_repository, file_absent, lines_out_of_bounds;
+rate_limited, offline, no_repository_named, no_local_x, abbreviated_sha_unresolved, bare_path_commit_not_in_default_repository, file_unreadable,
+file_or_directory_undecided, access_denied, network) and `why_detail`. A file that cannot be read (binary, too large) or a raw 404 whose
+directory/file nature cannot be decided (tree unreadable) is unchecked, never failed.
 Output: JSON on stdout; exit code 0 = no failure (unchecked and snippet warnings allowed), 1 = at least one failure (with --strict also
 an unchecked reference or a snippet not found), 2 = usage error.
 Import: extract(path) -> [occurrence]; check(paths, run_dir=None, repo=None, x_repos=(), gh=None, x_prefixes=()) -> dict."""
@@ -45,12 +52,19 @@ REF = re.compile(r'(?<![\w/.@:-])(?P<kind>repo:|local:)?(?P<path>[A-Za-z0-9_.][\
                  r'(?P<more>(?:,\s?L?\d+(?:\s?[-–]\s?L?\d+)?)*))?@(?P<sha>[0-9a-f]{7,40})(?![0-9A-Za-z])')   # path:a-b,c-d@SHA (several ranges)
 LINK = re.compile(WEB + r'(?P<repo>' + sc.GH_REPO + r')/blob/(?P<sha>[0-9a-f]{7,40})/(?P<path>[^\s#)\]>,;`]+)(?:#L(?P<line>\d+)(?:-L(?P<end>\d+))?)?'
                   r'(?P<more>(?:\s*;\s*#L\d+(?:-L\d+)?)*)')
+REPO_NOTE = re.compile(r'\(\s*repo:?\s+(' + sc.GH_REPO + r')\s*\)')                         # "(repo owner/name)" written after a reference
+TITLE_REPO = re.compile(r'^\s*(?:\[\d{1,3}\]\s*)?(' + sc.GH_REPO + r'),\s')                       # "owner/name, path ..." opening an entry or a source title
 ANCHOR = re.compile(r'#L(\d+)(?:-L(\d+))?')
 LRANGE = re.compile(r'\bl\.\s?(\d+)(?:\s?[-–]\s?(\d+))?')
 QUOTES = (re.compile(r'"([^"\n]+)"'), re.compile(r'“([^”\n]+)”'), re.compile(r'«\s?([^»\n]+?)\s?»'), re.compile(r'`([^`\n]+)`'))
 ENTRY = re.compile(r'^\s*\[(\d{1,3})\]')
 CITE = re.compile(r'\[(\d{1,3})\]')
-PROSE = re.compile(r'\blines?\s+(\d+(?:\s*[-–]\s*\d+)?(?:\s*(?:,|and|&)\s*\d+(?:\s*[-–]\s*\d+)?)*)', re.I)   # line 12, lines 3-5 and 9-11
+YEAR = r'(?:19|20)\d\d(?!\d)(?!\s*[-–]\s*\d)'            # a bare year (1900-2099, not the start of a range): the year field of a bibliography entry
+PROSE = re.compile(r'\blines?\s+(\d+(?:\s*[-–]\s*\d+)?(?:\s*(?:and|&|,(?!\s*' + YEAR + r'\s*(?:[,.;]|$)))\s*\d+(?:\s*[-–]\s*\d+)?)*)', re.I)   # line 12, lines 3-5 and 9-11
+# "lines 104-144, 2025, local:..." : the 2025 after a comma and before the next comma is the entry's year, not a line (a real line 1900-2099 is
+# written with "and", or alone)
+PATH_BEFORE = re.compile(r'([\w.\-/]+\.[A-Za-z0-9]{1,8})[\s,:(]*$')                                        # a file name just before "lines ..."
+
 PROSE_L = re.compile(r'(?<![\w#/:.-])L(\d+)(?:\s?[-–]\s?L?(\d+))?\b')                                       # L120, L120-L135 (not #L: permalinks)
 PROSE_OF = re.compile(r'^\s+(?:of|in)\s+$', re.I)                                                         # "lines 3-5 of <ref>"
 PROSE_AFTER = re.compile(r'^[\s,;:(\[]{0,3}$')                                                            # "<ref> (lines 3-5)", "<ref>, L12"
@@ -84,7 +98,10 @@ def _attach_prose(text, occ, spans):
     pr = _prose_ranges(text, [s for s in spans])
     left = 0
     for s, e, rg, adjacent_only in pr:
-        if len(occ) == 1 and not adjacent_only: tgt = occ[0]
+        if len(occ) == 1 and not adjacent_only:
+            tgt = occ[0]
+            named = PATH_BEFORE.search(text[max(0, s - 200):s]) if not any(a <= s < b for a, b in spans) else None
+            if named and not (tgt['path'].endswith(named.group(1)) or named.group(1).endswith(tgt['path'])): tgt = None   # lines of ANOTHER file
         else:
             tgt = next((o for o, (a, b) in zip(occ, spans) if a >= e and PROSE_OF.match(text[e:a])), None) \
                 or next((o for o, (a, b) in zip(occ, spans) if b <= s and PROSE_AFTER.match(text[b:s])), None)
@@ -120,6 +137,18 @@ def _segment_refs(text, where):
     return occ
 
 
+def _named_repo(line, occ):
+    """A bare Y reference with no repository takes the one the entry states explicitly: "(repo owner/name)" after it, else the entry's own opening
+    "[n] owner/name, ..." (a single such repository in the line); never guessed from anything else."""
+    bare = [o for o in occ if not o['repo'] and o['side'] == 'Y' and o['form'] == 'bare']
+    if not bare: return
+    notes = {m.group(1) for m in REPO_NOTE.finditer(line)}
+    t = TITLE_REPO.match(line)
+    r = next(iter(notes)) if len(notes) == 1 else (t.group(1) if t and not notes else None)
+    if r:
+        for o in bare: o['repo'] = r; o['repo_from_note'] = True
+
+
 def _fragments(text):
     out = []
     for rx in QUOTES:
@@ -143,8 +172,11 @@ def extract(path):
     if p.suffix.lower() == '.json':
         try: data = json.loads(p.read_text(encoding='utf-8'))
         except (OSError, ValueError) as e: return {'refs': [], 'snippets': [], 'error': f'unreadable JSON: {type(e).__name__}'}
-        hints = {}
-        if isinstance(data, dict) and isinstance(data.get('sources'), dict):   # card.json: the url/repo field of a source names its repository
+        hints, sources_title = {}, {}
+        if isinstance(data, dict) and isinstance(data.get('sources'), dict):
+            for k, s_ in data['sources'].items():                            # a source title "owner/name, path": the repository the title names
+                t = TITLE_REPO.match(str((s_ or {}).get('title') or '')) if isinstance(s_, dict) else None
+                if t: sources_title['sources.' + k] = t.group(1)   # card.json: the url/repo field of a source names its repository
             for k, s in data['sources'].items():
                 for f in ('url', 'repo', 'origin'):
                     r = sc.github_repo_of(str((s or {}).get(f) or '')) if isinstance(s, dict) else None
@@ -158,6 +190,10 @@ def extract(path):
             linked = {o['repo'] for o in occ if o['repo']}
             for o in occ:
                 if not o['repo'] and o['side'] == 'Y' and len(linked) == 1: o['repo'] = next(iter(linked))
+            if where.endswith('.code') or where.endswith('.local'):
+                t = sources_title.get(where.rsplit('.', 1)[0])
+                for o in occ:
+                    if not o['repo'] and o['side'] == 'Y' and o['form'] == 'bare' and t: o['repo'] = t; o['repo_from_note'] = True
             base = len(refs); refs += occ
             if occ:
                 for f in _fragments(s): snips.append({'fragment': f, 'where': f'{p.name}:{where}', 'refs': list(range(base, base + len(occ)))})
@@ -170,6 +206,7 @@ def extract(path):
         linked = {o['repo'] for o in occ if o['repo']}
         for o in occ:
             if not o['repo'] and o['side'] == 'Y' and len(linked) == 1: o['repo'] = next(iter(linked))
+        _named_repo(line, occ)
         base = len(refs); refs += occ
         if m: entries.setdefault(int(m.group(1)), []).extend(range(base, base + len(occ)))
     for n, line in enumerate(text.splitlines(), 1):                      # prose: a quote checked against the entries its sentence cites
@@ -223,10 +260,66 @@ class Checker:
             self.files[k] = (t, rec)
         return self.files[k]
 
+    def tree(self, repo, sha, path):
+        k = ('tree', repo, sha, path)
+        if k not in self.files: self.files[k] = self._gh(self.gh.tree, repo, sha, path.rstrip('/') + '/')
+        return self.files[k]
+
     def raw(self, repo, sha, path):
         k = (repo, sha, path)
         if k not in self.files: self.files[k] = self._gh(self.gh.file if self.gh else None, repo, sha, path)
         return self.files[k]
+
+
+WHY_FAILED = {'repository': 'repository_absent', 'commit': 'commit_not_in_repository', 'file': 'file_absent', 'lines': 'lines_out_of_bounds'}
+
+
+def _why_unchecked(reason):
+    """A free-text reason of an unchecked check -> typed code."""
+    e = str(reason or '')
+    if e == 'rate_limited': return 'rate_limited'
+    if e.startswith('offline'): return 'offline'
+    if e.startswith('no repository named'): return 'no_repository_named'
+    if e.startswith('local (X) reference'): return 'no_local_x'
+    if e.startswith('abbreviated SHA'): return 'abbreviated_sha_unresolved'
+    if 'names no repository' in e: return 'bare_path_commit_not_in_default_repository'
+    if e.startswith('file unreadable'): return 'file_unreadable'
+    if e.startswith('file or directory undecided'): return 'file_or_directory_undecided'
+    if e.startswith('credential') or e.startswith('provider_error:HTTP4'): return 'access_denied'
+    return 'network'
+
+
+def _why(r, fail, unchecked):
+    """Every failed or unchecked reference carries `why` (typed code) and `why_detail` (the reason of the check that decided)."""
+    c = r['checks']
+    if fail:
+        k = fail[0]; r['why'] = WHY_FAILED[k]
+        d = (c.get(k) or {}).get('reason') or ('out of bounds: ' + json.dumps(c['lines'].get('out_of_bounds')) if k == 'lines' else '')
+        r['why_detail'] = str(d or r['why'])
+        return
+    k = unchecked[0] if unchecked else 'file'
+    d = (c.get(k) or {}).get('reason') or ('no file read' if k == 'file' else '')
+    r['why'] = _why_unchecked(d); r['why_detail'] = str(d or r['why'])
+
+
+def _file_problem(c, rec, fail, unchecked):
+    """A local read that gave no text: absent (failed), a directory (neither), unreadable (binary, too large: unchecked)."""
+    p, why = rec.get('problem'), rec.get('reason')
+    if p == 'directory': c['file'] = {'status': 'directory', 'reason': why}
+    elif p == 'unreadable': c['file'] = {'status': 'unchecked', 'reason': 'file unreadable: ' + str(why)}; unchecked.append('file')
+    else: c['file'] = {'status': 'absent', 'reason': why}; fail.append('file')
+
+
+def _absent_or_directory(c, ck, r, sha40, fail, unchecked):
+    """The raw host answered 404 at a full SHA: a file absent, or a DIRECTORY cited as a file. The tree of the commit decides (one API read,
+    memoised); when it cannot be read the reference is unchecked (never failed on a guess). Without a tree engine: absent."""
+    tree = getattr(ck.gh, 'tree', None) if ck.gh is not None else None
+    if tree is None: c['file'] = {'status': 'absent', 'reason': 'file_not_found'}; fail.append('file'); return
+    t, err = ck.tree(r['repo'], sha40, r['path'])
+    if err: c['file'] = {'status': 'unchecked', 'reason': err if err == 'rate_limited' else 'file or directory undecided: ' + err}; unchecked.append('file')
+    elif t.get('count'): c['file'] = {'status': 'directory', 'reason': 'the path is a directory at the commit (%d files under it)' % t['count']}
+    elif t.get('truncated'): c['file'] = {'status': 'unchecked', 'reason': 'file or directory undecided: tree truncated'}; unchecked.append('file')
+    else: c['file'] = {'status': 'absent', 'reason': 'file_not_found'}; fail.append('file')
 
 
 def _check_ref(r, ck):
@@ -236,7 +329,7 @@ def _check_ref(r, ck):
         t, rec = ck.local(r['path'], r['sha'], x=True)
         if rec.get('commit'):
             c['commit'] = {'status': 'ok', 'sha': rec['commit'], 'repo': rec.get('repo')}; r['sha_full'] = rec['commit']
-            if t is None: c['file'] = {'status': 'absent', 'reason': rec.get('reason')}; fail.append('file')
+            if t is None: _file_problem(c, rec, fail, unchecked)
             else: c['file'] = {'status': 'ok', 'method': 'git show'}; text = t
         else: c['commit'] = {'status': 'unchecked', 'reason': 'local (X) reference: ' + rec.get('reason', 'not found')}; unchecked.append('commit')
         c['licence'] = {'status': 'not checked (host code X)'}
@@ -245,6 +338,7 @@ def _check_ref(r, ck):
         unchecked.append('repository')
         t, rec = ck.local(r['path'], r['sha']) if r['kind'] == 'file' else (None, {})
         if t is not None: c['file'] = {'status': 'ok', 'method': 'git show (local mirror)', 'repo': rec.get('repo')}; text = t; r['sha_full'] = rec.get('commit')
+        elif rec.get('problem') == 'directory': c['file'] = {'status': 'directory', 'reason': rec.get('reason')}
     else:
         info, err = ck.repository(r['repo'])
         if info: c['repository'] = {'status': 'ok', 'default_branch': info.get('default_branch')}
@@ -263,13 +357,16 @@ def _check_ref(r, ck):
         if r['kind'] == 'file' and not fail and err != 'repository absent':
             t, rec = ck.local(r['path'], r['sha'])                        # a local mirror of Y answers first (git show)
             if t is not None: c['file'] = {'status': 'ok', 'method': 'git show (local mirror)'}; text = t; r['sha_full'] = r.get('sha_full') or rec.get('commit')
+            elif rec.get('problem') in ('directory', 'unreadable'): _file_problem(c, rec, fail, unchecked)
             else:
                 sha40 = full or (r['sha'] if len(r['sha']) == 40 else None)
                 if not sha40: c['file'] = {'status': 'unchecked', 'reason': 'abbreviated SHA not resolved'}; unchecked.append('file')
                 else:
                     f, err = ck.raw(r['repo'], sha40, r['path'])
                     if f: c['file'] = {'status': 'ok', 'method': 'github raw at the SHA', 'permanent_url': f.get('permanent_url')}; text = f['text']
-                    elif err in ('file_not_found', 'reference'): c['file'] = {'status': 'absent', 'reason': err}; fail.append('file')
+                    elif err == 'file_not_found': _absent_or_directory(c, ck, r, sha40, fail, unchecked)
+                    elif err == 'reference': c['file'] = {'status': 'absent', 'reason': err}; fail.append('file')
+                    elif err == 'binary': c['file'] = {'status': 'unchecked', 'reason': 'file unreadable: binary'}; unchecked.append('file')
                     else: c['file'] = {'status': 'unchecked', 'reason': err}; unchecked.append('file')
         if (not fail or fail == ['file']) and err != 'repository absent':
             lic, err = ck.licence(r['repo'], full or r['sha'])
@@ -280,8 +377,10 @@ def _check_ref(r, ck):
         c['lines'] = {'status': 'out_of_bounds' if bad else 'in_bounds', 'lines_in_file': n, **({'out_of_bounds': bad} if bad else {})}
         if bad: fail.append('lines')
     elif r['ranges']: c['lines'] = {'status': 'unchecked'}
+    if c.get('file', {}).get('status') == 'directory' and not fail and not unchecked: r['status'] = 'directory'; c.pop('lines', None); return None
     r['status'] = 'failed' if fail else 'unchecked' if unchecked or (r['kind'] == 'file' and text is None) else 'verified'
     if fail: r['failed'] = fail
+    if r['status'] != 'verified': _why(r, fail, unchecked)
     return text
 
 
@@ -318,6 +417,10 @@ def check(paths, run_dir=None, repo=None, x_repos=(), gh=None, x_prefixes=()):
     for i, o in enumerate(occ):
         kind = 'commit' if o['side'] == 'Y' and o['form'] == 'bare' and o['path'] in known else 'file'
         rp = o['path'] if kind == 'commit' else (o['repo'] or (default if o['side'] == 'Y' else None))
+        pseudo = o['side'] == 'Y' and (o['path'] == 'repo-info' or o['path'].startswith('repo-info/'))   # the gateway command repo-info: a repository record at the SHA, not a file
+        if pseudo:
+            named = '/'.join(o['path'].split('/')[1:3])
+            kind, rp = 'commit', o['repo'] or (named if re.fullmatch(sc.GH_REPO, named) else None) or default
         key = (o['side'], rp, '' if kind == 'commit' else o['path'], o['sha'][:7])
         if key not in index:
             index[key] = len(refs)
@@ -351,7 +454,7 @@ def check(paths, run_dir=None, repo=None, x_repos=(), gh=None, x_prefixes=()):
                           'refs': [refs[j]['id'] for j in targets]})
     count = lambda xs, k, v: sum(1 for x in xs if x.get(k) == v)
     summary = {'references': len(refs), 'verified': count(refs, 'status', 'verified'), 'failed': count(refs, 'status', 'failed'),
-               'unchecked': count(refs, 'status', 'unchecked'), 'snippets': len(out_snips), 'snippets_found': count(out_snips, 'status', 'found'),
+               'unchecked': count(refs, 'status', 'unchecked'), 'directory': count(refs, 'status', 'directory'), 'snippets': len(out_snips), 'snippets_found': count(out_snips, 'status', 'found'),
                'snippets_outside_cited_lines': count(out_snips, 'status', 'found_outside_cited_lines'),
                'snippets_not_found': count(out_snips, 'status', 'not_found'), 'snippets_unchecked': count(out_snips, 'status', 'unchecked'),
                'refs_with_lines': sum(1 for r in refs if r['ranges']), 'refs_with_prose_lines': sum(1 for r in refs if r.get('ranges_from_prose')),
