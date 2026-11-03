@@ -215,7 +215,8 @@ def code_checks(d, T, offline, step, files):
         out.write_text(json.dumps(rep, ensure_ascii=False, indent=1), encoding='utf-8'); reps[name] = rep
         sm = rep.get('summary') or {}
         if name == 'code_refs':
-            line = (f"{sm.get('references', 0)} references: {sm.get('verified', 0)} verified, {sm.get('failed', 0)} failed, {sm.get('unchecked', 0)} unchecked; "
+            line = (f"{sm.get('references', 0)} references: {sm.get('verified', 0)} verified, {sm.get('failed', 0)} failed, {sm.get('unchecked', 0)} unchecked"
+                    + (f", {sm['relocated']} relocated" if sm.get('relocated') else '') + (f", {sm['ambiguous']} ambiguous" if sm.get('ambiguous') else '') + "; "
                     f"snippets {sm.get('snippets_found', 0)}/{sm.get('snippets', 0)} found" + ('; offline: unchecked' if offline else ''))
             bad = sm.get('failed') or rep.get('errors')
         else:
