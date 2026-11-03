@@ -13,7 +13,11 @@ Standard library, no network, no model; run by finish_run.py after the exports, 
               or 0. Claims the contradictor added or changed (SKILL.md "On request after delivery": verified apart into
               verdicts-contradictor.json, without --state, then merged into verdicts.json) are added to the raw counts of
               state/verifier.json and named ("K checked after the contradictor"); a changed claim counts its first wording as
-              removed. This measures attribution (is the claim in its source), not coverage nor the certainty of the answer: no "confidence"
+              removed. Audit mode (SKILL.md "Audit mode"): the corrected claims verified once more (verdicts-recheck*.json, or the
+              file a later `verifier.py --state` pass names in the `out` of state/verifier.json) replace their first verdict, by id:
+              the line gives the final count over every claim judged ("44 of 46", not the "2 of 3" of the re-verification alone) and
+              "K re-verified after correction". A re-verification run with --state overwrites state/verifier.json: the first pass is then
+              read from the `summary` the verifier wrote in verdicts.json. This measures attribution (is the claim in its source), not coverage nor the certainty of the answer: no "confidence"
               level is derived from it (external audit of 2026-10-29).
   coverage    what can be counted mechanically: the research angles of scope.md reached by at least one kept source (an angle is reached
               when a searches/<n>.md file that names it in its first lines holds the identifier of a card.json source); the distinct
@@ -38,6 +42,9 @@ MIN_SOURCES = int(CFG.get('min_sources', 10)); ANGLE_LINES = int(CFG.get('angle_
 SCALE = list(RL.LANGS['en']['verdicts'])       # established, probable, possible, open, unlikely, refuted
 ORDER = ['FOUND', 'DISTORTED', 'SOURCE-UNAVAILABLE', 'UNVERIFIED', 'ABSENT', 'INVALID']
 CONTRA_VERDICTS = 'verdicts-contradictor.json'   # the --out SKILL.md ("Contradictor", on request after delivery) gives verifier.py
+MAIN_VERDICTS = 'verdicts.json'
+RECHECK_GLOB = 'verdicts-recheck*.json'           # audit mode: the corrected claims verified once more (SKILL.md "Audit mode")
+RECHECK_FROM = ['DISTORTED', 'ABSENT', 'INVALID', 'UNVERIFIED', 'SOURCE-UNAVAILABLE']   # first verdicts a re-verification replaces
 
 
 def _json(p):
@@ -93,11 +100,54 @@ def duration(d):
     return (end - start).total_seconds() if start and end and end >= start else None
 
 
+def _usd(x):
+    return float(x) if isinstance(x, (int, float)) and not isinstance(x, bool) else None
+
+
+def _counts(s):
+    """Status counts of a verifier `summary` (statuses of ORDER only, positive integers), or {}."""
+    if not isinstance(s, dict): return {}
+    return {k: int(x) for k, x in s.items() if k in ORDER and isinstance(x, int) and not isinstance(x, bool) and x > 0}
+
+
+def receipts(d):
+    """(main, later): state/verifier.json as the receipt of the main pass, or as the receipt of a later pass run with --state (a
+    re-verification) that overwrote the main one: its `out` names another file than verdicts.json AND its summary is that file's
+    summary, or counts fewer claims than verdicts.json still holds (a first pass counts every claim, before the removals)."""
+    v = _json(d / 'state' / 'verifier.json')
+    if not isinstance(v, dict): return None, None
+    out = v.get('out')
+    if not out or pathlib.PurePath(str(out)).name == MAIN_VERDICTS: return v, None
+    o = _json(d / pathlib.PurePath(str(out)).name); ver = _json(d / MAIN_VERDICTS)
+    rs, os_ = _counts(v.get('summary')), _counts(o.get('summary') if isinstance(o, dict) else None)
+    kept = len([c for c in (ver.get('claims') or []) if isinstance(c, dict)]) if isinstance(ver, dict) else 0
+    if (os_ and rs == os_) or (rs and sum(rs.values()) < kept): return None, v
+    return v, None
+
+
+def rechecks(d):
+    """The re-verification outputs of audit mode, in order: verdicts-recheck*.json, then the file a later --state pass names."""
+    names = sorted(p.name for p in d.glob(RECHECK_GLOB) if p.is_file())
+    _, later = receipts(d)
+    if later is not None:
+        n = pathlib.PurePath(str(later['out'])).name
+        if n not in names and n not in (MAIN_VERDICTS, CONTRA_VERDICTS) and (d / n).is_file(): names.append(n)
+    return [(n, x) for n in names for x in [_json(d / n)] if isinstance(x, dict)]
+
+
 def known_costs(d):
     """Sum of the costs the receipts of nested model calls record (USD), or None when no receipt records one."""
     parts = []
-    v = _json(d / 'state' / 'verifier.json')
-    if isinstance(v, dict) and isinstance(v.get('cost_usd'), (int, float)): parts.append(float(v['cost_usd']))
+    main, later = receipts(d)
+    if main is not None and _usd(main.get('cost_usd')) is not None: parts.append(_usd(main['cost_usd']))
+    if later is not None:                       # the main receipt was overwritten: the main pass's cost is in verdicts.json
+        ver = _json(d / MAIN_VERDICTS)
+        if isinstance(ver, dict) and _usd(ver.get('cost_usd')) is not None: parts.append(_usd(ver['cost_usd']))
+    rc = rechecks(d)
+    for _, x in rc:
+        if _usd(x.get('cost_usd')) is not None: parts.append(_usd(x['cost_usd']))
+    if later is not None and pathlib.PurePath(str(later['out'])).name not in [n for n, _ in rc] and _usd(later.get('cost_usd')) is not None:
+        parts.append(_usd(later['cost_usd']))
     w = _json(d / 'state' / 'whole-reading' / 'receipt.json')
     if isinstance(w, dict) and isinstance(w.get('usd'), (int, float)): parts.append(float(w['usd']))
     c = _json(d / 'contradictor.json')
@@ -132,14 +182,17 @@ def raw_counts(d):
     """Counts of the verifier's verdicts BEFORE the removals of section 7 -> (counts, basis).
     basis 'verifier': state/verifier.json `summary` (written by verifier.py --state, never edited by the orchestrator);
     'verdicts+removed': verdicts.json claims plus the removed claims it still lists (`removed`, `filter.removed`), by id;
-    'verdicts': verdicts.json alone, removals unknown (the confidence is then `unknown`); None: no verdicts at all."""
-    v = _json(d / 'state' / 'verifier.json')
-    s = v.get('summary') if isinstance(v, dict) else None
-    if isinstance(s, dict):
-        c = {k: int(x) for k, x in s.items() if k in ORDER and isinstance(x, int) and not isinstance(x, bool) and x > 0}
-        if c: return c, 'verifier'
-    ver = _json(d / 'verdicts.json')
+    'verdicts': verdicts.json alone, removals unknown (the confidence is then `unknown`); None: no verdicts at all.
+    When a later --state pass overwrote state/verifier.json, the `summary` the verifier wrote in verdicts.json is the first pass
+    (basis 'verifier'), provided it counts at least the claims verdicts.json still holds."""
+    main, later = receipts(d)
+    c = _counts(main.get('summary') if isinstance(main, dict) else None)
+    if c: return c, 'verifier'
+    ver = _json(d / MAIN_VERDICTS)
     if not isinstance(ver, dict): return {}, None
+    if later is not None:
+        c = _counts(ver.get('summary'))
+        if c and sum(c.values()) >= len([x for x in ver.get('claims') or [] if isinstance(x, dict)]): return c, 'verifier'
     seen = {}
     rem = list(ver.get('removed') or []) + list((ver.get('filter') or {}).get('removed') or [] if isinstance(ver.get('filter'), dict) else [])
     for i, c in enumerate(list(ver.get('claims') or []) + rem):
@@ -147,6 +200,22 @@ def raw_counts(d):
     counts = {}
     for st in seen.values(): counts[st] = counts.get(st, 0) + 1
     return counts, ('verdicts+removed' if any(isinstance(c, dict) for c in rem) else 'verdicts') if counts else None
+
+
+def merge_rechecks(d, counts):
+    """Final counts of the raw first pass (basis 'verifier') once the re-verifications are applied -> (counts, k re-verified).
+    Each re-verified claim (by id, the last file wins) leaves its first verdict (one of RECHECK_FROM, the statuses audit mode corrects;
+    not known per claim, so taken in that order) and takes its new one: the total and the FOUND count are exact."""
+    final = {}
+    for _, x in rechecks(d):
+        for i, c in enumerate(x.get('claims') or []):
+            if isinstance(c, dict) and c.get('status'): final[str(c.get('id') or f'#{i}')] = str(c['status'])
+    out = dict(counts)
+    for _ in final:                             # every first verdict leaves before any new one comes in
+        old = next((k for k in RECHECK_FROM if out.get(k)), None)
+        if old: out[old] -= 1
+    for st in final.values(): out[st] = out.get(st, 0) + 1
+    return {k: out[k] for k in ORDER if out.get(k)} | {k: v for k, v in out.items() if k not in ORDER and v}, len(final)
 
 
 def removed_count(d, counts, basis):
@@ -206,6 +275,8 @@ def build(folder, cost_usd=None, lang=None):
     md = _text(d / 'REPORT.md')
     lang = lang if lang in RL.LANGS else RL.of_run(d)
     counts, basis = raw_counts(d)
+    rechecked = 0
+    if basis == 'verifier': counts, rechecked = merge_rechecks(d, counts)   # other bases: verdicts.json already holds the new verdicts
     contra = contradictor_counts(d)
     if basis == 'verifier' and contra:          # the first pass's receipt never holds them; verdicts.json (other bases) already does
         counts = {k: counts.get(k, 0) + contra.get(k, 0) for k in ORDER if counts.get(k, 0) + contra.get(k, 0)}
@@ -221,7 +292,7 @@ def build(folder, cost_usd=None, lang=None):
     else:
         cost = known_costs(d); kind = 'partial' if cost is not None else 'unknown'
     return {'dir': str(d), 'language': lang, 'answer': answer(md), 'claims': n, 'found': found, 'counts': counts, 'counts_basis': basis,
-            'removed': removed_count(d, counts, basis), 'contradictor_checked': sum(contra.values()),
+            'removed': removed_count(d, counts, basis), 'contradictor_checked': sum(contra.values()), 'rechecked': rechecked,
             'found_share': round(found / n, 3) if n and basis != 'verdicts' else None, 'bibliography_entries': bib, 'studies': studies,
             'study_families': [g['members'] for g in fam['groups']], 'angles_reached': cov[0] if cov else None, 'angles': cov[1] if cov else None,
             'finding_verdicts': finding_verdicts(md),
@@ -253,6 +324,7 @@ def render(x):
     elif x.get('counts_basis') == 'verdicts': cit = M('citations_kept', found=x['found'], n=x['claims'])
     else:
         extra = [e for e in (others, M('removed', k=x['removed']) if x.get('removed') else '',
+                             M('rechecked', k=x['rechecked']) if x.get('rechecked') else '',
                              M('contra_checked', k=x['contradictor_checked']) if x.get('contradictor_checked') else '') if e]
         cit = sep.join([M('citations_found', found=x['found'], n=x['claims'], pct=100 * x['found'] // x['claims'])] + extra)
     lines.append(f"**{M('citations')}**{c}{cit}")

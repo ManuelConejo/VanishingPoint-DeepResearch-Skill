@@ -15,7 +15,8 @@ from sources._common import Barrier, ProviderError, STATE, UA, _before, head_tai
 
 
 # ---------------------------------------------------------------- PISTE engines (plugins/law.md sections 5-6): judilibre, legifrance
-# Not yet verified on the live service (no credentials at release). OAuth 2.0 client credentials (PISTE_CLIENT_ID + PISTE_CLIENT_SECRET, key()):
+# Verified on the live service on 2026-11-03: Judilibre search (Cour de cassation and courts of appeal) and read by identifier;
+# Legifrance not tested (application not subscribed). OAuth 2.0 client credentials (PISTE_CLIENT_ID + PISTE_CLIENT_SECRET, key()):
 # the pair goes only to oauth.piste.gouv.fr (form body, never a URL), the bearer only to api.piste.gouv.fr; HTTPS only, no redirect followed,
 # receipts in <state>/requests.jsonl without URL, body nor token; the token is cached in <state>/piste-token.json (0600) with its expiry.
 # Without the pair: 0 request, {"status": "skipped", "reason": "not_configured"}. Rejected pair (token 400/401, or API 401 twice) -> key_invalid.
@@ -158,7 +159,7 @@ def jl_item(d, B):
     fresh = None if upd is None else bool(_before(upd, B))
     it = {'id': 'judilibre:' + did, 'ecli': d.get('ecli'), 'doi': None, 'number': nums[0] if nums else None, 'numbers': nums, 'title': title,
           'year': str(date)[:4], 'date': date, 'journal': 'Judilibre (Cour de cassation, PISTE)', 'court': jur, 'court_name': JL_COURT.get(jur, jur),
-          'chamber': ch, 'formation': d.get('formation'), 'solution': d.get('solution_alt') if d.get('solution') == 'other' else d.get('solution'),
+          'chamber': ch, 'location': d.get('location'), 'formation': d.get('formation'), 'solution': d.get('solution_alt') if d.get('solution') == 'other' else d.get('solution'),
           'decision_type': d.get('type'), 'type': 'decision', 'tier': 'primary', 'order': 'FR-JUD', 'access': 'api',
           'date_updated': _before(upd, B) if upd else None}
     if fresh is False: it['metadata'] = 'decision updated on/after T: publication level, summary and themes masked'

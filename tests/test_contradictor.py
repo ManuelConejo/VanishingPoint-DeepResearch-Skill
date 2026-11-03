@@ -138,8 +138,9 @@ class Contradictor(Base):
         s = self.tool('--families', 'openrouter:vendor-a/model'); self.assertEqual(s['status'], 'skipped'); self.assertIn('whole_reading.py', s['note']); self.assertEqual(FakeEndpoint.calls, [])
 
     def test_key_missing_never_shown(self):
-        s = self.tool('--families', 'openrouter:vendor-a/model', 'gemini:some-model')
-        self.assertEqual(s['status'], 'done'); self.assertEqual(s['families'], {'openrouter:vendor-a/model': 'credential_missing', 'gemini:some-model': 'credential_missing'})
+        s = self.tool('--families', 'openrouter:vendor-a/model', 'gemini:some-model', rc=3)   # no family could be called: never "done"
+        self.assertEqual(s['status'], 'unavailable'); self.assertEqual(s['families'], {'openrouter:vendor-a/model': 'credential_missing', 'gemini:some-model': 'credential_missing'})
+        self.assertIn('Contradictor: not run', s['note']); self.assertEqual(set(s['unavailable']), {'openrouter:vendor-a/model', 'gemini:some-model'})
         self.assertEqual(FakeEndpoint.calls, []); self.assertEqual(s['false_detected'], 0)
         r = self.receipt(); self.assertIn('OPENROUTER_API_KEY', r['families']['openrouter:vendor-a/model']['note']); self.assertIn('GEMINI_API_KEY', r['families']['gemini:some-model']['note'])
         self.assertEqual(r['cost_usd']['total'], 0)
@@ -210,7 +211,7 @@ class Contradictor(Base):
         self.assertEqual(C.first_verdict('**CONTRADICTED**\nbecause', ('NOT CONTRADICTED', 'CONTRADICTED')), 'CONTRADICTED')
         self.assertEqual(C.first_verdict('UNFOUNDED', ('NOT FOUND', 'FOUND', 'ABSENT')), 'UNDECIDED')
         os.environ['VP_CONTRADICTOR_PROVIDERS'] = json.dumps({'plain': {'url': 'http://example.invalid/v1/chat/completions', 'key': 'OPENROUTER_API_KEY'}})
-        s = self.tool('--families', 'plain:m'); self.assertEqual(s['families']['plain:m'], 'insecure_url')   # a key never goes over plain http
+        s = self.tool('--families', 'plain:m', rc=3); self.assertEqual((s['status'], s['families']['plain:m']), ('unavailable', 'insecure_url'))   # a key never goes over plain http
         (self.d / 'home' / '.config' / 'vp').mkdir(parents=True); (self.d / 'home' / '.config' / 'vp' / 'contradictors').write_text('  # nothing\n\n')
         self.assertEqual(C.families(), [])                                                      # blank file = absent, config decides
 

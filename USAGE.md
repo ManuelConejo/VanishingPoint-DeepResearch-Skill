@@ -211,7 +211,7 @@ Honest limits:
   downstream verification (-4.2 points of false claims, 50 questions), the whole reading on code and the plugins' rules.
 - **HUDOC** may answer with a bot challenge depending on your network: the engine then returns `blocked` /
   `bot_challenge` after one request, with no workaround, and the report states that ECHR coverage was not observable.
-- **PISTE** (Judilibre, Legifrance) is not verified on the live service.
+- **PISTE**: Judilibre verified on the live service on 2026-11-03 (Court of Cassation and courts of appeal, search and reading by id); Legifrance not yet verified.
 - Sources without an API are declared in the plugins but not wired; `sources` lists them as `not_wired`.
 - DBnomics serves current, revised values (marked `as_of: "now"`); only FRED/ALFRED gives values as known before T.
 - A "Not found" in prior-art mode is not a proof of absence. The reports are research aids, not legal, financial or

@@ -1,0 +1,110 @@
+{
+ "_doc": "check_decisions tests: Judilibre records in the shape the gateway serves them (sources/piste.py jl_item: id, court, chamber, location, date, number(s), ecli); numbers and dates as observed on Judilibre on 2026-11-03, texts shortened or synthetic.",
+ "records": [
+  {
+   "id": "judilibre:aaaa00000001",
+   "court": "cc",
+   "chamber": "soc",
+   "date": "2026-03-18",
+   "number": "24-15.143",
+   "numbers": [
+    "24-15.143",
+    "24-15.143"
+   ],
+   "ecli": "ECLI:FR:CCASS:2026:SO00225",
+   "location": null,
+   "text": "Arrêt du 18 mars 2026. La cour d'appel a retenu que la seule absence de tenue des entretiens sur la charge de travail ne suffit pas à caractériser un préjudice indemnisable. PAR CES MOTIFS, la Cour REJETTE le pourvoi."
+  },
+  {
+   "id": "judilibre:aaaa00000002",
+   "court": "cc",
+   "chamber": "comm",
+   "date": "2026-05-06",
+   "number": "25-12.493",
+   "numbers": [
+    "25-12.493"
+   ],
+   "ecli": null,
+   "location": null,
+   "text": "Arrêt de la chambre commerciale."
+  },
+  {
+   "id": "judilibre:aaaa00000003",
+   "court": "cc",
+   "chamber": "soc",
+   "date": "2026-04-10",
+   "number": "24-21.017",
+   "numbers": [
+    "24-21.017"
+   ],
+   "ecli": null,
+   "location": null,
+   "text": "Arrêt."
+  },
+  {
+   "id": "judilibre:aaaa00000004",
+   "court": "cc",
+   "chamber": "soc",
+   "date": "2026-03-11",
+   "number": "24-22.163",
+   "numbers": [
+    "24-22.163"
+   ],
+   "ecli": null,
+   "location": null,
+   "text": "La convention de forfait en jours est privée d'effet faute de suivi effectif de la charge de travail. PAR CES MOTIFS, REJETTE."
+  },
+  {
+   "id": "judilibre:aaaa00000005",
+   "court": "cc",
+   "chamber": "soc",
+   "date": "2026-07-01",
+   "number": "25-10.960",
+   "numbers": [
+    "25-10.960"
+   ],
+   "ecli": null,
+   "location": null,
+   "text": "La renonciation doit intervenir au plus tard à la date du départ effectif du salarié."
+  },
+  {
+   "id": "judilibre:aaaa00000006",
+   "court": "ca",
+   "chamber": null,
+   "date": "2026-02-27",
+   "number": "24/07526",
+   "numbers": [
+    "24/07526"
+   ],
+   "ecli": null,
+   "location": "ca_paris",
+   "text": "Arrêt."
+  },
+  {
+   "id": "judilibre:aaaa00000007",
+   "court": "ca",
+   "chamber": null,
+   "date": "2024-05-30",
+   "number": "24/07526",
+   "numbers": [
+    "24/07526"
+   ],
+   "ecli": null,
+   "location": "ca_paris",
+   "text": "Arrêt."
+  },
+  {
+   "id": "judilibre:aaaa00000008",
+   "court": "ca",
+   "chamber": null,
+   "date": "2026-04-09",
+   "number": "24/00119",
+   "numbers": [
+    "24/00119"
+   ],
+   "ecli": null,
+   "location": "ca_metz",
+   "text": "Arrêt."
+  }
+ ]
+}

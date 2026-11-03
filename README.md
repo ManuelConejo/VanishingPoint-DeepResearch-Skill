@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.6.18, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.6.19, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -114,7 +114,8 @@ Update: `git -C ~/.codex/skills/vanishingpoint pull`.
 Codex has no sub-agents: the agent runs the 3 to 5 searches itself, in sequence, writing the same `searches/<n>.md` files,
 and does the annex and the verification as separate steps (or as `codex exec` sub-processes when the host allows it).
 Export `VP_HOST=openai` in the shell that launches Codex (`export VP_HOST=openai`, or put it in a profile) so that the tools that call a model (`tools/verifier.py`, `tools/whole_reading.py`) use the
-`codex exec` profile of `tools/config.json` instead of `claude -p`. The gateway needs network access: Codex's sandbox blocks the network by default, interactive or not; launch with
+`codex exec` profile of `tools/config.json` instead of `claude -p`. When a profile's CLI is not on the PATH of the shell that runs
+the tools, `VP_MODEL_BIN_OPENAI` / `VP_MODEL_BIN_CLAUDE` give the path of the executable (the profile's arguments are kept). The gateway needs network access: Codex's sandbox blocks the network by default, interactive or not; launch with
 `codex -c sandbox_workspace_write.network_access=true` (interactive) or `codex exec -s workspace-write -c sandbox_workspace_write.network_access=true`
 (or set it in `~/.codex/config.toml`), otherwise every gateway call fails with a transport error. The Codex sandbox (bubblewrap) needs unprivileged user namespaces: in a
 container that forbids them, every shell command fails with "bwrap: No permissions to create a new namespace" before Python
@@ -293,14 +294,35 @@ Measured (private benches, small n, judged by models of other families and by th
 - recall equal to the reference deep-research method it rewrites (10 questions); about 2x its cost;
 - whole reading before verdicts on code: exclusive verified findings in 5 of 6 code cases;
 - contradictor option: 6 code cases, three models of 2026-10-27;
-- every tool: an offline test suite (`tests/`, about 700 tests, standard library only, about one minute).
+- every tool: an offline test suite (`tests/`, 712 tests, standard library only, about one minute).
 
 Not measured or not verified:
 - no public benchmark: the figures above cannot be reproduced from this repository yet;
-- PISTE engines (Judilibre, Legifrance) are coded and tested offline, **not yet verified on the live service**;
+- Legifrance (PISTE) is coded and tested offline, not tested on the live service (application not subscribed); Judilibre was
+  verified on the live service on 2026-11-03 (search at the Cour de cassation and the courts of appeal, read by identifier);
 - the verifier's claim windows are tested offline; their catch rate and cost with a model are not measured;
 - `claude` as contradictor, and other models or providers than those listed;
 - engines listed "not wired" by `sources` are declared only.
+
+## Law: what is measured
+
+Small private benches of 2026-11-03 on French law; not reproducible from this repository.
+
+- **Rules changed after the model's knowledge cut-off** (12 questions): a model with a plain web search gave 83 % of answers
+  correct and sourced; VP without the PISTE keys 0 %: without them it can read neither the Journal officiel nor the codes.
+- **Recent case law** (12 questions): the model with web search and VP with Judilibre tied, 8 of 12 correct and anchored in a
+  real decision each, no invented decision; VP cost about 20 times more. On real analysis questions, VP sometimes found a key
+  decision that the web search had missed.
+- **Audit mode against a contradictor** (6 questions): audit mode verified 97 % of the claims (73 % in standard mode) but did not
+  reduce the errors that a contradictor of another model family found (10 against 10), so audit mode stays optional. The
+  contradictor finds over-generalisations that a sentence-by-sentence verification does not see.
+- **`tools/check_decisions.py`** (no model; Judilibre through the gateway, PISTE pair required): on 73 citations of decisions in
+  LLM answers, no false alarm on the real decisions; it flagged one court-of-appeal decision that could not be found and two
+  attribution errors. Usage: `python3 -I tools/check_decisions.py ANSWER.md [--T YYYY-MM-DD] [--support]`.
+
+Recommendation: for a question of French law, a model with web search, then `tools/check_decisions.py` on its answer; VP with a
+contradictor for a question that commits you. Limits: small samples; Judilibre does not hold every court-of-appeal decision (a
+`not_found` there is a lead to check, not proof of invention).
 
 ## Adding a plugin
 
@@ -350,6 +372,7 @@ tools/check_keys.py keys and mode (setup_keys.py: install + live check; auto_upd
 tools/finish_run.py all end steps in one command (checks, retractions, law checks, exports; SKILL.md section 8; --summary optional)
 tools/followup.py, resume.py   follow-up in the conversation, resuming an interrupted run (v0.6.0)
 tools/export_report.py, export_data.py, passages.py, living_diff.py, law_checks.py   exports, cited passages, living review, legal rules
+tools/check_decisions.py   French court decisions cited in any text, checked on Judilibre (command-line tool, not used by the skill by default)
 tools/code_capsule.py, code_sources.py (library), condense_repo.py, whole_reading.py, contradictor.py   code plugin tools (capsule, Y condensation, whole reading); contradictor (every plugin)
 tools/prior_art.py, prisma.py, followups.py   optional sections of SKILL.md (prior art, PRISMA flow diagram and PRISMA-S search report, follow-up questions)
 tools/evidence_bank.py, contradictions.py   command-line tools, not used by the skill by default; progress.py (run by the SKILL.md hook on Claude Code), report_lang.py, new_run.py, parse_date.py, summary.py (finish_run.py --summary), cost.py (budget): used by the skill

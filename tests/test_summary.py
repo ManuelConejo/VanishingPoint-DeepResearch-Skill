@@ -119,6 +119,36 @@ class T(unittest.TestCase):
         self.assertIn('**Réponse** : ', t); self.assertIn('**Citations confirmées** : 7 sur les 8 affirmations gardées', t); self.assertIn('14 études distinctes', t); self.assertIn('**Durée** : 22 min', t); self.assertIn('(PDF : ', t)
         self.assertIn('constats : ', t)
 
+    def _audit_fixture(self):
+        fx = json.loads((P / 'fixtures' / 'summary_recheck.json').read_text(encoding='utf-8'))
+        for name, body in fx.items():
+            if not name.startswith('_'): (self.d / name).write_text(json.dumps(body))
+        return fx
+
+    def test_audit_recheck_final_count(self):
+        """Defect of 2026-11-03 (audit-mode run, law): the re-verification of the 3 corrected claims ran with --state and overwrote
+        state/verifier.json; SUMMARY.md read "Citations confirmed: 2 of 3 checked" for 46 claims judged. The line now gives the final
+        count: first pass (verdicts.json `summary`) with the re-verified claims replaced by id, 44 of 46, 2 removed, 3 re-verified."""
+        self._audit_fixture()
+        x = S.build(self.d)
+        self.assertEqual((x['claims'], x['found'], x['counts'], x['removed'], x['rechecked'], x['counts_basis']),
+                         (46, 44, {'FOUND': 44, 'DISTORTED': 1, 'ABSENT': 1}, 2, 3, 'verifier'))
+        self.assertEqual((x['cost_usd'], x['cost_kind']), (3.0, 'partial'))   # first pass 2.72 + re-verification 0.28, not 0.28 alone
+        t = S.render(x)
+        self.assertIn('44 of 46 checked (95 %)', t); self.assertNotIn('2 of 3', t)
+        self.assertIn('2 removed from the report after verification', t); self.assertIn('3 re-verified after correction', t)
+        for lang in ('fr', 'es', 'de'): self.assertIn('44', S.render(S.build(self.d, lang=lang)).splitlines()[1])
+        # receipt of the first pass kept (re-verification without --state): same final count
+        (self.d / 'state' / 'verifier.json').write_text(json.dumps({'out': '/x/verdicts.json', 'summary': {'FOUND': 42, 'DISTORTED': 3, 'ABSENT': 1}, 'cost_usd': 2.7188}))
+        x = S.build(self.d); self.assertEqual((x['claims'], x['found'], x['removed'], x['rechecked'], x['cost_usd']), (46, 44, 2, 3, 3.0))
+        # hand-kept receipt naming the re-verification file but holding the first pass: read as the first pass
+        (self.d / 'state' / 'verifier.json').write_text(json.dumps({'out': '/x/verdicts-recheck.json', 'summary': {'FOUND': 42, 'DISTORTED': 3, 'ABSENT': 1}}))
+        x = S.build(self.d); self.assertEqual((x['claims'], x['found'], x['counts'].get('DISTORTED'), x['removed']), (46, 44, 1, 2))
+        # no re-verification file: the first pass alone, nothing re-verified
+        (self.d / 'verdicts-recheck.json').unlink()
+        x = S.build(self.d); self.assertEqual((x['claims'], x['found'], x['rechecked']), (46, 42, 0))
+        self.assertNotIn('re-verified', S.render(x))
+
     def test_four_languages_no_confidence(self):
         """Every language of tools/report_lang.py: the citations and coverage labels exist, no level word, at most six lines (a follow-up
         number goes on the answer line)."""

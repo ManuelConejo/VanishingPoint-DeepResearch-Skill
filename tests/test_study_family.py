@@ -5,7 +5,7 @@ study under several forms (arXiv preprint and article, DataCite arXiv DOI, recor
 report and journal article of one meta-analysis) are grouped; neighbours that are separate studies (a pilot trial, another first author,
 short titles, court decisions, two sites of a local evaluation, a large year gap) are not; a cross-source statement citing two versions of
 one study is flagged, and so is "three trials" over three documents of two studies; config `study_family.enabled` = false restores one
-study per entry. The titles below are fixtures shaped on the 29/10 replay (skill-vp/essai-auditfix-29-10)."""
+study per entry. The titles below are fixtures shaped on the 29/10 replay."""
 import json, pathlib, shutil, sys, tempfile, unittest
 P = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(P.parent / 'tools'))

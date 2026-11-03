@@ -1046,3 +1046,45 @@ README
   "Y given" report did not improve the plan of a planner that can read Y itself (11 real adoption cases of 2026: 1 win, 3 losses, 7 ties;
   an oracle control won 7-0, so the bench separates plans) for more than ten times the cost. Recommended use: give the planner access to
   the candidate repositories; use the code plugin when a verified report for a human reader is wanted. Limitation 4 updated to match.
+
+## v0.6.19 - 2026-11-03 - French court decisions checked on Judilibre, audit-mode summary count, contradictor unavailable
+
+No change to `SKILL.md` or to any plugin instruction. `plugins/law.md` and `tools/sources/piste.py` only update the state of the
+Judilibre source (metadata, not a rule).
+
+New tool
+- `tools/check_decisions.py` (no model): extracts the French court decisions cited in any text or JSON list (Cour de cassation appeal
+  numbers, court-of-appeal and tribunal docket numbers, ECLI, with the court, chamber, city and date written around them) and checks
+  each one on Judilibre through the gateway (own call pool, date barrier T): `found`, `mismatch` (the decision exists but the cited
+  date, court or chamber differs), `not_found` (`coverage: partial` below the Cour de cassation: Judilibre does not hold every
+  court-of-appeal decision), `not_checked` (no PISTE pair, offline, cap, provider error). `--support` looks for the quoted fragments
+  of the claim in the decision text. Bounds in `tools/config.json` `check_decisions`. Measured on 73 citations of decisions in LLM
+  answers (2026-11-03): no false alarm on the real decisions; one court-of-appeal decision not found and two attribution errors flagged.
+- `tools/sources/piste.py`: Judilibre records carry `location` (the court of appeal or tribunal), used by the check above.
+- Judilibre verified on the live service on 2026-11-03: search at the Cour de cassation and the courts of appeal, read by identifier.
+  Legifrance not tested (application not subscribed).
+
+Fixes
+- `tools/summary.py` (SUMMARY.md, "Citations confirmed"): in audit mode, the re-verification of the corrected claims, run with
+  `--state`, overwrote `state/verifier.json`, and the line counted that pass alone ("2 of 3 checked" for 46 claims judged). The line
+  now gives the final count: the first pass (read from the `summary` the verifier wrote in `verdicts.json` when the receipt was
+  overwritten) with the re-verified claims (`verdicts-recheck*.json`) replacing their first verdict by id, plus "K re-verified after
+  correction" (four languages). The partial cost adds the first pass and the re-verification.
+- `tools/contradictor.py`: a family whose CLI is not on PATH (`command_missing`), whose key is missing, or an unknown provider, used
+  to end in status `done` with no contradictor. When no family could be called the status is now `unavailable` (`failed` when the
+  families were called but none returned the expected JSON), with exit code 3, a line on stderr and a note asking to state
+  "Contradictor: not run" with the reasons in the methodology appendix; a family that could not run beside one that did is listed
+  under `unavailable`.
+- `VP_MODEL_BIN_OPENAI` / `VP_MODEL_BIN_CLAUDE`: path of a host profile's CLI when it is not on PATH (the profile's arguments are
+  kept); read by `contradictor.py`, `whole_reading.py`, `verifier.py` and the contradictor offer of `finish_run.py`.
+  `VP_MODEL_COMMAND_<PROFILE>` still replaces the whole command.
+
+README
+- New section "Law: what is measured" (small private benches of 2026-11-03): rules changed after the model's knowledge cut-off,
+  recent case law, audit mode against a contradictor, `check_decisions.py`; recommendation and limits.
+
+Tests
+- `tests/test_check_decisions.py` (fixture `tests/fixtures/check_decisions_judilibre.json`), `tests/test_summary.py` (fixture
+  `tests/fixtures/summary_recheck.json`), `tests/test_contradictor.py`, `tests/test_contradictor_general.py`. Offline suite: 712 tests,
+  70 files, all passing under Python 3.12 and under Python 3.9 (throw-away `python:3.9` container, repository read-only, non-root
+  user, no network).

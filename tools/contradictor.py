@@ -31,7 +31,13 @@ A family is written <via>[:<model>], and no model name is fixed in the code or t
                         extra = fields merged into the request body. VP_CONTRADICTOR_URL_<PROVIDER> overrides a url (tests).
 For a CLI, an empty model = the CLI's own default model, so the choice follows the vendor; for an API the model id is required.
 The receipt records the model actually used. A family whose key, url or command is missing is skipped with the reason
-(credential_missing, provider_unknown, command_missing), never silently. A contradictor of the same family as the author of the
+(credential_missing, provider_unknown, command_missing), never silently: when NO family could be called, the status is
+"unavailable" (and "failed" when families were called but none returned the expected JSON), with exit code 3 and one line on
+stderr, never "done" with 0 contradictor; the note tells the orchestrator to state "Contradictor: not run" with the reasons in the
+methodology appendix. A family that could not be called beside one that ran is listed under "unavailable" in the status line.
+The CLI of a host profile is the first word of model_command[<profile>].command; on a host where it is not on PATH,
+VP_MODEL_BIN_<PROFILE> (VP_MODEL_BIN_OPENAI, VP_MODEL_BIN_CLAUDE) gives the path of the executable and keeps the profile's
+arguments (VP_MODEL_COMMAND_<PROFILE>, a JSON list, replaces the whole command). A contradictor of the same family as the author of the
 report is allowed but defeats the purpose: the receipt says which family wrote each element. The natural choice: the other CLI
 (openai on a Claude Code host, claude on a Codex host), or any API of another vendor.
 Measured on 2026-10-27 (6 code cases): openai (gpt-5.6-sol), openrouter:moonshotai/kimi-k3.1-pro, openrouter:google/gemini-4-argon;
@@ -305,7 +311,8 @@ def host_call(host, model, prompt, trace, usd_cap=REREAD_USD):
     try: argv = strip_model(W.command(host, model))
     except (KeyError, ValueError) as e: return None, dict(error=f'command_missing: {e}', usd=0.0)
     if host == 'claude' and '--max-budget-usd' in argv: argv[argv.index('--max-budget-usd') + 1] = str(usd_cap)
-    if not (os.path.isabs(argv[0]) and os.access(argv[0], os.X_OK)) and not shutil.which(argv[0]): return None, dict(error=f'command_missing: {argv[0]}', usd=0.0)
+    if not (os.path.isabs(argv[0]) and os.access(argv[0], os.X_OK)) and not shutil.which(argv[0]):
+        return None, dict(error=f'command_missing: {argv[0]}', usd=0.0, note=f'{argv[0]} is not on PATH: set VP_MODEL_BIN_{host.upper()} to the path of the executable (or VP_MODEL_COMMAND_{host.upper()}), or name another family')
     env = {k: v for k, v in os.environ.items() if k not in ('ANTHROPIC_API_KEY', 'CLAUDE_CODE_OAUTH_TOKEN')}
     env['CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS'] = '0'
     cwd = tempfile.mkdtemp(prefix='vp-contradictor-'); t0 = time.monotonic()
@@ -641,6 +648,39 @@ def receipt(run, d, rec):
     (run / 'contradictor.json').write_text(json.dumps(rec, ensure_ascii=False, indent=1) + '\n'); chown(run)
 
 
+UNAVAILABLE_NOTE = ('no contradictor ran: the report was NOT contradicted. State in the methodology appendix "Contradictor: not run" with each family '
+                    'and its reason (unavailable: <family>: <reason>), and apply nothing; fix the reason (command on PATH or VP_MODEL_BIN_<PROFILE>, key, '
+                    'provider) and run the tool again, or deliver as is')
+
+
+NOT_CALLED = ('command_missing', 'credential_missing', 'provider_unknown', 'insecure_url', 'unknown family')   # no request was sent
+
+
+def outcome(fams_rec):
+    """-> (status, unavailable): 'done' when at least one family returned the expected JSON; 'unavailable' when no family could be
+    called (command, key, url or family missing: no answer at all); 'failed' when families were called but none was exploitable."""
+    unav = {k: v.get('error') for k, v in fams_rec.items() if not v.get('exploitable')}
+    if any(v.get('exploitable') for v in fams_rec.values()): return 'done', unav
+    called = any(not str(v.get('error') or '').startswith(NOT_CALLED) for v in fams_rec.values())
+    return ('failed' if called else 'unavailable'), unav
+
+
+def finish_status(run, d, rec, line):
+    """Write the receipt and the status line; 'unavailable' / 'failed' -> exit code 3 and one line on stderr (never a silent 'done')."""
+    status, unav = outcome(rec['families'])
+    rec['status'] = status
+    if unav: rec['unavailable'] = unav; line['unavailable'] = unav
+    if status != 'done': rec['note'] = UNAVAILABLE_NOTE; line['note'] = UNAVAILABLE_NOTE
+    elif unav:
+        rec['note'] = line['note'] = rec['note'] + '; also state in the methodology appendix each family that did not run and its reason (unavailable)'
+    line['status'] = status
+    receipt(run, d, rec)
+    print(json.dumps(line, ensure_ascii=False))
+    if status == 'done': return 0
+    print('contradictor.py: ' + status + ': ' + '; '.join(f'{k}: {v}' for k, v in unav.items()), file=sys.stderr)
+    return 3
+
+
 def main_general(a, run, d, fams, plugins):
     """General mode: REPORT.md, card.json and the source texts the verifier read (sources/<key>/source.txt), no network reading."""
     srcs = read_sources(run)
@@ -685,10 +725,8 @@ def main_general(a, run, d, fams, plugins):
                      'and keep the quotation out of the executive summary and the verdicts; for each "miss verified", add a finding with its evidence (the [n] of the cited sources, whose fragments were '
                      'checked verbatim against the source texts the verifier read); state in the methodology appendix the families, the counts (false detected / false added / misses verified / '
                      'misses false or not exclusive) and the cost; everything else stays in contradictor.json; the tool never edits REPORT.md'), utc=utc())
-    receipt(run, d, rec)
-    print(json.dumps(dict(status='done', mode='general', families={k: (v.get('error') or f"ok ({v.get('n_false', 0)} false, {v.get('n_missed', 0)} missed)") for k, v in rec['families'].items()},
-                          false_detected=len(false_detected), misses_verified=len(verified), counts=counts, cost_usd=rec['cost_usd']['total'], file=str(run / 'contradictor.json'), note=rec['note']), ensure_ascii=False))
-    return 0
+    return finish_status(run, d, rec, dict(status='done', mode='general', families={k: (v.get('error') or f"ok ({v.get('n_false', 0)} false, {v.get('n_missed', 0)} missed)") for k, v in rec['families'].items()},
+                                           false_detected=len(false_detected), misses_verified=len(verified), counts=counts, cost_usd=rec['cost_usd']['total'], file=str(run / 'contradictor.json'), note=rec['note']))
 
 
 def main(argv=None):
@@ -755,10 +793,8 @@ def main(argv=None):
                note=('apply: for each "false detected", annotate the finding that carries the quotation "contradicted by <family>: <why>" and keep it out of the executive summary and the verdicts; '
                      'for each "miss verified", add a finding with its references (verified downstream like any other, SKILL.md section 7); state in the methodology appendix the families, '
                      'the counts (false detected / false added / misses verified / misses false or not exclusive) and the cost; everything else stays in contradictor.json'), utc=utc())
-    receipt(run, d, rec)
-    print(json.dumps(dict(status='done', families={k: (v.get('error') or f"ok ({v.get('n_false', 0)} false, {v.get('n_missed', 0)} missed)") for k, v in rec['families'].items()},
-                          false_detected=len(false_detected), misses_verified=len(verified), counts=counts, cost_usd=rec['cost_usd']['total'], file=str(run / 'contradictor.json'), note=rec['note']), ensure_ascii=False))
-    return 0
+    return finish_status(run, d, rec, dict(status='done', families={k: (v.get('error') or f"ok ({v.get('n_false', 0)} false, {v.get('n_missed', 0)} missed)") for k, v in rec['families'].items()},
+                                           false_detected=len(false_detected), misses_verified=len(verified), counts=counts, cost_usd=rec['cost_usd']['total'], file=str(run / 'contradictor.json'), note=rec['note']))
 
 
 if __name__ == '__main__':
