@@ -16,12 +16,13 @@ class Test(unittest.TestCase):
 
     def tearDown(self): self.tmp.cleanup()
 
-    def wave(self, name, ids, calls, pool_calls=0, **kw):
+    def wave(self, name, ids, calls, pool_calls=0, repeats=0, **kw):
         lines = [f'- arxiv:{i} | title | 2025 | basis title | PROBABLE. on topic' for i in ids] + ['- arxiv:2401.99999 | t | 2025 | EXCLUDED. off topic']
         (self.d / 'searches' / name).write_text('# ' + name + '\n\n## Candidates\n' + '\n'.join(lines) + '\n')
         with open(self.d / 'state' / 'journal.jsonl', 'a') as f:
             for _ in range(calls): f.write(json.dumps({'call': 'search-arxiv'}) + '\n')
             for _ in range(pool_calls): f.write(json.dumps({'call': 'read', 'pool': 'verifier'}) + '\n')
+            for _ in range(repeats): f.write(json.dumps({'call': 'read', 'repeat': True}) + '\n')
         return S.run(self.d, close=True, **kw)
 
     def test_two_empty_waves_stop(self):
@@ -42,6 +43,10 @@ class Test(unittest.TestCase):
 
     def test_ceiling(self):
         self.assertEqual(self.wave('1.md', ['2401.00001'], 10, min_calls=4, cap=10)['decision'], 'ceiling')
+
+    def test_repeats_not_counted(self):   # the gateway does not count a repeat: neither does the ceiling
+        r = self.wave('1.md', ['2401.00001'], 9, repeats=5, min_calls=4, cap=10)
+        self.assertEqual((r['decision'], r['calls_total'], r['waves'][0]['calls']), ('continue', 9, 9))
 
     def test_chapman_indicator(self):
         self.wave('1.md', ['2401.00001', '2401.00002', '2401.00003'], 6, min_calls=4)

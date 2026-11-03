@@ -6,7 +6,8 @@ The rule is the one of SKILL.md: continue, except when two consecutive waves, ea
 framing, brought no new eligible document, or at the ceiling. What the orchestrator used to count by hand is read from the files:
   - eligible documents: identifiers (pmid:, doi:, arxiv:) on a candidate line of searches/*.md whose verdict matches
     possibles.verdict_regex (possible / probable), the same reading as tools/read_possibles.py;
-  - calls of a wave: lines of <state>/journal.jsonl of the searches' pool (no `pool` field) journaled since the previous closure.
+  - calls of a wave: lines of <state>/journal.jsonl of the searches' pool (no `pool` field) journaled since the previous closure,
+    repeats left out (`repeat: true`: served from the cache and not counted by the gateway, so the ceiling is the gateway's).
 --close-wave closes the current wave: the searches/*.md files not yet assigned and the calls journaled since the previous closure are
 written to <state>/saturation.json (written by this tool only, never by hand). Without --close-wave: the decision, nothing written.
 
@@ -41,13 +42,14 @@ def eligible(files):
 
 
 def search_calls(state):
-    """Gateway calls of the searches' pool journaled in <state>/journal.jsonl (verifier, possibles and other pools left out)."""
+    """Gateway calls of the searches' pool journaled in <state>/journal.jsonl (verifier, possibles and other pools left out; repeats left
+    out, as the gateway's counter does)."""
     j, n = pathlib.Path(state) / 'journal.jsonl', 0
     if not j.exists(): return 0
     for line in j.read_text(errors='replace').splitlines():
         try: e = json.loads(line)
         except ValueError: continue
-        if isinstance(e, dict) and not e.get('pool'): n += 1
+        if isinstance(e, dict) and not e.get('pool') and not e.get('repeat'): n += 1
     return n
 
 
