@@ -204,6 +204,11 @@
   "call_cap": 60,
   "fulltext": false,
   "fulltext_cap": 12,
+  "structured_output": true,
+  "numbers": "flag",
+  "checker_command": null,
+  "checker_min_p": 0.85,
+  "note_determinism": "structured_output = the answer is constrained by tools/verifier/verdicts.schema.json through schema_args of the host profile (claude --json-schema, the object read from structured_output; codex --output-schema); false = free text parsed as before. numbers = check of the figures of a FOUND claim against its fragments (verifier/numbers_check.py): 'flag' writes number_problems on the claim and counts the claims in summary.number_flags, 'invalid' makes the claim INVALID (retried like a fragment failure), 'off' skips it. checker_command = optional second judge (a JSON list, e.g. a script calling a frozen NLI or classification model): receives on stdin {claim, fragments} and prints {label: SUPPORTED|DISTORTED|ABSENT, p: 0..1}; a FOUND claim labelled otherwise with p >= checker_min_p gets checker_disagrees and counts in summary.checker_flags, never a status change; null = none.",
   "sandbox_failure_markers": [
    "bwrap:",
    "user namespace",
@@ -243,6 +248,10 @@
     "--max-budget-usd",
     "{usd}"
    ],
+   "schema_args": [
+    "--json-schema",
+    "{schema_json}"
+   ],
    "note": "Claude Code host: the prompt goes on stdin; the caller adds --allowedTools / --disallowedTools; cwd = work dir; env without ANTHROPIC_API_KEY and CLAUDE_CODE_OAUTH_TOKEN. budget_args = added by tools/verifier.py under a spending limit (a user budget, state/budget.json), '{usd}' = what the call may still spend; the openai profile has none (stopped between calls only)."
   },
   "openai": {
@@ -265,6 +274,10 @@
     "-"
    ],
    "stdin": true,
+   "schema_args": [
+    "--output-schema",
+    "{schema_file}"
+   ],
    "note": "Codex CLI host: the prompt goes on stdin ('-'), read-only sandbox, web search disabled; cwd = work dir."
   }
  },
