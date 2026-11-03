@@ -6,6 +6,9 @@ Reads REPORT.md, card.json and mechanisms.json of DIR (or the files given with -
   commit       the SHA (abbreviated or full) is a commit OF THAT repository (/commits on it; whether it is in the default
                branch history, /compare), full SHA reported
   file         the file exists at the commit (local git directory first, by `git show` only, verifier/code_files.py; else the raw host)
+               absent at a full SHA, not a directory: the tree of the commit is searched for files of the same NAME (a path cut to the file name,
+               a wrong directory, a doubled prefix): exactly one -> status `relocated` (neither verified nor failed; `resolved_path`; the cited
+               lines are checked on that file), several -> `ambiguous` (`candidates`), none -> failed as before. The report is never rewritten.
   lines        each cited line or range lies within the file
   snippets     each quoted fragment attached to a reference is present, whitespace-normalised, within the cited lines widened by k lines
                (config.json code_refs.snippet_window_lines; fragments shorter than code_refs.snippet_min_chars are ignored)
@@ -265,6 +268,13 @@ class Checker:
         if k not in self.files: self.files[k] = self._gh(self.gh.tree, repo, sha, path.rstrip('/') + '/')
         return self.files[k]
 
+    def same_name(self, repo, sha, name):
+        k = ('same_name', repo, sha, name)
+        if k not in self.files:
+            fn = getattr(self.gh, 'same_name', None) if self.gh is not None else None
+            self.files[k] = self._gh(fn, repo, sha, name) if fn else (None, 'no tree engine')
+        return self.files[k]
+
     def raw(self, repo, sha, path):
         k = (repo, sha, path)
         if k not in self.files: self.files[k] = self._gh(self.gh.file if self.gh else None, repo, sha, path)
@@ -314,12 +324,32 @@ def _absent_or_directory(c, ck, r, sha40, fail, unchecked):
     """The raw host answered 404 at a full SHA: a file absent, or a DIRECTORY cited as a file. The tree of the commit decides (one API read,
     memoised); when it cannot be read the reference is unchecked (never failed on a guess). Without a tree engine: absent."""
     tree = getattr(ck.gh, 'tree', None) if ck.gh is not None else None
-    if tree is None: c['file'] = {'status': 'absent', 'reason': 'file_not_found'}; fail.append('file'); return
+    if tree is None: c['file'] = {'status': 'absent', 'reason': 'file_not_found'}; fail.append('file'); return None
     t, err = ck.tree(r['repo'], sha40, r['path'])
-    if err: c['file'] = {'status': 'unchecked', 'reason': err if err == 'rate_limited' else 'file or directory undecided: ' + err}; unchecked.append('file')
-    elif t.get('count'): c['file'] = {'status': 'directory', 'reason': 'the path is a directory at the commit (%d files under it)' % t['count']}
-    elif t.get('truncated'): c['file'] = {'status': 'unchecked', 'reason': 'file or directory undecided: tree truncated'}; unchecked.append('file')
-    else: c['file'] = {'status': 'absent', 'reason': 'file_not_found'}; fail.append('file')
+    if err: c['file'] = {'status': 'unchecked', 'reason': err if err == 'rate_limited' else 'file or directory undecided: ' + err}; unchecked.append('file'); return None
+    elif t.get('count'): c['file'] = {'status': 'directory', 'reason': 'the path is a directory at the commit (%d files under it)' % t['count']}; return None
+    elif t.get('truncated'): c['file'] = {'status': 'unchecked', 'reason': 'file or directory undecided: tree truncated'}; unchecked.append('file'); return None
+    else: return _relocate(c, ck, r, sha40, fail)
+
+
+def _relocate(c, ck, r, sha40, fail):
+    """The cited file is absent at the commit (tree read, not a directory). Defect seen in real reports: the path cut to the file name, a wrong
+    directory, a doubled prefix. Files of the same NAME in the tree of the commit: exactly one -> status `relocated` (neither verified nor failed:
+    `resolved_path`, the cited lines are checked on that file); several -> `ambiguous` (`candidates`); none (or a tree GitHub cut) -> absent,
+    as before. The report is never rewritten. -> the text of the relocated file, or None."""
+    name = r['path'].rsplit('/', 1)[-1]
+    found, err = ck.same_name(r['repo'], sha40, name)
+    paths = sorted(found['paths']) if found and not err and not found.get('truncated') else []
+    if len(paths) == 1:
+        f, err = ck.raw(r['repo'], sha40, paths[0])
+        if f:
+            c['file'] = {'status': 'relocated', 'resolved_path': paths[0], 'method': 'github raw at the SHA', 'permanent_url': f.get('permanent_url'),
+                         'reason': 'the cited path is absent at the commit; the only file of that name is ' + paths[0]}
+            r['resolved_path'] = paths[0]; return f['text']
+    elif len(paths) > 1:
+        c['file'] = {'status': 'ambiguous', 'candidates': paths, 'reason': 'the cited path is absent at the commit; %d files have that name' % len(paths)}
+        r['candidates'] = paths; return None
+    c['file'] = {'status': 'absent', 'reason': 'file_not_found'}; fail.append('file'); return None
 
 
 def _check_ref(r, ck):
@@ -364,7 +394,7 @@ def _check_ref(r, ck):
                 else:
                     f, err = ck.raw(r['repo'], sha40, r['path'])
                     if f: c['file'] = {'status': 'ok', 'method': 'github raw at the SHA', 'permanent_url': f.get('permanent_url')}; text = f['text']
-                    elif err == 'file_not_found': _absent_or_directory(c, ck, r, sha40, fail, unchecked)
+                    elif err == 'file_not_found': text = _absent_or_directory(c, ck, r, sha40, fail, unchecked)
                     elif err == 'reference': c['file'] = {'status': 'absent', 'reason': err}; fail.append('file')
                     elif err == 'binary': c['file'] = {'status': 'unchecked', 'reason': 'file unreadable: binary'}; unchecked.append('file')
                     else: c['file'] = {'status': 'unchecked', 'reason': err}; unchecked.append('file')
@@ -375,9 +405,11 @@ def _check_ref(r, ck):
         n = len(cf.git_lines(text))
         bad = [list(x) for x in r['ranges'] if not 1 <= x[0] <= x[1] <= n]
         c['lines'] = {'status': 'out_of_bounds' if bad else 'in_bounds', 'lines_in_file': n, **({'out_of_bounds': bad} if bad else {})}
-        if bad: fail.append('lines')
+        if bad and c['file']['status'] != 'relocated': fail.append('lines')   # a relocated file is neither verified nor failed
     elif r['ranges']: c['lines'] = {'status': 'unchecked'}
     if c.get('file', {}).get('status') == 'directory' and not fail and not unchecked: r['status'] = 'directory'; c.pop('lines', None); return None
+    if c.get('file', {}).get('status') == 'ambiguous' and not fail and not unchecked: r['status'] = 'ambiguous'; c.pop('lines', None); return None
+    if c.get('file', {}).get('status') == 'relocated' and not fail and not unchecked: r['status'] = 'relocated'; return text
     r['status'] = 'failed' if fail else 'unchecked' if unchecked or (r['kind'] == 'file' and text is None) else 'verified'
     if fail: r['failed'] = fail
     if r['status'] != 'verified': _why(r, fail, unchecked)
@@ -454,7 +486,9 @@ def check(paths, run_dir=None, repo=None, x_repos=(), gh=None, x_prefixes=()):
                           'refs': [refs[j]['id'] for j in targets]})
     count = lambda xs, k, v: sum(1 for x in xs if x.get(k) == v)
     summary = {'references': len(refs), 'verified': count(refs, 'status', 'verified'), 'failed': count(refs, 'status', 'failed'),
-               'unchecked': count(refs, 'status', 'unchecked'), 'directory': count(refs, 'status', 'directory'), 'snippets': len(out_snips), 'snippets_found': count(out_snips, 'status', 'found'),
+               'unchecked': count(refs, 'status', 'unchecked'), 'directory': count(refs, 'status', 'directory'),
+               **{k: count(refs, 'status', k) for k in ('relocated', 'ambiguous') if count(refs, 'status', k)},   # only when present: other outputs unchanged
+               'snippets': len(out_snips), 'snippets_found': count(out_snips, 'status', 'found'),
                'snippets_outside_cited_lines': count(out_snips, 'status', 'found_outside_cited_lines'),
                'snippets_not_found': count(out_snips, 'status', 'not_found'), 'snippets_unchecked': count(out_snips, 'status', 'unchecked'),
                'refs_with_lines': sum(1 for r in refs if r['ranges']), 'refs_with_prose_lines': sum(1 for r in refs if r.get('ranges_from_prose')),
