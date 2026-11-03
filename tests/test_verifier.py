@@ -325,6 +325,53 @@ class Test(unittest.TestCase):
         with self.assertRaises(RuntimeError): V.model_command('openai')
         with self.assertRaises(RuntimeError): V.model_command('unknown-host')
 
+    def test_structured_output_args(self):
+        """config verifier.structured_output: the claude profile gets --json-schema <schema>, the openai profile --output-schema <file>
+        before the stdin marker; the object of structured_output is read in place of the free text."""
+        rec = pathlib.Path(self.tmp.name) / 'record.json'; os.environ['VP_FAKE_RECORD'] = str(rec)
+        work = pathlib.Path(self.tmp.name) / 'work'; work.mkdir()
+        schema = json.loads(V.SCHEMA_FILE.read_text())
+        os.environ['VP_MODEL_COMMAND_CLAUDE'] = json.dumps(self.fake('fake-claude-s.py', FAKE_CLAUDE) + ['-p', '--output-format', 'json'])
+        V.model_call('P', str(work), 'm', host='claude'); argv = json.loads(rec.read_text())['argv']
+        self.assertEqual(json.loads(argv[argv.index('--json-schema') + 1]), schema)
+        os.environ['VP_MODEL_COMMAND_OPENAI'] = json.dumps(self.fake('fake-codex-s.py', FAKE_CODEX) + ['exec', '--json', '-'])
+        V.model_call('P', str(work), 'm', host='openai'); argv = json.loads(rec.read_text())['argv']
+        self.assertEqual(argv[-3:], ['--output-schema', str(V.SCHEMA_FILE), '-'])
+        obj = {'card_id': 'C1', 'verdicts': [{'id': 'A1', 'verdict': 'FOUND'}]}
+        t, _ = V._parse_claude(json.dumps({'result': 'free text', 'structured_output': obj, 'usage': {}}))
+        self.assertEqual(json.loads(t), obj)
+        for v in [schema] + [schema['properties']['verdicts']['items']]:                 # OpenAI strict mode: all required, none additional
+            self.assertEqual((sorted(v['required']), v['additionalProperties']), (sorted(v['properties']), False))
+        saved = V.STRUCTURED; V.STRUCTURED = False
+        try: self.assertEqual(V.schema_args('claude'), [])
+        finally: V.STRUCTURED = saved
+
+    def test_figures_of_a_found_claim(self):
+        """config verifier.numbers: 'flag' keeps FOUND and writes number_problems (summary.number_flags); 'invalid' retries, then INVALID."""
+        card = dict(CARD, claims=[{'id': 'A1', 'text': 'M reaches 75 % on X.', 'source': {'key': 'S1'}}])
+        found = answer([{'id': 'A1', 'source': 'S1', 'verdict': 'FOUND', 'fragments': ['method M reaches 71.2 % accuracy']}])
+        calls = []
+        def engine(prompt, workdir): calls.append(prompt); return found, {'cost_usd': 0, 'seconds': 0}
+        saved = V.NUMBERS
+        try:
+            V.NUMBERS = 'flag'; r = V.verify(card, SRC, engine, work=self.tmp.name + '/f')
+            self.assertEqual((r['claims'][0]['status'], r['summary']['number_flags'], len(calls)), ('FOUND', 1, 1))
+            self.assertIn("'75'", r['claims'][0]['number_problems'][0])
+            V.NUMBERS = 'invalid'; calls.clear(); r = V.verify(card, SRC, engine, work=self.tmp.name + '/i')
+            self.assertEqual((r['claims'][0]['status'], len(calls)), ('INVALID', 2)); self.assertIn('RETRY', calls[1])
+            V.NUMBERS = 'off'; r = V.verify(card, SRC, engine, work=self.tmp.name + '/o')
+            self.assertEqual((r['claims'][0]['status'], r['summary']['number_flags']), ('FOUND', 0))
+        finally: V.NUMBERS = saved
+
+    def test_second_judge(self):
+        """config verifier.checker_command: a confident disagreement is a flag, an agreement nothing, a failure checker_error; never a status."""
+        cmd = self.fake('checker.py', 'import json, sys\nd = json.load(sys.stdin)\n'
+                        'print(json.dumps({"label": "DISTORTED" if "75" in d["claim"] else "SUPPORTED", "p": 0.9}))\n')
+        self.assertEqual(V.second_judge('M reaches 75 %', ['71.2 %'], cmd, 0.85), {'checker_disagrees': {'label': 'DISTORTED', 'p': 0.9}})
+        self.assertEqual(V.second_judge('M reaches 75 %', ['71.2 %'], cmd, 0.95), {})
+        self.assertEqual(V.second_judge('M reaches 71.2 %', ['71.2 %'], cmd, 0.85), {})
+        self.assertIn('checker_error', V.second_judge('x', [], self.fake('bad.py', 'print("no")\n'), 0.85))
+
 
 if __name__ == '__main__':
     unittest.main()

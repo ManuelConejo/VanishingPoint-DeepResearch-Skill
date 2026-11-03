@@ -1,0 +1,98 @@
+{
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+  "card_id",
+  "verdicts"
+ ],
+ "properties": {
+  "card_id": {
+   "type": "string"
+  },
+  "verdicts": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+     "id",
+     "source",
+     "verdict",
+     "elements",
+     "discrepancy",
+     "fragments",
+     "location",
+     "search",
+     "confidence"
+    ],
+    "properties": {
+     "id": {
+      "type": "string"
+     },
+     "source": {
+      "type": "string"
+     },
+     "verdict": {
+      "type": "string",
+      "enum": [
+       "FOUND",
+       "DISTORTED",
+       "ABSENT",
+       "SOURCE-UNAVAILABLE"
+      ]
+     },
+     "elements": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "additionalProperties": false,
+       "required": [
+        "element",
+        "card",
+        "source",
+        "ok"
+       ],
+       "properties": {
+        "element": {
+         "type": "string"
+        },
+        "card": {
+         "type": "string"
+        },
+        "source": {
+         "type": "string"
+        },
+        "ok": {
+         "type": "boolean"
+        }
+       }
+      }
+     },
+     "discrepancy": {
+      "type": "string"
+     },
+     "fragments": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "location": {
+      "type": "string"
+     },
+     "search": {
+      "type": "string"
+     },
+     "confidence": {
+      "type": "string",
+      "enum": [
+       "high",
+       "medium",
+       "low"
+      ]
+     }
+    }
+   }
+  }
+ }
+}
