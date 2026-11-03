@@ -119,9 +119,35 @@ class General(unittest.TestCase):
             if v is None: os.environ.pop(k, None)
             else: os.environ[k] = v
 
-    def tool(self, *args):
-        r = subprocess.run([sys.executable, '-I', str(P / 'contradictor.py'), str(self.run), *args], capture_output=True, text=True, env=os.environ, timeout=120)
-        self.assertEqual(r.returncode, 0, r.stderr); return json.loads(r.stdout.strip().splitlines()[-1])
+    def tool(self, *args, rc=0, env=None):
+        r = subprocess.run([sys.executable, '-I', str(P / 'contradictor.py'), str(self.run), *args], capture_output=True, text=True, env=env or os.environ, timeout=120)
+        self.assertEqual(r.returncode, rc, r.stderr); self.stderr = r.stderr; return json.loads(r.stdout.strip().splitlines()[-1])
+
+    def test_codex_missing_is_unavailable(self):
+        """Defect of 2026-11-03: `--families openai` on a host without `codex` on PATH printed "command_missing: codex" inside a
+        status "done" with 0 contradictor. Now: status "unavailable", exit 3, a line on stderr, the appendix note; VP_MODEL_BIN_OPENAI
+        gives the path of the CLI and keeps the profile's arguments."""
+        os.environ.pop('VP_MODEL_COMMAND_OPENAI')
+        bin_ = self.d / 'bin'; bin_.mkdir(); (bin_ / 'python3').symlink_to(sys.executable)   # PATH without codex (the fake needs python3)
+        env = dict(os.environ, PATH=str(bin_))
+        s = self.tool('--families', 'openai', rc=3, env=env)
+        self.assertEqual(s['status'], 'unavailable'); self.assertTrue(s['families']['openai'].startswith('command_missing: '), s)
+        self.assertIn('Contradictor: not run', s['note']); self.assertIn('unavailable', self.stderr)
+        rec = json.loads((self.run / 'contradictor.json').read_text())
+        self.assertEqual(rec['status'], 'unavailable'); self.assertIn('VP_MODEL_BIN_OPENAI', rec['families']['openai']['note'])
+        s = self.tool('--families', 'openai', rc=3, env=dict(env, VP_MODEL_BIN_OPENAI=str(self.d / 'no-such-codex')))
+        self.assertEqual(s['status'], 'unavailable')
+        s = self.tool('--families', 'openai', env=dict(env, VP_MODEL_BIN_OPENAI=str(self.d / 'fake-codex')))
+        self.assertEqual(s['status'], 'done'); self.assertEqual(s['families']['openai'], 'ok (4 false, 4 missed)'); self.assertNotIn('unavailable', s)
+        # one family runs, one cannot: "done", the other listed as unavailable for the appendix
+        s = self.tool('--families', 'openai', 'claude', env=dict(env, VP_MODEL_BIN_OPENAI=str(self.d / 'fake-codex'), VP_MODEL_COMMAND_CLAUDE=json.dumps(['no-such-claude', '-p'])))
+        self.assertEqual(s['status'], 'done'); self.assertEqual(list(s['unavailable']), ['claude']); self.assertIn('unavailable', s['note'])
+
+    def test_answer_not_json_is_failed(self):
+        bad = self.d / 'bad-codex'; bad.write_text('#!/bin/sh\necho not json\n'); bad.chmod(0o755)
+        os.environ['VP_MODEL_COMMAND_OPENAI'] = json.dumps([str(bad), 'exec', '-'])
+        s = self.tool('--families', 'openai', rc=3)
+        self.assertEqual(s['status'], 'failed'); self.assertIn('Contradictor: not run', s['note'])
 
     def test_prompts_only_material(self):
         s = self.tool('--families', 'openai', '--prompts-only', '--y-cap', '3000')

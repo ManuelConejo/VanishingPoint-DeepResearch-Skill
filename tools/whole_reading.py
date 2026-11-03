@@ -30,7 +30,8 @@ Model: --model, else VP_MODEL (environment), else the orchestrator's model is un
   default of tools/config.json ("whole_reading.model", else "verifier.model") is used. Host command: tools/config.json
   "model_command"[host] with host = --host, else VP_HOST, else config "host"; profile "claude" = `claude -p` on stdin with no tool,
   profile "openai" = `codex exec` on stdin in an empty read-only directory. VP_MODEL_COMMAND_CLAUDE / VP_MODEL_COMMAND_OPENAI
-  (a JSON list) override the command (tests with a fake executable).
+  (a JSON list) override the command (tests with a fake executable); VP_MODEL_BIN_CLAUDE / VP_MODEL_BIN_OPENAI give only the path
+  of the CLI when it is not on PATH (the profile's arguments are kept).
 """
 import argparse, datetime as dt, hashlib, json, os, pathlib, re, shutil, subprocess, sys, tempfile, time
 
@@ -277,6 +278,8 @@ def model_name(a):
 def command(host, model):
     env_cmd = os.environ.get('VP_MODEL_COMMAND_' + host.upper())
     base = json.loads(env_cmd) if env_cmd else CFG['model_command'][host]['command']
+    exe = os.environ.get('VP_MODEL_BIN_' + host.upper())               # path of the CLI when it is not on PATH; the profile's arguments are kept
+    if exe and not env_cmd and base: base = [exe] + list(base[1:])
     argv = [str(x).replace('{model}', model) for x in base]
     if not model:                                                   # the host CLI's own default model
         out, i = [], 0                                              # drop the flag and its empty value together

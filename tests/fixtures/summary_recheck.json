@@ -1,0 +1,234 @@
+{
+ "_note": "Shape of an audit-mode run of 2026-11-03 (46 claims judged: 42 FOUND, 3 DISTORTED, 1 ABSENT; the 3 DISTORTED corrected and verified once more: 2 FOUND, 1 still DISTORTED; A45 ABSENT and A46 removed). The re-verification ran with --state, so state/verifier.json is its receipt; verdicts.json keeps the first-pass summary, the merged claims and its cost.",
+ "verdicts.json": {
+  "card_id": "audit",
+  "summary": {
+   "FOUND": 42,
+   "DISTORTED": 3,
+   "ABSENT": 1,
+   "SOURCE-UNAVAILABLE": 0,
+   "INVALID": 0,
+   "UNVERIFIED": 0,
+   "unsupported_rate": 0.087
+  },
+  "claims": [
+   {
+    "id": "A1",
+    "status": "FOUND"
+   },
+   {
+    "id": "A2",
+    "status": "FOUND"
+   },
+   {
+    "id": "A3",
+    "status": "FOUND"
+   },
+   {
+    "id": "A4",
+    "status": "FOUND"
+   },
+   {
+    "id": "A5",
+    "status": "FOUND"
+   },
+   {
+    "id": "A6",
+    "status": "FOUND"
+   },
+   {
+    "id": "A7",
+    "status": "FOUND"
+   },
+   {
+    "id": "A8",
+    "status": "SOURCE-UNAVAILABLE"
+   },
+   {
+    "id": "A9",
+    "status": "FOUND"
+   },
+   {
+    "id": "A10",
+    "status": "FOUND"
+   },
+   {
+    "id": "A11",
+    "status": "FOUND"
+   },
+   {
+    "id": "A12",
+    "status": "FOUND"
+   },
+   {
+    "id": "A13",
+    "status": "FOUND"
+   },
+   {
+    "id": "A14",
+    "status": "FOUND"
+   },
+   {
+    "id": "A15",
+    "status": "FOUND"
+   },
+   {
+    "id": "A16",
+    "status": "FOUND"
+   },
+   {
+    "id": "A17",
+    "status": "FOUND"
+   },
+   {
+    "id": "A18",
+    "status": "FOUND"
+   },
+   {
+    "id": "A19",
+    "status": "FOUND"
+   },
+   {
+    "id": "A20",
+    "status": "FOUND"
+   },
+   {
+    "id": "A21",
+    "status": "FOUND"
+   },
+   {
+    "id": "A22",
+    "status": "FOUND"
+   },
+   {
+    "id": "A23",
+    "status": "FOUND"
+   },
+   {
+    "id": "A24",
+    "status": "FOUND"
+   },
+   {
+    "id": "A25",
+    "status": "FOUND"
+   },
+   {
+    "id": "A26",
+    "status": "FOUND"
+   },
+   {
+    "id": "A27",
+    "status": "FOUND"
+   },
+   {
+    "id": "A28",
+    "status": "FOUND"
+   },
+   {
+    "id": "A29",
+    "status": "FOUND"
+   },
+   {
+    "id": "A30",
+    "status": "FOUND"
+   },
+   {
+    "id": "A31",
+    "status": "FOUND"
+   },
+   {
+    "id": "A32",
+    "status": "FOUND"
+   },
+   {
+    "id": "A33",
+    "status": "FOUND"
+   },
+   {
+    "id": "A34",
+    "status": "FOUND"
+   },
+   {
+    "id": "A35",
+    "status": "FOUND"
+   },
+   {
+    "id": "A36",
+    "status": "FOUND"
+   },
+   {
+    "id": "A37",
+    "status": "FOUND"
+   },
+   {
+    "id": "A38",
+    "status": "FOUND"
+   },
+   {
+    "id": "A39",
+    "status": "FOUND"
+   },
+   {
+    "id": "A40",
+    "status": "FOUND"
+   },
+   {
+    "id": "A41",
+    "status": "FOUND"
+   },
+   {
+    "id": "A42",
+    "status": "FOUND"
+   },
+   {
+    "id": "A43",
+    "status": "FOUND"
+   },
+   {
+    "id": "A44",
+    "status": "FOUND"
+   }
+  ],
+  "cost_usd": 2.7188
+ },
+ "verdicts-recheck.json": {
+  "card_id": "audit-recheck",
+  "summary": {
+   "FOUND": 2,
+   "DISTORTED": 1,
+   "ABSENT": 0,
+   "SOURCE-UNAVAILABLE": 0,
+   "INVALID": 0,
+   "UNVERIFIED": 0,
+   "unsupported_rate": 0.333
+  },
+  "claims": [
+   {
+    "id": "A16",
+    "status": "FOUND"
+   },
+   {
+    "id": "A29",
+    "status": "FOUND"
+   },
+   {
+    "id": "A46",
+    "status": "DISTORTED"
+   }
+  ],
+  "cost_usd": 0.2795
+ },
+ "state/verifier.json": {
+  "out": "/elsewhere/run/verdicts-recheck.json",
+  "summary": {
+   "FOUND": 2,
+   "DISTORTED": 1,
+   "ABSENT": 0,
+   "SOURCE-UNAVAILABLE": 0,
+   "INVALID": 0,
+   "UNVERIFIED": 0,
+   "unsupported_rate": 0.333
+  },
+  "cost_usd": 0.2795
+ }
+}

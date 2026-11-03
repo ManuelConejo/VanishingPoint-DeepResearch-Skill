@@ -53,7 +53,8 @@ with the reason "verifier budget reached" (never ABSENT); the limit and the spen
 Statuses: FOUND | DISTORTED | ABSENT | SOURCE-UNAVAILABLE | INVALID (fragments not found after one retry) | UNVERIFIED (call failed).
 
 Model call: tools/config.json "model_command"[host] (host = env VP_HOST, else config "host", default claude); the command list
-can be overridden by env VP_MODEL_COMMAND_CLAUDE / VP_MODEL_COMMAND_OPENAI (a JSON list), e.g. to point at a fake executable.
+can be overridden by env VP_MODEL_COMMAND_CLAUDE / VP_MODEL_COMMAND_OPENAI (a JSON list), e.g. to point at a fake executable;
+VP_MODEL_BIN_CLAUDE / VP_MODEL_BIN_OPENAI give only the path of the CLI (not on PATH), the profile's arguments are kept.
 openai profile: when Codex's sandbox cannot start (every shell command fails with a marker of verifier.sandbox_failure_markers, e.g.
 "bwrap: No permissions to create a new namespace"), the model read nothing: no further model call, every claim UNVERIFIED with that
 reason, `host_problem` in the output and the --state receipt, the message on stderr, exit 3 (README, "Codex CLI", for the fallback).
@@ -178,7 +179,8 @@ def model_command(host):
         return cmd
     prof = (CONFIG.get('model_command') or {}).get(host) or DEFAULT_MODEL_COMMAND.get(host)
     if not prof: raise RuntimeError(f'unknown host profile: {host!r} (expected claude or openai)')
-    return resolve_executable(list(prof['command']))
+    exe = os.environ.get(f'VP_MODEL_BIN_{host.upper()}')              # path of the CLI when it is not on PATH; the profile's arguments are kept
+    return resolve_executable(([exe] + list(prof['command'])[1:]) if exe else list(prof['command']))
 
 
 def resolve_executable(cmd):

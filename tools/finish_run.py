@@ -255,6 +255,7 @@ def contradictor_offer(d):
     try:
         raw = os.environ.get('VP_MODEL_COMMAND_' + fam.upper())
         exe = (json.loads(raw) if raw else ((cfg.get('model_command') or {}).get(fam) or {}).get('command') or [''])[0]
+        if not raw and os.environ.get('VP_MODEL_BIN_' + fam.upper()): exe = os.environ['VP_MODEL_BIN_' + fam.upper()]
     except (ValueError, TypeError, IndexError): return None
     found = (os.path.isabs(exe) and os.access(exe, os.X_OK)) or bool(exe and shutil.which(exe))
     if not found: return None
