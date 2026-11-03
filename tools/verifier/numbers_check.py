@@ -6,7 +6,9 @@ A figure of the claim is supported when a figure of the fragments equals it at t
 also after the percentage <-> proportion conversion (42 % ~ 0.4187). A decimal comma is read as a decimal point; 1,234 / 1.234 is
 read both ways (thousands or decimal). Skipped: single-digit integers (counts, list numbers, often written as words), years 1900-2099
 (publication dates rarely sit in the cited passage), figures glued to letters (GPT-4, A100, Llama-3-8B) and labels, a figure right
-after a capitalised word (AIME 24, Table 12, Qwen 2.5). The claim's figures must be
+after a capitalised word (AIME 24, Table 12, Qwen 2.5), the report's citation markers ([3], [12, 14]). Digit groups separated by a
+space (5 968, 16 758) are read as one number. On the fragment side, a figure glued to a unit (9.8pp, 0.6B, 4x) counts as shown.
+The claim's figures must be
 SHOWN by the fragments (ROLE.md: the fragments are the evidence); a figure found elsewhere in the source is still reported.
 
 Command line: numbers_check.py "<claim>" "<fragment>" ...   -> the problems as JSON, exit 1 when there is one.
@@ -15,6 +17,9 @@ import json, re, sys, unicodedata
 
 LABEL = re.compile(r'(?:^|[^\w])[A-Z][^\W\d_]*[ \u00a0]$')
 NUM = re.compile(r'(?<![\w.,])(?<![^\W\d_]-)(\d+(?:[.,]\d+)*)(?=$|[^\w]|[x×](?!\w))')
+NUM_GLUED = re.compile(r'(?<![\d.,])(\d+(?:[.,]\d+)*)')      # fragment side: units and suffixes glued to the figure allowed
+CITE = re.compile(r'\[\d+(?:\s*[,;–-]\s*\d+)*\]')
+SPACED = re.compile(r'(?<=\d) (?=\d{3}(?!\d|[.,]\d))')
 
 
 def readings(tok):
@@ -31,7 +36,7 @@ def readings(tok):
 def figures(text):
     """(token, readings) of the figures of a text, in order (NFKC first: full-width digits, ligatures)."""
     out = []
-    t = unicodedata.normalize('NFKC', text or '')
+    t = SPACED.sub('', unicodedata.normalize('NFKC', text or ''))
     for m in NUM.finditer(t):
         if LABEL.search(t[max(0, m.start() - 24):m.start()]): continue
         r = readings(m.group(1))
@@ -53,8 +58,10 @@ def supported(r, values):
 def problems(claim, fragments):
     """Messages for the figures of the claim that no fragment shows; [] when every figure is shown (or the claim has none)."""
     values = {v for f in fragments or [] for _, r in figures(f) for v, _ in r}
+    values |= {v for f in fragments or [] for m in NUM_GLUED.finditer(SPACED.sub('', unicodedata.normalize('NFKC', f or '')))
+               for v, _ in readings(m.group(1))}
     out = []
-    for tok, r in figures(claim):
+    for tok, r in figures(CITE.sub(' ', claim or '')):
         if skipped(r) or supported(r, values): continue
         msg = f'figure {tok!r} of the claim not shown by the fragments'
         if msg not in out: out.append(msg)

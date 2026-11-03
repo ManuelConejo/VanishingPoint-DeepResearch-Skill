@@ -28,6 +28,12 @@ class Test(unittest.TestCase):
         self.assertEqual(N.problems('3.5x faster', ['3.5× faster']), [])
         self.assertEqual(len(N.problems('3.5x faster', ['2x faster'])), 1)
 
+    def test_report_formats(self):
+        self.assertEqual(N.problems('[12] 2 269 tâches', ['consists of 2,269 real-world tasks']), [])           # citation marker, spaced thousands
+        self.assertEqual(N.problems('[19] 16\u202f758 trajectoires', ['Analyzing 16,758 trajectories']), [])
+        self.assertEqual(N.problems('effet de +9,8 points', ['richly-specified problems (+9.8pp)']), [])        # unit glued in the fragment
+        self.assertEqual(len(N.problems('[24] 43,7 % des chaînes', ['from 12.5% to 20.8 %'])), 1)            # still flagged when absent
+
     def test_shipped_example_has_no_false_flag(self):
         d = json.loads((TOOLS.parent / 'examples' / 'report-cs-ai' / 'verdicts.json').read_text())
         found = [a for a in d['claims'] if a['status'] == 'FOUND']
