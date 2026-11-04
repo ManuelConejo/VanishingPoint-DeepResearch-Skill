@@ -1102,3 +1102,22 @@ README
 
 Tests
 - `tests/test_engines_piste.py`: JORF date fallback (fixture `tests/fixtures/legifrance_jorf_search.json`).
+
+## v0.6.21 - 2026-11-04 - optional PISTE broker: the PISTE pair and token kept out of the run
+
+No change to `SKILL.md` or to any plugin instruction.
+
+New tool
+- `tools/piste_broker.py` (standard library, self-contained): a separate process under another user holds the PISTE pair and the
+  bearer token (memory only) and serves the Judilibre and Legifrance calls on a Unix socket. Only the routes of `tools/config.json`
+  `piste_broker` are forwarded (method, host, path; bounded request and answer; no redirect); the answer is the HTTP status and body,
+  never the pair nor the token; peers whose uid is not allowed are closed. Set-up in KEYS.md, "PISTE broker".
+- `tools/sources/piste.py`: with `VP_PISTE_BROKER` set, every PISTE call goes through the broker; the pair is not read and
+  `<state>/piste-token.json` is not written; same answers, skips and errors; receipts carry `"via": "broker"`. Without the variable,
+  unchanged.
+
+Why: without the broker, anything that runs as the research user (the agent reading files, a script) can read the PISTE pair and the
+cached bearer token.
+
+Tests
+- `tests/test_piste_broker.py` (offline: a real broker on a temporary socket, stubbed upstream).

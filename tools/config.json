@@ -607,5 +607,24 @@
   "context_chars_after": 90,
   "chamber_window_chars": 60,
   "note": "tools/check_decisions.py. call_cap = gateway calls of the pool 'check_decisions' (its own counter, apart from the searches' cap): at most 2 searches (a docket number with its date, then without) and 1 read (--support) per distinct citation, so 150 covers 50 citations, above the 20 decisions of the longest answer of the jurisprudence bench of 2026-11-03. search_n = records asked per search (Judilibre page_size maximum 50): an appeal number gives 1 record; a docket number (NN/NNNNN) is shared by many courts and years, so the whole first page is filtered on the number. fragment_min_chars = shortest quoted fragment of a claim looked for in the decision text (shorter quotes are words, not fragments). context_chars_before / after = characters read around a number written in prose to find its court and date (the text since the previous citation, bounded; then a short stretch after the number when nothing precedes it): the length of a French citation such as \"Cass. soc., 18 mars 2026, n° 24-15.143\" with its lead-in sentence. chamber_window_chars = characters after a Cour de cassation mention where its chamber is looked for (\"Cour de cassation, première chambre civile\" is 42). Reading bounds, not measured optima."
+ },
+ "piste_broker": {
+  "env": "VP_PISTE_BROKER",
+  "oauth": "https://oauth.piste.gouv.fr/api/oauth/token",
+  "routes": [
+   {"method": "GET", "url": "https://api.piste.gouv.fr/cassation/judilibre/v1.0/search"},
+   {"method": "GET", "url": "https://api.piste.gouv.fr/cassation/judilibre/v1.0/decision"},
+   {"method": "POST", "url": "https://api.piste.gouv.fr/dila/legifrance/lf-engine-app/search"},
+   {"method": "POST", "url": "https://api.piste.gouv.fr/dila/legifrance/lf-engine-app/consult/getArticle"},
+   {"method": "POST", "url": "https://api.piste.gouv.fr/dila/legifrance/lf-engine-app/consult/legiPart"},
+   {"method": "POST", "url": "https://api.piste.gouv.fr/dila/legifrance/lf-engine-app/consult/jorf"}
+  ],
+  "intervals": {"oauth.piste.gouv.fr": 1.0, "api.piste.gouv.fr": 2.0},
+  "max_request_bytes": 65536,
+  "max_answer_bytes": 20000000,
+  "upstream_timeout_s": 40,
+  "client_timeout_s": 120,
+  "token_margin_s": 60,
+  "note": "Optional PISTE broker (tools/piste_broker.py, KEYS.md 'PISTE broker'): a separate process, under another user, holds the PISTE pair and the bearer token and answers on a Unix socket; the gateway uses it when the environment variable named by env holds the socket path, and then never reads the pair nor writes <state>/piste-token.json. oauth = token endpoint; routes = the only method + URL (scheme, host and path, the query is free for GET, empty for POST whose body must be a JSON object) the broker forwards: the endpoints tools/sources/piste.py uses (Judilibre GET /search and /decision, Legifrance POST /search and /consult/getArticle, legiPart, jorf); anything else is refused before any request. intervals = seconds between two upstream calls per host inside the broker (same pace as the piste source hosts). max_request_bytes = longest request line accepted from a client; max_answer_bytes = longest upstream answer forwarded (same bound as piste.py PISTE_MAX); upstream_timeout_s = timeout of one upstream call (same as piste.py); client_timeout_s = how long the gateway waits for the broker (it serialises the upstream calls and paces them); token_margin_s = a cached token is renewed when fewer seconds than this are left. Bounds, not measured optima."
  }
 }
