@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.6.20, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.6.21, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -298,8 +298,8 @@ Measured (private benches, small n, judged by models of other families and by th
 
 Not measured or not verified:
 - no public benchmark: the figures above cannot be reproduced from this repository yet;
-- Legifrance (PISTE) is coded and tested offline, not tested on the live service (application not subscribed); Judilibre was
-  verified on the live service on 2026-11-03 (search at the Cour de cassation and the courts of appeal, read by identifier);
+- Judilibre and Legifrance (PISTE) are verified on the live service (2026-11-03 and 2026-11-04: searches, reads by identifier,
+  a 12-question run); the optional PISTE broker only with one live search per API;
 - the verifier's claim windows are tested offline; their catch rate and cost with a model are not measured;
 - `claude` as contradictor, and other models or providers than those listed;
 - engines listed "not wired" by `sources` are declared only.

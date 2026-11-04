@@ -2,16 +2,18 @@
 """PISTE engines (Judilibre, Legifrance; plugins/law.md sections 5-6): search-judilibre [--court] [--chamber] [--from] [--to],
 search-legifrance [--fund code|loda|jorf], read judilibre:<id> | legi:LEGIARTI.../LEGITEXT... | jorf:JORFTEXT...
 Credentials PISTE_CLIENT_ID + PISTE_CLIENT_SECRET (OAuth client credentials), else skipped with 0 request."""
+import base64
 import datetime as dt
 import fcntl
 import hashlib
 import json
 import os
 import re
+import socket
 import code_sources as sc
 import time
 import urllib.error, urllib.parse, urllib.request
-from sources._common import Barrier, ProviderError, STATE, UA, _before, head_tail, interval, key, law_ok, plain, window
+from sources._common import CFG, Barrier, ProviderError, STATE, UA, _before, head_tail, interval, key, law_ok, plain, window
 
 
 # ---------------------------------------------------------------- PISTE engines (plugins/law.md sections 5-6): judilibre, legifrance
@@ -23,6 +25,9 @@ from sources._common import Barrier, ProviderError, STATE, UA, _before, head_tai
 # Endpoints: Judilibre OpenAPI (github.com/Cour-de-cassation/judilibre-search, public/JUDILIBRE-public.json, v1.2.5): GET /search, GET /decision;
 # Legifrance (DILA, "Exemples d'utilisation de l'API Legifrance" V3 2025-09-17, "Description des tris et filtres"): POST /search,
 # /consult/getArticle, /consult/legiPart, /consult/jorf.
+# Optional broker (config.json piste_broker, tools/piste_broker.py, KEYS.md): when the environment variable piste_broker.env holds a Unix
+# socket path, every API call goes through that socket (method + URL + JSON body; the broker, under another user, holds the pair and the
+# token); the pair is then never read here and no <state>/piste-token.json is written. Same skips and errors as the direct path.
 PISTE_OAUTH = 'https://oauth.piste.gouv.fr/api/oauth/token'
 JUDILIBRE = 'https://api.piste.gouv.fr/cassation/judilibre/v1.0/'
 LEGIFRANCE = 'https://api.piste.gouv.fr/dila/legifrance/lf-engine-app/'
@@ -32,6 +37,29 @@ PISTE_PREFIX = ('judilibre:', 'legi:', 'jorf:')
 PISTE_TOKEN = 'piste-token.json'
 PISTE_MAX = 20_000_000
 _PISTE_OPENER = urllib.request.build_opener(sc._NoRedirect())               # a redirect is refused before any second request
+BROKER = CFG['piste_broker']
+
+
+def piste_broker():
+    """Socket path of the PISTE broker (environment variable config.json piste_broker.env), else None (direct path, the pair by key())."""
+    v = os.environ.get(BROKER['env'], '').strip()
+    return v or None
+
+
+def piste_rate(host):
+    """The run's own pace per PISTE host (lock file in the state dir), shared by the direct and the brokered paths."""
+    STATE.mkdir(parents=True, exist_ok=True)
+    with open(STATE / f'rate-{host}.lock', 'a+') as f:
+        fcntl.flock(f, fcntl.LOCK_EX); f.seek(0); wait = float(f.read() or 0) + interval(host) - time.time()
+        if wait > 0: time.sleep(wait)
+        f.seek(0); f.truncate(); f.write(str(time.time()))
+
+
+def piste_receipt(host, path, t0, status, body, fail, **extra):
+    with open(STATE / 'requests.jsonl', 'a') as f:
+        f.write(json.dumps(dict({'utc': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(t0)), 'host': host, 'path_sha256': hashlib.sha256(path.encode()).hexdigest()},
+                                status=status, bytes=len(body), sha256=hashlib.sha256(body).hexdigest() if body else None, seconds=round(time.time() - t0, 3),
+                                **extra, **({'failure': fail} if fail else {}))) + '\n')
 
 
 class PisteSkip(Exception):
@@ -49,13 +77,8 @@ def piste_http(url, data=None, headers=None, cred=None):
     u = urllib.parse.urlsplit(url)
     if u.scheme != 'https' or u.port not in (None, 443) or u.username or u.password or u.hostname not in PISTE_HOST.values(): raise ValueError('host_not_declared')
     if cred and u.hostname != PISTE_HOST[cred]: raise ValueError('credential_host')
-    STATE.mkdir(parents=True, exist_ok=True)
-    with open(STATE / f'rate-{u.hostname}.lock', 'a+') as f:
-        fcntl.flock(f, fcntl.LOCK_EX); f.seek(0); wait = float(f.read() or 0) + interval(u.hostname) - time.time()
-        if wait > 0: time.sleep(wait)
-        f.seek(0); f.truncate(); f.write(str(time.time()))
-    t0 = time.time(); rec = {'utc': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(t0)), 'host': u.hostname, 'path_sha256': hashlib.sha256(u.path.encode()).hexdigest()}
-    status, body, fail = None, b'', None
+    piste_rate(u.hostname)
+    t0 = time.time(); status, body, fail = None, b'', None
     try:
         with _PISTE_OPENER.open(urllib.request.Request(url, data=data, headers=dict(UA, **(headers or {})), method='POST' if data is not None else 'GET'), timeout=40) as r:
             status, body = r.status, r.read(PISTE_MAX + 1)
@@ -64,10 +87,42 @@ def piste_http(url, data=None, headers=None, cred=None):
         try: body = e.read(65536)
         except Exception: body = b''
     except Exception as e: fail = 'redirect_refused' if str(e) == 'redirect_refused' else 'transport_error:' + type(e).__name__
-    with open(STATE / 'requests.jsonl', 'a') as f:
-        f.write(json.dumps(dict(rec, status=status, bytes=len(body), sha256=hashlib.sha256(body).hexdigest() if body else None, seconds=round(time.time() - t0, 3),
-                                **({'failure': fail} if fail else {}))) + '\n')
+    piste_receipt(u.hostname, u.path, t0, status, body, fail)
     if fail: raise ProviderError(f'provider_error: PISTE {fail}')
+    if len(body) > PISTE_MAX: raise ProviderError('provider_error: PISTE answer too large')
+    return status, body
+
+
+def piste_brokered(url, data):
+    """One API call through the broker socket -> (status, bytes); the broker renews its token once on a 401 itself. Broker verdicts:
+    not_configured / key_invalid / credential_invalid -> PisteSkip (key_invalid marks the pair invalid for the run), rate_limited -> 429,
+    anything else (refused route, transport, unreachable broker) -> ProviderError. Receipt as the direct path, with via "broker"."""
+    u = urllib.parse.urlsplit(url)
+    if u.scheme != 'https' or u.hostname != PISTE_HOST['bearer']: raise ValueError('host_not_declared')
+    piste_rate(u.hostname)
+    t0 = time.time(); status, body, fail, ans = None, b'', None, {}
+    req = json.dumps({'method': 'POST' if data is not None else 'GET', 'url': url, 'body': data.decode() if data is not None else None}).encode() + b'\n'
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.settimeout(BROKER['client_timeout_s']); s.connect(piste_broker()); s.sendall(req)
+            buf, cap = b'', BROKER['max_answer_bytes'] * 4 // 3 + 65536                    # base64 of the largest answer, plus the envelope
+            while not buf.endswith(b'\n') and len(buf) <= cap:
+                chunk = s.recv(1 << 16)
+                if not chunk: break
+                buf += chunk
+        ans = json.loads(buf) if buf.endswith(b'\n') else {'error': 'broker_closed'}
+        if 'status' in ans: status, body = int(ans['status']), base64.b64decode(ans.get('body') or '')
+    except (OSError, ValueError, TypeError) as e: ans = {'error': 'broker_unreachable:' + type(e).__name__}
+    err = str(ans.get('error') or '') if status is None else ''
+    fail = err if err and err not in ('not_configured', 'key_invalid', 'credential_invalid', 'rate_limited') else None
+    piste_receipt(u.hostname, u.path, t0, 429 if err == 'rate_limited' else status, body, fail, via='broker')
+    if err == 'not_configured': raise PisteSkip('not_configured', 'the PISTE broker holds no PISTE_CLIENT_ID + PISTE_CLIENT_SECRET pair (KEYS.md); 0 request')
+    if err == 'credential_invalid': raise PisteSkip('credential_invalid', 'the PISTE broker credentials are not printable ASCII; never sent')
+    if err == 'key_invalid':
+        for k in PISTE_KEYS: sc.mark_invalid(STATE, k)
+        raise PisteSkip('key_invalid', 'PISTE refused the broker client credentials; the run goes on without PISTE')
+    if err == 'rate_limited': raise ProviderError('rate_limited: PISTE HTTP 429')
+    if fail: raise ProviderError(f'provider_error: PISTE broker {fail}')
     if len(body) > PISTE_MAX: raise ProviderError('provider_error: PISTE answer too large')
     return status, body
 
@@ -105,14 +160,17 @@ def piste_token(force=False):
 def piste_json(url, payload=None):
     """GET (payload None) or POST JSON to api.piste.gouv.fr with the bearer; cached by URL and body (never the token).
     401 -> one fresh token, then key_invalid; 403 -> not_subscribed; 404 -> None; 429 / 5xx -> ProviderError."""
-    piste_credentials()                                                         # skipped first, even with a cached answer
+    brokered = piste_broker()
+    if brokered and set(PISTE_KEYS) & sc.invalid_keys(STATE): raise PisteSkip('key_invalid', 'PISTE credentials rejected earlier in this run; the run goes on without PISTE')
+    if not brokered: piste_credentials()                                        # skipped first, even with a cached answer
     data = json.dumps(payload, sort_keys=True, ensure_ascii=False).encode() if payload is not None else None
     cache = STATE / 'cache' / hashlib.sha256(b'piste\0' + url.encode() + b'\0' + (data or b'')).hexdigest()
     if cache.exists(): return json.loads(cache.read_bytes())
-    for attempt in (0, 1):
+    for attempt in (0, 1) if not brokered else ():
         h = {'Authorization': 'Bearer ' + piste_token(force=attempt > 0), 'Accept': 'application/json', **({'Content-Type': 'application/json'} if data else {})}
         st, body = piste_http(url, data, h, cred='bearer')
         if st != 401: break
+    if brokered: st, body = piste_brokered(url, data)                          # the broker holds the token: one fresh token on its side
     if st == 401:
         for k in PISTE_KEYS: sc.mark_invalid(STATE, k)
         raise PisteSkip('key_invalid', 'PISTE refused the token twice (HTTP 401); the run goes on without PISTE')
@@ -436,6 +494,7 @@ SOURCE = {
             'reason': 'Judilibre and Legifrance: 0 request, not_configured (token required by the service)', 'free': 'free, personal PISTE registration',
             'url': 'https://piste.gouv.fr/', 'suggest': ('Judilibre and Legifrance (PISTE)', '~5 min, then subscription to the APIs', True),
             'labels': ['Judilibre', 'Légifrance'], 'check': check_key,
+            'present': lambda: bool(piste_broker()) or bool(key('PISTE_CLIENT_ID') and key('PISTE_CLIENT_SECRET')),   # a broker stands for the pair
             'prompt': {'PISTE_CLIENT_ID': 'PISTE Client ID', 'PISTE_CLIENT_SECRET': 'PISTE Client Secret'},
             'hint': 'create an application on piste.gouv.fr, subscribe it to the Judilibre and Légifrance APIs (production, accept their terms), '
                     'then copy its Client ID and Client Secret (piste.gouv.fr > Applications)',
