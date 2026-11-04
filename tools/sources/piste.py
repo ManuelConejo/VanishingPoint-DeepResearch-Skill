@@ -260,14 +260,32 @@ def lf_item(lid, num, start, end, state, text_title, text_id, B, pre='legi:'):
             'validity': 'end of validity on/after T: masked (no end before T)' if masked else 'LEGI version dates (end exclusive; 2999-01-01 = no end)'}
 
 
+FR_MONTH = {m: i + 1 for i, m in enumerate(('janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'))}
+FR_DATE = re.compile(r"\bdu\s+(1er|\d{1,2})\s+(" + '|'.join(FR_MONTH) + r")\s+(\d{4})\b", re.I)
+
+
+def fr_title_day(s):
+    """First "du 29 octobre 2026" / "du 1er mars 2019" of a French title or JORF reference -> 'YYYY-MM-DD', else None."""
+    m = FR_DATE.search(str(s or ''))
+    if not m: return None
+    try: return dt.date(int(m.group(3)), FR_MONTH[m.group(2).lower()], 1 if m.group(1) == '1er' else int(m.group(1))).isoformat()
+    except ValueError: return None
+
+
 def jorf_item(r, B, title=None, tid=None):
-    """JORF text as published: barrier on publication AND signature dates (< T)."""
+    """JORF text as published: barrier on publication AND signature dates (< T). consult/jorf serves dateParution / dateTexte; /search
+    serves datePublication but dateSignature null (live answer 2026-11-04): the signature is then the date in the title ("Arrêté du 29
+    octobre 2026"), else bounded by the publication (a JORF text is signed before it is published); no publication date -> refused."""
     t0 = (r.get('titles') or [{}])[0]
     tid = tid or t0.get('cid') or t0.get('id') or r.get('cid') or r.get('id'); title = title or t0.get('title') or r.get('title')
-    pub, sig = lf_day(r.get('datePublication') or r.get('dateParution')), lf_day(r.get('dateSignature') or r.get('dateTexte'))
+    pub = lf_day(r.get('datePublication') or r.get('dateParution')) or fr_title_day(r.get('jorfText'))
+    sig, how = lf_day(r.get('dateSignature') or r.get('dateTexte')), 'provider'
+    if not sig: sig, how = fr_title_day(title), 'title'
+    if not sig and pub: sig, how = pub, 'bounded by the publication date (signature not exposed)'
     if not tid or not law_ok(B, [tid, 'jorf:' + tid, r.get('nor')], [pub, sig], [title]): return None
     return {'id': 'jorf:' + tid, 'doi': None, 'title': plain(title), 'year': sig[:4], 'date': sig, 'date_published': pub, 'journal': 'Journal officiel (Legifrance, PISTE)',
             'type': 'text', 'tier': 'primary', 'order': 'FR', 'access': 'api', 'nor': r.get('nor'), 'nature': r.get('nature'), 'version': tid,
+            **({} if how == 'provider' else {'date_source': 'signature date ' + ('read from the title' if how == 'title' else how)}),
             'validity': 'text as published in the JORF (not consolidated: read its legi: version for validity)'}
 
 
