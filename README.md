@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.6.19, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.6.20, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -310,6 +310,8 @@ Small private benches of 2026-11-03 on French law; not reproducible from this re
 
 - **Rules changed after the model's knowledge cut-off** (12 questions): a model with a plain web search gave 83 % of answers
   correct and sourced; VP without the PISTE keys 0 %: without them it can read neither the Journal officiel nor the codes.
+  Re-run on 2026-11-04 with the PISTE keys (Légifrance and Judilibre): VP 8 of 12 against 10 of 12 for the model with web
+  search, at about 25 times the cost; the rule fixed before the run classifies this as worse than web search.
 - **Recent case law** (12 questions): the model with web search and VP with Judilibre tied, 8 of 12 correct and anchored in a
   real decision each, no invented decision; VP cost about 20 times more. On real analysis questions, VP sometimes found a key
   decision that the web search had missed.

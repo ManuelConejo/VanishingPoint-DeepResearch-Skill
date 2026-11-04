@@ -311,5 +311,43 @@ class Legifrance(Base):
         self.no_leak(out)
 
 
+class LegifranceJorfLive(Base):
+    """Non-regression on a reduced live JORF /search answer (2026-11-04: datePublication set, dateSignature null): the 10 texts published
+    before T pass (signature read from the title), a text published or signed on/after T stays excluded, no publication date -> refused."""
+    FIX = json.loads((P / 'fixtures' / 'legifrance_jorf_search.json').read_text(encoding='utf-8'))
+
+    def setUp(self):
+        super().setUp(); self.keys(); self.extra = []
+        self.stub(lambda m, u, h, b: (200, dict(self.FIX, results=self.FIX['results'] + self.extra)) if u.endswith('/search') else (404, {}))
+
+    def test_live_answer_old_texts_pass(self):
+        self.assertTrue(all(x['dateSignature'] is None and x['datePublication'] for x in self.FIX['results']))      # the live shape
+        B = gw.Barrier('2026-11-04'); out, tot = gw.search_legifrance('"intérêt légal"', 10, B, fund='jorf')
+        self.assertEqual((len(out), B.excluded), (10, 0)); self.assertIn('JORF 4787', tot)
+        o = out[0]; self.assertEqual((o['id'], o['date'], o['date_published'], o['year']), ('jorf:JORFTEXT000055047602', '2026-10-29', '2026-11-03', '2026'))
+        self.assertIn('title', o['date_source'])
+        self.assertEqual([x['date'] for x in out if x['id'] == 'jorf:JORFTEXT000054966178'], ['2026-10-08'])  # "Décision n° 2026-1224 QPC du 8 octobre 2026"
+
+    def test_post_T_still_excluded(self):
+        B = gw.Barrier('2026-10-31'); out = gw.search_legifrance('"intérêt légal"', 10, B, fund='jorf')[0]
+        self.assertNotIn('jorf:JORFTEXT000055047602', [o['id'] for o in out])                              # published 2026-11-03 (after T)
+        self.assertNotIn('jorf:JORFTEXT000055037187', [o['id'] for o in out])                              # published 2026-10-31 (on T)
+        self.assertEqual((len(out), B.excluded), (8, 2))
+        self.extra = [{'titles': [{'cid': 'JORFTEXT000099999991', 'title': 'Arrêté du 5 novembre 2026 relatif à X'}], 'datePublication': '2026-10-20T00:00:00.000+0000', 'dateSignature': None},
+                      {'titles': [{'cid': 'JORFTEXT000099999992', 'title': 'Arrêté relatif à Y'}], 'datePublication': None, 'dateSignature': None},
+                      {'titles': [{'cid': 'JORFTEXT000099999993', 'title': 'Arrêté relatif à Z'}], 'datePublication': '2026-10-20T00:00:00.000+0000', 'dateSignature': None},
+                      {'titles': [{'cid': 'JORFTEXT000099999994', 'title': 'Arrêté du 1er octobre 2026'}], 'datePublication': '2026-10-02T00:00:00.000+0000', 'dateSignature': '2026-11-05'}]
+        B = gw.Barrier('2026-11-04'); out = {o['id']: o for o in gw.search_legifrance('x', 20, B, fund='jorf')[0]}
+        self.assertNotIn('jorf:JORFTEXT000099999991', out)                                                 # signed (title) after T
+        self.assertNotIn('jorf:JORFTEXT000099999992', out)                                                 # no date at all: strict
+        self.assertNotIn('jorf:JORFTEXT000099999994', out)                                                 # provider signature after T wins over the title
+        self.assertEqual(out['jorf:JORFTEXT000099999993']['date'], '2026-10-20'); self.assertIn('bounded', out['jorf:JORFTEXT000099999993']['date_source'])
+        self.assertEqual(B.excluded, 3)
+
+    def test_title_day(self):
+        self.assertEqual(gw.fr_title_day('Décret n° 2026-990 du 23 octobre 2026 relatif'), '2026-10-23'); self.assertEqual(gw.fr_title_day('Loi du 1er Mars 2019'), '2019-03-01')
+        self.assertIsNone(gw.fr_title_day('Arrêté du 31 février 2026')); self.assertIsNone(gw.fr_title_day('Arrêté relatif'))
+
+
 if __name__ == '__main__':
     unittest.main()

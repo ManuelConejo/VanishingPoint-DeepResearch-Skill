@@ -1,0 +1,237 @@
+{
+ "_source": "Legifrance POST /search, fond JORF, query \"intérêt légal\", sort PUBLICATION_DATE_DESC, filters DATE_PUBLICATION/DATE_SIGNATURE [start, eve of T]; live answer 2026-11-04 reduced (fields kept as served; extracts dropped)",
+ "totalResultNumber": 4787,
+ "typePagination": "DEFAUT",
+ "results": [
+  {
+   "titles": [
+    {
+     "id": "JORFTEXT000055047602_01-01-2999",
+     "cid": "JORFTEXT000055047602",
+     "title": "Arrêté du 29 octobre 2026 relatif à un programme de financement destiné à encourager l'équipement numérique des pharmaciens titulaires de pharmacie de ville (fonction « Logiciels de gestion d'officines » - Vague 2)",
+     "legalStatus": null,
+     "startDate": null,
+     "endDate": null
+    }
+   ],
+   "type": "data_jorf",
+   "nature": "ARRETE",
+   "origin": "JORF",
+   "etat": null,
+   "date": null,
+   "datePublication": "2026-11-03T00:00:00.000+0000",
+   "dateSignature": null,
+   "dateDiffusion": null,
+   "jorfText": "JORF n°0257 du 3 novembre 2026",
+   "numParution": "0257",
+   "nor": "SFHL2628906A"
+  },
+  {
+   "titles": [
+    {
+     "id": "JORFTEXT000055037187_01-01-2999",
+     "cid": "JORFTEXT000055037187",
+     "title": "Arrêté du 28 octobre 2026 relatif à la mise en œuvre du cadre locatif applicable aux casernes de gendarmerie nationale",
+     "legalStatus": null,
+     "startDate": null,
+     "endDate": null
+    }
+   ],
+   "type": "data_jorf",
+   "nature": "ARRETE",
+   "origin": "JORF",
+   "etat": null,
+   "date": null,
+   "datePublication": "2026-10-31T00:00:00.000+0000",
+   "dateSignature": null,
+   "dateDiffusion": null,
+   "jorfText": "JORF n°0255 du 31 octobre 2026",
+   "numParution": "0255",
+   "nor": "INTJ2624418A"
+  },
+  {
+   "titles": [
+    {
+     "id": "JORFTEXT000055013179_01-01-2999",
+     "cid": "JORFTEXT000055013179",
+     "title": "Décret du 23 octobre 2026 abrogeant le décret portant reconnaissance de l'association « Société archéologique de Montpellier » comme établissement d'utilité publique",
+     "legalStatus": null,
+     "startDate": null,
+     "endDate": null
+    }
+   ],
+   "type": "data_jorf",
+   "nature": "DECRET",
+   "origin": "JORF",
+   "etat": null,
+   "date": null,
+   "datePublication": "2026-10-25T00:00:00.000+0000",
+   "dateSignature": null,
+   "dateDiffusion": null,
+   "jorfText": "JORF n°0250 du 25 octobre 2026",
+   "numParution": "0250",
+   "nor": "INTD2616575D"
+  },
+  {
+   "titles": [
+    {
+     "id": "JORFTEXT000055013248_01-01-2999",
+     "cid": "JORFTEXT000055013248",
+     "title": "Décret n° 2026-990 du 23 octobre 2026 relatif à l'extension de l'aide juridictionnelle en matières civile et administrative au territoire de Wallis-et-Futuna",
+     "legalStatus": null,
+     "startDate": null,
+     "endDate": null
+    }
+   ],
+   "type": "data_jorf",
+   "nature": "DECRET",
+   "origin": "JORF",
+   "etat": null,
+   "date": null,
+   "datePublication": "2026-10-25T00:00:00.000+0000",
+   "dateSignature": null,
+   "dateDiffusion": null,
+   "jorfText": "JORF n°0250 du 25 octobre 2026",
+   "numParution": "0250",
+   "nor": "JUST2616922D"
+  },
+  {
+   "titles": [
+    {
+     "id": "JORFTEXT000055011551_01-01-2999",
+     "cid": "JORFTEXT000055011551",
+     "title": "Arrêté du 22 octobre 2026 portant approbation de l'instruction interministérielle relative à l'organisation nationale de lutte contre les drones aériens malveillants",
+     "legalStatus": null,
+     "startDate": null,
+     "endDate": null
+    }
+   ],
+   "type": "data_jorf",
+   "nature": "ARRETE",
+   "origin": "JORF",
+   "etat": null,
+   "date": null,
+   "datePublication": "2026-10-24T00:00:00.000+0000",
+   "dateSignature": null,
+   "dateDiffusion": null,
+   "jorfText": "JORF n°0249 du 24 octobre 2026",
+   "numParution": "0249",
+   "nor": "PRMD2626277A"
+  },
+  {
+   "titles": [
+    {
+     "id": "JORFTEXT000054992497_01-01-2999",
+     "cid": "JORFTEXT000054992497",
+     "title": "Arrêté du 9 octobre 2026 modifiant l'arrêté du 29 mai 2015 relatif au contenu de la notice d'information annexée aux contrats de location de logement à usage de résidence principale",
+     "legalStatus": null,
+     "startDate": null,
+     "endDate": null
+    }
+   ],
+   "type": "data_jorf",
+   "nature": "ARRETE",
+   "origin": "JORF",
+   "etat": null,
+   "date": null,
+   "datePublication": "2026-10-17T00:00:00.000+0000",
+   "dateSignature": null,
+   "dateDiffusion": null,
+   "jorfText": "JORF n°0243 du 17 octobre 2026",
+   "numParution": "0243",
+   "nor": "VLOL2619452A"
+  },
+  {
+   "titles": [
+    {
+     "id": "JORFTEXT000054988690_01-01-2999",
+     "cid": "JORFTEXT000054988690",
+     "title": "Décision n° 2026-341 L du 15 octobre 2026",
+     "legalStatus": null,
+     "startDate": null,
+     "endDate": null
+    }
+   ],
+   "type": "data_jorf",
+   "nature": "Décision",
+   "origin": "JORF",
+   "etat": null,
+   "date": null,
+   "datePublication": "2026-10-16T00:00:00.000+0000",
+   "dateSignature": null,
+   "dateDiffusion": null,
+   "jorfText": "JORF n°0242 du 16 octobre 2026",
+   "numParution": "0242",
+   "nor": "CSCX2627699S"
+  },
+  {
+   "titles": [
+    {
+     "id": "JORFTEXT000054983401_01-01-2999",
+     "cid": "JORFTEXT000054983401",
+     "title": "Décret n° 2026-954 du 14 octobre 2026 relatif à la mise en œuvre par les établissements d'enseignement d'un dispositif permettant la prévention, le recueil, la détection et le traitement des situations d'atteintes à l'intégrité physique ou morale des élèves et des personnels et autorisant la mise en œuvre de traitements de données à caractère personnel dénommés « Questionnaire violences sexistes et sexuelles »",
+     "legalStatus": null,
+     "startDate": null,
+     "endDate": null
+    }
+   ],
+   "type": "data_jorf",
+   "nature": "DECRET",
+   "origin": "JORF",
+   "etat": null,
+   "date": null,
+   "datePublication": "2026-10-15T00:00:00.000+0000",
+   "dateSignature": null,
+   "dateDiffusion": null,
+   "jorfText": "JORF n°0241 du 15 octobre 2026",
+   "numParution": "0241",
+   "nor": "MENE2623277D"
+  },
+  {
+   "titles": [
+    {
+     "id": "JORFTEXT000054966178_01-01-2999",
+     "cid": "JORFTEXT000054966178",
+     "title": "Décision n° 2026-1224 QPC du 8 octobre 2026",
+     "legalStatus": null,
+     "startDate": null,
+     "endDate": null
+    }
+   ],
+   "type": "data_jorf",
+   "nature": "Décision",
+   "origin": "JORF",
+   "etat": null,
+   "date": null,
+   "datePublication": "2026-10-09T00:00:00.000+0000",
+   "dateSignature": null,
+   "dateDiffusion": null,
+   "jorfText": "JORF n°0236 du 9 octobre 2026",
+   "numParution": "0236",
+   "nor": "CSCX2626855S"
+  },
+  {
+   "titles": [
+    {
+     "id": "JORFTEXT000054965359_01-01-2999",
+     "cid": "JORFTEXT000054965359",
+     "title": "Arrêté du 2 octobre 2026 relatif au fonctionnement et à la composition du Conseil national de la commande publique",
+     "legalStatus": null,
+     "startDate": null,
+     "endDate": null
+    }
+   ],
+   "type": "data_jorf",
+   "nature": "ARRETE",
+   "origin": "JORF",
+   "etat": null,
+   "date": null,
+   "datePublication": "2026-10-09T00:00:00.000+0000",
+   "dateSignature": null,
+   "dateDiffusion": null,
+   "jorfText": "JORF n°0236 du 9 octobre 2026",
+   "numParution": "0236",
+   "nor": "ECOM2620251A"
+  }
+ ]
+}

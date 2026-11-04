@@ -1088,3 +1088,17 @@ Tests
   `tests/fixtures/summary_recheck.json`), `tests/test_contradictor.py`, `tests/test_contradictor_general.py`. Offline suite: 712 tests,
   70 files, all passing under Python 3.12 and under Python 3.9 (throw-away `python:3.9` container, repository read-only, non-root
   user, no network).
+
+## v0.6.20 - 2026-11-04 - Journal officiel search fixed, law re-run with the PISTE keys
+
+Fixes
+- `tools/sources/piste.py`: Journal officiel (JORF) results from Légifrance were all dropped by the date bound, because the
+  provider leaves the signature date empty. The date is now taken from the provider when present, else from the text title
+  ("du 12 juin 2026"), else bounded by the publication date; a new `date_source` field says so when the date does not come
+  from the provider.
+
+README
+- "Law: what is measured": re-run of the rules bench with the PISTE keys (VP 8 of 12, model with web search 10 of 12).
+
+Tests
+- `tests/test_engines_piste.py`: JORF date fallback (fixture `tests/fixtures/legifrance_jorf_search.json`).
