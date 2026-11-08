@@ -130,7 +130,7 @@ Then you apply the downstream rule, extended by the plugin's **Verification rule
 - Corrections **re-verified**: every DISTORTED corrected from the discrepancy, and every ABSENT or INVALID rewritten after a single re-read of its source, goes through **one more verification call** on the corrected claims only (fresh context, same brief; their verdicts replace the old ones in `verdicts.json`, by `id`); a claim still not FOUND after that is removed as in section 7. One re-verification round at most.
 - The methodology appendix states "Mode: audit", the number of batches and of re-verified claims, and the cost.
 
-**Cost and measure.** Measured on our benches: -6.7 points of false claims on three questions (too few for an interpretable interval), and a cost of about **2 times** the standard mode (1.8x measured directly on six law questions; an earlier 6-7x figure compared it with the reference method, not with the standard mode). Use it for figures or rules that commit (law, finance, clinical), not by default.
+**Cost and measure.** Measured on our benches: -6.7 points of false claims on three questions (too few for an interpretable interval), and a cost of about **2 times** the standard mode (1.8x on six law questions, 1.9x on three academic questions; code not measured; an earlier 6-7x figure compared it with the reference method, not with the standard mode). Use it for figures or rules that commit (law, finance, clinical), not by default.
 
 ## Contradiction hunt (optional, never by default)
 

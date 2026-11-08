@@ -1213,3 +1213,9 @@ that did not hold were corrected or qualified:
 - **Test suite**: about three minutes, not one.
 - v0.6.24 note, added here for the record: in the Lacuna measurement, the title-matching rule was corrected after the results were
   seen (6.9 -> 6.5 points of exclusive contribution); the published figure is the corrected, lower one.
+
+## v0.6.27 - 2026-11-08 - audit-mode cost: per-domain figures
+
+Documentation only. The audit-mode cost of v0.6.26 ("about 2 times the standard mode") rested on law questions alone; it now
+gives both measures: 1.8x on 6 law questions (2026-11-03) and 1.9x on 3 academic questions (the exhaustive and standard variants of
+October 2026 run on the same three questions: 42.2 against 22.1 USD). Code studies: not measured.

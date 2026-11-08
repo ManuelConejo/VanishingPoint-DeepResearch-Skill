@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.6.26, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.6.27, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -205,7 +205,7 @@ python3 -I "$SKILL/tools/gateway.py" --T 2026-10-26 --run try --state /tmp/vp-st
 | Mode | How to switch it on | What it does | Cost |
 |---|---|---|---|
 | standard (default) | nothing | the whole method; verification of what carries a decision, one pass | about 2.1-2.6 USD per academic question; about 6-7 USD per code study with the whole reading |
-| audit | `VP_MODE=audit`, or `~/.config/vp/mode` containing `audit`, or "audit mode" in the question | exhaustive card (every atomic claim), verification by batches at fresh context, corrections re-verified once | about 2 times the standard mode (measured on 6 law questions) (measured: -6.7 points of false claims) |
+| audit | `VP_MODE=audit`, or `~/.config/vp/mode` containing `audit`, or "audit mode" in the question | exhaustive card (every atomic claim), verification by batches at fresh context, corrections re-verified once | about 2 times the standard mode (1.8x on 6 law questions, 1.9x on 3 academic questions; code not measured) (measured: -6.7 points of false claims) |
 | contradictor (every plugin) | `VP_CONTRADICTORS` or `~/.config/vp/contradictors` = one or more of `openai[:<model>]` (Codex CLI), `claude[:<model>]` (`claude -p`), `<provider>:<model>` (any OpenAI-compatible API of `tools/config.json`: `openrouter`, `gemini`, `openai-api`, `mistral`, `ollama`, or yours); no model name is fixed in the skill | after the report (code plugin), or after the verification against the source texts the verifier read (other plugins), a model of another family tries to prove it wrong (false or too-strong statements, missing angles); what survives a mechanical check and a fresh-context reread is annotated or added by the orchestrator; the tool never edits the report | 0 USD for the Codex CLI on a subscription, about 0.26 USD per call through an API, + about 0.6 USD of rereads per report (measured on 6 code cases with three models of 2026-10-27); other plugins: about 0.75 USD of rereads per report (measured on 6 biology, cs-ai and law reports, 2026-10-29: Codex 20 true detections against 4 added errors, Kimi 15 against 4; finance, other models, providers and `claude` as contradictor not measured) |
 | prior art | ask "prior art?", "has this already been done?" | the idea is cut into essential elements; `PRIOR-ART.md` answers Exists / Partially / Not found, decided by code from the verified claims (no `REPORT.md`) | same engine and verifier; answer rule not measured |
 | PRISMA / follow-ups | ask for a PRISMA flow diagram or follow-up questions | `PRISMA.md` / `.svg` and `FOLLOWUPS.md`, derived by code from the run (`finish_run.py --prisma --followups`), appended to `REPORT.html` | no model or gateway call |
@@ -259,8 +259,9 @@ the shape of a context capsule.
   for a comparable result (one bench, October 2026).
 - Standard mode, code study with the whole reading before verdicts: about 7 USD (the whole reading alone: 1.3 to 2.6 USD,
   65-290 k input tokens, counted apart in `state/whole-reading/receipt.json`).
-- Audit mode: about 2 times the standard mode (1.8x measured directly on 6 law questions, 2026-11-03); an earlier
-  measure gave 6 to 7 times the cost of the reference method, not of the standard mode.
+- Audit mode: about 2 times the standard mode: 1.8x on 6 law questions (2026-11-03) and 1.9x on 3 academic questions (the
+  exhaustive and standard variants of October 2026 on the same questions, 42.2 against 22.1 USD); code not measured. The
+  former "6 to 7 times" was the cost of the exhaustive variant against the reference method, not against the standard mode.
 - Contradictor option (code plugin): 0 USD for the Codex CLI on a subscription (the natural contradictor on a Claude Code host),
   about 0.26 USD per call through an API (OpenRouter, 2026-10-27), plus about 0.6 USD of fresh-context rereads per report
   (`contradictor.json` carries the figures, and says when a provider does not report its cost).

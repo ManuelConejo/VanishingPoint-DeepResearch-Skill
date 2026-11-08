@@ -198,7 +198,7 @@ personal one) for the user agent that some sources ask for ([ACCESS-POLICY.md](A
 | long legal texts | about 2 to 4.5 USD measured; up to about 10 USD when the verifier reads long decisions whole (one run) |
 | code study with the whole reading | about 6 to 7 USD |
 | full-text verification | extra; the example run: about 2.5 USD of research + about 9 USD of verifier, against 2.99 USD in total with defaults |
-| audit mode | about 2 times the standard mode (1.8x measured on 6 law questions) |
+| audit mode | about 2 times the standard mode (1.8x on 6 law questions, 1.9x on 3 academic questions; code not measured) |
 | Codex CLI on a subscription | 0 USD metered; same number of gateway calls |
 
 The searches stop on saturation, not on a budget; each plugin caps gateway calls (`cap: 60`) and the verifier has its own
