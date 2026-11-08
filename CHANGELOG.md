@@ -1121,3 +1121,13 @@ cached bearer token.
 
 Tests
 - `tests/test_piste_broker.py` (offline: a real broker on a temporary socket, stubbed upstream).
+
+## v0.6.22 - 2026-11-08 - first measure against a model with web search (academic research)
+
+No change to the code, to `SKILL.md` or to any plugin instruction.
+
+README
+- New section "Academic research against web search": on 10 systematic reviews of 2026 (frozen protocol), VP found about twice
+  the included studies (mean recall 39 % against 20 %) with six times fewer invented references (6.5 % against 40 %) than the same
+  model with plain web search, at about 22 times the cost; limits stated.
+- "What is measured, what is not": line added; offline suite count updated (707 tests).

@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.6.21, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.6.22, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -292,9 +292,11 @@ traces are not part of this repository.
 Measured (private benches, small n, judged by models of other families and by the author):
 - downstream verification: -4.2 points of false claims at equal recall (50 questions);
 - recall equal to the reference deep-research method it rewrites (10 questions); about 2x its cost;
+- against the same model with plain web search, on 10 systematic reviews of 2026: about twice the recall, six times fewer
+  invented references (section "Academic research against web search" below);
 - whole reading before verdicts on code: exclusive verified findings in 5 of 6 code cases;
 - contradictor option: 6 code cases, three models of 2026-10-27;
-- every tool: an offline test suite (`tests/`, 712 tests, standard library only, about one minute).
+- every tool: an offline test suite (`tests/`, 707 tests, standard library only, about one minute).
 
 Not measured or not verified:
 - no public benchmark: the figures above cannot be reproduced from this repository yet;
@@ -303,6 +305,23 @@ Not measured or not verified:
 - the verifier's claim windows are tested offline; their catch rate and cost with a model are not measured;
 - `claude` as contradictor, and other models or providers than those listed;
 - engines listed "not wired" by `sources` are declared only.
+
+## Academic research against web search
+
+Private bench of 2026-11-08, protocol and decision rule frozen before the runs; not reproducible from this repository.
+
+- **Task**: 10 systematic reviews published in 2026 (4 Cochrane reviews, 3 computer science, criminology, educational psychology,
+  physical education), new to our benches. Each arm gets the review's question and a date T before the review's search date, and
+  returns a list of studies; the reference is the list of studies the review included, matched mechanically by DOI, PMID, arXiv id
+  or normalised title.
+- **Arms**: the same model with the host's web search and a plain "deep research" instruction, against VP in standard mode.
+  Reading the reference review was forbidden and checked in the traces: no confirmed leak.
+- **Result**: mean recall 39 % for VP against 20 % for web search (+19.5 points; bootstrap 95 % interval +9 to +30); VP ahead on
+  7 questions, behind on none, 3 ties. Invented or mismatched references: 6.5 % of VP's checkable entries against 40 % for web
+  search. Cost about 2.4 USD and 10 minutes per question for VP, 0.11 USD and 30 seconds for web search.
+- **Limits**: 10 questions, one run each. The web-search arm searched little (about 4 searches of the 30 allowed): this measures
+  the model as it behaves with a simple instruction, not a web agent pushed to exhaust its budget. The scorer counts an entry
+  with a right identifier but a descriptive title as invented, which mostly lowers VP's figures.
 
 ## Law: what is measured
 
