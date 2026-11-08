@@ -1161,3 +1161,35 @@ Thin margin over the 5-point rule; the comparison arm was weakened by OpenReview
 
 Tests
 - `tests/test_engines_lacuna.py` (11 offline tests on recorded answers `tests/fixtures/lacuna_*.json`); two contract tests updated.
+
+## v0.6.25 - 2026-11-08 - deterministic checks (contributed by Othman Chaouachi), optional key broker
+
+### Deterministic checks (contribution of Othman Chaouachi, @0thman)
+Three steps of a run move from model judgment to code; each has its own config switch and the previous behaviour is one setting away.
+- **Schema-constrained verifier output** (`tools/verifier.py`, `tools/verifier/verdicts.schema.json`): each host profile gets
+  `schema_args` (`--json-schema` for the Claude Code CLI, the object read from `structured_output`; `--output-schema` for the Codex
+  CLI). `verifier.structured_output: false` restores the free-text parsing.
+- **Computed stop on saturation** (`tools/saturation.py`, `SKILL.md` section 4): implements the existing rule (two consecutive waves of
+  at least the minimum number of calls with no new eligible document, or the ceiling) from `searches/*.md` and the gateway journal;
+  `--close-wave` records a wave in `state/saturation.json`; cache repeats are not counted; Chapman's capture-recapture estimate is
+  printed as an indicator only.
+- **Figure check for FOUND claims** (`tools/verifier/numbers_check.py`): flags a figure of a FOUND claim that the cited fragments do not
+  show (`verifier.numbers`: `flag` by default, `invalid` or `off`), with format normalisation (citation markers, spaced thousands,
+  glued units, decimal comma); optional second judge `verifier.checker_command` (none by default). `SKILL.md` section 7 says how a
+  flagged claim is handled.
+- Duel before adoption (frozen rule, 6 questions of the academic bench, current version against this one): no regression on recall
+  (48.4 % against 45.3 %, within noise); no figure fault on either side; every figure flag of the new arm handled (all 25 flags of both
+  arms were figures present in the source but outside the quoted fragments); one run of the current version lost all 148 of its
+  claims to an unparsable free-text verifier answer, none with the schema-constrained output; verifier cost 1.56 against 3.01 USD.
+
+### Optional key broker
+- `tools/key_broker.py` (new, standard library): a separate process under another user holds every API key and adds it itself to
+  the outgoing requests, only towards the hosts declared for that key; routes are derived from the `key` blocks of the sources and
+  from the contradictor providers. No redirect followed, bounded sizes, keys masked if echoed, peers filtered by uid. It also serves
+  the PISTE protocol.
+- With `VP_KEY_BROKER` set, the run reads no key variable nor file (`code_sources.key()`, the contradictor, `setup_keys.py --check`
+  and `check_keys.py` go through the broker); without it nothing changes. Set-up in KEYS.md, "Key broker".
+
+### Tests
+- New: `tests/test_saturation.py`, `tests/test_numbers_check.py`, `tests/test_key_broker.py`; additions to `tests/test_verifier.py`.
+  Offline suite: 754 tests, all passing.

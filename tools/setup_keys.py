@@ -12,6 +12,8 @@ Usage: setup_keys.py                list the known keys (present or absent, what
        setup_keys.py NAME           install NAME (variable name in any case, or short name: contact, piste, openalex, ncbi, github, swh, openrouter...)
        setup_keys.py NAME --check   live check of the installed key only
        setup_keys.py NAME --remove  delete the key file(s) after confirmation (y)
+With the key broker (VP_KEY_BROKER set, KEYS.md "Key broker") no key is installed here (exit 2: the broker's administrator installs it);
+--check checks through the broker, which alone holds the value.
 Exit code: 0 ok, 1 check failed (or key not installed), 2 usage (unknown name, empty or malformed value)."""
 import argparse, datetime as dt, getpass, json, os, pathlib, re, sys, tempfile, urllib.error, urllib.parse, urllib.request
 P = pathlib.Path(__file__).resolve().parent
@@ -141,7 +143,8 @@ def check_provider(e):
     url = d.get('check_url') or re.sub(r'/chat/completions/?$', '', d.get('url') or '') + '/models'
     if not url.startswith('https://'): return False, 'not checked: the provider url is not https (a key is only sent over https)'
     try:
-        with urllib.request.build_opener(sc._NoRedirect()).open(urllib.request.Request(url, headers={'Authorization': 'Bearer ' + k, 'User-Agent': sc.UA}), timeout=30) as r: r.read(65536)
+        req = urllib.request.Request(url, headers={'Authorization': 'Bearer ' + k, 'User-Agent': sc.UA})
+        with sc.kb.open_request(req) if sc.kb.needs(url, req.headers) else urllib.request.build_opener(sc._NoRedirect()).open(req, timeout=30) as r: r.read(65536)
         return True, 'OK'
     except urllib.error.HTTPError as x:
         if x.code in (401, 403): return False, 'key refused — check you copied it whole'
@@ -155,7 +158,17 @@ def report(e):
     return 0 if all(ok for _, ok, _ in rows) else 1
 
 
+def brokered(e):
+    """True (and a message) when the key broker holds the keys (VP_KEY_BROKER set): nothing is written in ~/.config/vp/ (--remove still
+    deletes a leftover copy there, which the run must not keep)."""
+    if not sc.kb.active() or all(sc.kb.not_secret(v) for v in e['vars']): return False
+    print(f"{sc.kb.ccfg()['env']} is set: the key broker holds the keys, this account must not. Install {' + '.join(e['vars'])} in the broker's "
+          "key directory as its administrator (KEYS.md, \"Key broker\"), then check it here with --check. Nothing written.", file=sys.stderr)
+    return True
+
+
 def install(e):
+    if brokered(e): return 2
     print(f"Key: {' + '.join(e['vars'])} - {e['unlocks']}.")
     print(('What to enter: ' if e['vars'][0] in FORM else 'Get it here: ') + e['url'] + (f" ({HINT[e['vars'][0]]})" if e['vars'][0] in HINT else ''))
     vals = []

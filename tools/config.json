@@ -204,6 +204,11 @@
   "call_cap": 60,
   "fulltext": false,
   "fulltext_cap": 12,
+  "structured_output": true,
+  "numbers": "flag",
+  "checker_command": null,
+  "checker_min_p": 0.85,
+  "note_determinism": "structured_output = the answer is constrained by tools/verifier/verdicts.schema.json through schema_args of the host profile (claude --json-schema, the object read from structured_output; codex --output-schema); false = free text parsed as before. numbers = check of the figures of a FOUND claim against its fragments (verifier/numbers_check.py): 'flag' writes number_problems on the claim and counts the claims in summary.number_flags, 'invalid' makes the claim INVALID (retried like a fragment failure), 'off' skips it. checker_command = optional second judge (a JSON list, e.g. a script calling a frozen NLI or classification model): receives on stdin {claim, fragments} and prints {label: SUPPORTED|DISTORTED|ABSENT, p: 0..1}; a FOUND claim labelled otherwise with p >= checker_min_p gets checker_disagrees and counts in summary.checker_flags, never a status change; null = none.",
   "sandbox_failure_markers": [
    "bwrap:",
    "user namespace",
@@ -243,6 +248,10 @@
     "--max-budget-usd",
     "{usd}"
    ],
+   "schema_args": [
+    "--json-schema",
+    "{schema_json}"
+   ],
    "note": "Claude Code host: the prompt goes on stdin; the caller adds --allowedTools / --disallowedTools; cwd = work dir; env without ANTHROPIC_API_KEY and CLAUDE_CODE_OAUTH_TOKEN. budget_args = added by tools/verifier.py under a spending limit (a user budget, state/budget.json), '{usd}' = what the call may still spend; the openai profile has none (stopped between calls only)."
   },
   "openai": {
@@ -265,6 +274,10 @@
     "-"
    ],
    "stdin": true,
+   "schema_args": [
+    "--output-schema",
+    "{schema_file}"
+   ],
    "note": "Codex CLI host: the prompt goes on stdin ('-'), read-only sandbox, web search disabled; cwd = work dir."
   }
  },
@@ -634,5 +647,25 @@
   "extra_pages": 2,
   "generated_max": 20,
   "note": "search-lacuna (tools/sources/lacuna.py, optional, keyless): api = base of the public Lacuna API (its host gets interval_s seconds between two calls, never under 1 s); page_max = results per request (the server caps a search at 50); extra_pages = most pages requested beyond the first (offset=) until n papers pass the local barrier and the DOI/arXiv recheck; generated_max = most research directions or generated hypotheses served by search-lacuna --generated. Bounds of politeness, not measured optima."
+ },
+ "key_broker": {
+  "env": "VP_KEY_BROKER",
+  "sources_dir": "sources",
+  "not_secret": ["VP_CONTACT"],
+  "piste": true,
+  "client_headers": ["Accept", "Content-Type", "User-Agent", "X-Title", "HTTP-Referer"],
+  "forward_headers": ["Content-Type", "Location", "Retry-After", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset", "X-RateLimit-Resource", "Link", "cf-mitigated"],
+  "min_key_chars": 8,
+  "max_url_chars": 16384,
+  "max_header_chars": 2048,
+  "max_request_bytes": 8000000,
+  "max_answer_bytes": 25000000,
+  "max_concurrent": 8,
+  "client_read_timeout_s": 10,
+  "upstream_socket_timeout_s": 30,
+  "upstream_total_timeout_s": 900,
+  "client_timeout_s": 960,
+  "names_cache_s": 30,
+  "note": "Optional key broker (tools/key_broker.py, KEYS.md 'Key broker'): a separate process, under another user, holds every API key and adds it itself to the outgoing request; the run never sees a key. The run uses it when the environment variable named by env holds the socket path: code_sources.key(NAME) then reads no file nor variable of a key and answers a placeholder (VPKB.<NAME>.VPKB) for the keys the broker says it holds, and any request carrying a placeholder goes through the broker. Routes are derived, never listed here: the 'key' blocks of the sources in sources_dir (read as text with ast, never executed: vars, send query:<param> | bearer | header:<name>, hosts) and contradictor.providers of this file (key, https url: POST to its path, GET to check_url or <base>/models). not_secret = names that follow the key rule but are not secrets (no route; the run keeps reading them). piste = also serve the PISTE broker protocol (tools/piste_broker.py, routes of piste_broker) on the same socket: the gateway uses it for Judilibre and Legifrance when VP_PISTE_BROKER is not set. client_headers = headers a client may add (anything else is refused, except the one header carrying a placeholder; never Accept-Encoding: the broker asks for identity and refuses an encoded answer, which it could not mask); forward_headers = upstream answer headers returned (masked like the body); min_key_chars = a held key shorter than this, or not printable ASCII, is never sent (credential_invalid). max_url_chars, max_header_chars = longest URL accepted and header value returned; max_request_bytes = longest request line (a contradictor prompt, base64); max_answer_bytes = longest upstream answer forwarded (CodeClient caps at 5 MB; a keyed OpenAlex or PubMed page is far below); max_concurrent = upstream calls in flight (a client beyond it waits client_read_timeout_s, then 'busy'); client_read_timeout_s = how long the broker waits for a client's request line; upstream_socket_timeout_s = one socket operation upstream; upstream_total_timeout_s = whole upstream call, headers and body (the contradictor's contradictor.timeout_s); client_timeout_s = how long the run waits for the broker; names_cache_s = how long the run keeps the broker's list of key names. Bounds, not measured optima."
  }
 }

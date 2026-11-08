@@ -15,11 +15,15 @@ Manual method (secondary): put the value in the file `~/.config/vp/<name in lowe
 
 An empty or unreadable file = absent; `None` = the source does without. Nothing is required, no value is displayed or journaled. There is no other lookup location: on a machine where keys were kept elsewhere, copy them to `~/.config/vp/`.
 
+Exception, the key broker (below): when `VP_KEY_BROKER` is set, `key(NAME)` reads **neither** the variable nor the file; it asks the broker which key names it holds and answers a placeholder (`VPKB.<NAME>.VPKB`, not a secret) or `None`. `VP_CONTACT` is not a key and keeps the rule above.
+
 The GitHub token (`read_token()`) follows this same rule; it is sent only as `Authorization: Bearer` to `api.github.com`, never on a redirect, and refused (never sent) if it is not printable ASCII of at least 8 characters (`credential_invalid`). **Limit it to public repositories**: create a fine-grained token with repository access "Public repositories (read-only)" and no other permission. A token that can see private repositories would let `repo-info` and the commit checks return metadata of private repositories (names, branches, commit dates; never their files, which are read from the raw host without the token).
 
 Today only **`OPENALEX_KEY`** (added as `api_key=` to OpenAlex calls), **`NCBI_API_KEY`** (added as `api_key=` to PubMed E-utilities calls, interval 0.11 s instead of 0.45 s), **`VP_GITHUB_TOKEN`** (GitHub code search) **`SWH_TOKEN`** (Software Heritage, `Authorization: Bearer` to `archive.softwareheritage.org` only, never on a redirect, interval 3 s instead of 6 s) **`FRED_API_KEY`** (v0.4.9, engine `fred`: `api_key=` to `api.stlouisfed.org` only, ALFRED vintage of the eve of T; without key 0 request, `skipped` / `credential_missing`) and the pair **`PISTE_CLIENT_ID` + `PISTE_CLIENT_SECRET`** (v0.4.7, engines `judilibre` and `legifrance`, verified on the live service on 2026-11-04: OAuth client credentials sent in a form body to `oauth.piste.gouv.fr` only, the bearer token to `api.piste.gouv.fr` only, never on a redirect nor in a URL; token cached in `<state>/piste-token.json`, mode 0600, with its expiry; none of this in the run with the PISTE broker below) change a network call; only these are ever suggested by `--suggest`. **A key the provider rejects never breaks a source**: NCBI HTTP 400 "API key invalid" or "API key not wellformed", OpenAlex 401/403, Software Heritage 401/403, FRED 400 whose message names `api_key` (no key-less FRED: the engine is then `skipped` / `key_invalid`, 0 request for the rest of the run; `search-dbnomics` stays), PISTE token request 400/401 or API 401 after one fresh token (no key-less retry: the PISTE engines are then `skipped`; API 403 = `not_subscribed`) -> the call is retried once without the key, the key is dropped for the rest of the run (names only in `<state>/keys-invalid.json`), and every gateway answer carries `key_invalid: ["<NAME>"]` (never the value) for the "Source coverage" block; `check_keys.py` stays offline and does not test keys; `setup_keys.py <NAME> --check` does, live. The contradictor provider keys (`OPENROUTER_API_KEY`, `GEMINI_API_KEY`, ... as named in `tools/config.json`) are read by `tools/contradictor.py` only (contradictor option, never by the gateway) and sent only to that provider's url, as a Bearer header. The others are **declared, with no effect until wired**: `S2_API_KEY`, `OPENAIRE_TOKEN`; `check_keys.py` says so on each line concerned.
 
 ## PISTE broker (optional: keep the PISTE pair and token out of the run)
+
+Superseded by the key broker above, which serves the same protocol on its own socket for every key; this standalone service stays supported.
 
 Why: with the pair in `~/.config/vp/` or the environment, anything that runs as the research user (the agent's file reading, a script) can read the pair and the bearer token cached in `<state>/piste-token.json`. The broker `tools/piste_broker.py` (standard library only, self-contained) runs under **another user** that alone holds the pair (its own `~/.config/vp/piste_client_id.key` and `piste_client_secret.key`, or its environment) and keeps the token in memory; it listens on a Unix socket and forwards only the Judilibre and Legifrance calls of `tools/config.json` `piste_broker.routes` (method, host, path; bounded body; no redirect), answering with the HTTP status and body only, never the pair nor the token. Peers whose uid is not allowed are closed.
 
@@ -27,6 +31,61 @@ How:
 1. Create a system user without shell and with a private home (e.g. `useradd --system --create-home --home-dir /var/lib/vp-piste --shell /usr/sbin/nologin vp-piste`), move the two key files into its `~/.config/vp/` (owner that user, 0600) and remove every copy the research user can read.
 2. Install `tools/piste_broker.py` and `tools/config.json` in a directory owned by root and not writable by either user, then run it as that user, for example under systemd (`User=vp-piste`, `RuntimeDirectory=`): `python3 -I piste_broker.py --socket <dir>/piste.sock --allow-uid <uid of the research user>`. The socket directory must not be writable by the research user.
 3. In the research user's environment set `VP_PISTE_BROKER=<dir>/piste.sock` (name in `piste_broker.env`). The gateway then never reads the pair, writes no `piste-token.json`, and gives the same answers, skips (`not_configured` when the broker holds no pair, `key_invalid`, `not_subscribed`) and errors (`rate_limited` on 429, `provider_error` when the broker is unreachable); receipts carry `"via": "broker"`. `check_keys.py` counts the pair as present when the variable is set; `setup_keys.py piste --check` checks through the broker.
+
+## Key broker (optional: keep every key out of the run)
+
+Why: with the keys in `~/.config/vp/` or the environment, anything that runs as the research user can read them: the agent's own file reading, a script, a test that prints a variable (this happened with `OPENALEX_KEY`). The key broker `tools/key_broker.py` (standard library only) runs under **another user** that alone holds the keys and adds them itself to the outgoing requests; the run only ever handles a placeholder.
+
+What it does:
+- It reads each key by its own rule: environment variable `NAME`, else `<keys dir>/<name in lowercase>.key`, keys dir = `--keys-dir`, else `$CREDENTIALS_DIRECTORY` (systemd `LoadCredential=`), else its own `~/.config/vp/`. Files are re-read at each request (rotation without restart). Prefer files to `Environment=`: `systemctl show` displays a unit's environment to every local user.
+- Its routes are **derived**, never listed twice: the `key` block of every source (`tools/sources/*.py`, read as text with `ast`, never executed: `vars`, `send` = `query:<param>` | `bearer` | `header:<name>`, `hosts`) and one route per contradictor provider of `tools/config.json` `contradictor.providers` (Bearer; POST to the provider's chat path only, GET to its `check_url` or `<base>/models` only). `python3 -I tools/key_broker.py --routes` prints them (names, mode, hosts, held or not; never a value).
+- A request is forwarded only if it is HTTPS on port 443, has no userinfo nor fragment, carries at least one placeholder, and each placeholder names a routed key whose hosts contain the **exact** host and sits exactly where that route sends it (whole value of its query parameter, whole `Authorization: Bearer` value, whole value of its header), nowhere else; only the headers of `key_broker.client_headers` may be added; source keys are GET only. Anything else is refused before any upstream request (`refused:<why>`): the broker is not an open proxy.
+- No redirect is followed (the 3xx and its `Location` are returned; a keyed `fetch` then fails with `redirect_refused`); answers are asked uncompressed and an encoded answer is refused; sizes and delays are bounded (`tools/config.json` `key_broker`). The answer is the HTTP status, the useful headers (`key_broker.forward_headers`: rate-limit headers, `Retry-After`, `Location`...) and the body, with every form of the key (raw, URL-encoded) replaced by `[key withheld]`; errors are codes and exception type names; the log line carries time, peer uid, key names, host and status, never a URL nor a value. Peers whose uid is not allowed (`SO_PEERCRED`) are closed without an answer.
+- It also serves the PISTE broker protocol on the same socket (`key_broker.piste`, the code of `tools/piste_broker.py`, its routes `piste_broker.routes`): one service, one socket, the PISTE pair read by the same rule.
+
+What changes in the run when `VP_KEY_BROKER=<socket>` is set (name in `key_broker.env`); without it nothing changes:
+- `key()` / `live_key()` / `read_token()` / `swh_token()` read no key variable nor file; a key the broker does not hold, or a broker that does not answer, is simply absent (skipped / degraded as without a key).
+- Every request carrying a placeholder (`fetch` of the sources, `CodeClient` for GitHub and Software Heritage, the contradictor's provider calls, `setup_keys.py --check`) goes through the broker; key-less requests go out directly as before.
+- A rejected key behaves as today: the broker returns the provider's status and (masked) body, the run decides (`key_invalid`, one key-less retry where the source has one, `<state>/keys-invalid.json`).
+- `check_keys.py` counts a key as present when the broker says it holds it and adds a line `Key broker: <socket> holds <names>` (or "does not answer"); `setup_keys.py NAME --check` checks through the broker; `setup_keys.py NAME` refuses to write a key into the research user's `~/.config/vp/` (exit 2): the broker's administrator installs it; `--remove` still deletes a leftover copy.
+- Judilibre and Legifrance use the same socket when `VP_PISTE_BROKER` is not set.
+
+How (Linux, systemd; the exact steps for the reference server are in the deployment notes):
+1. Create a system user without shell: `useradd --system --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin vp-keys`.
+2. Install `tools/key_broker.py`, `tools/piste_broker.py`, `tools/config.json` and `tools/sources/*.py` (read as text only) in a directory owned by root, not writable by either user, e.g. `/opt/vp-key-broker/tools/`.
+3. Put each key in `/etc/vp-key-broker/keys/<name in lowercase>.key` (directory 0700 root, files 0600 root) and pass them with `LoadCredential=` (the service then reads `$CREDENTIALS_DIRECTORY`, private to it).
+4. Unit (hardened):
+   ```
+   [Service]
+   User=vp-keys
+   Group=vp-keys
+   RuntimeDirectory=vp-keys
+   RuntimeDirectoryMode=0755
+   LoadCredential=openalex_key.key:/etc/vp-key-broker/keys/openalex_key.key
+   # ... one LoadCredential= line per key file
+   ExecStart=/usr/bin/python3 -I /opt/vp-key-broker/tools/key_broker.py --socket /run/vp-keys/keys.sock --allow-uid 1000
+   NoNewPrivileges=yes
+   ProtectSystem=strict
+   ProtectHome=yes
+   PrivateTmp=yes
+   PrivateDevices=yes
+   ProtectKernelTunables=yes
+   ProtectKernelModules=yes
+   ProtectControlGroups=yes
+   RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+   RestrictNamespaces=yes
+   LockPersonality=yes
+   MemoryDenyWriteExecute=yes
+   SystemCallArchitectures=native
+   CapabilityBoundingSet=
+   UMask=0077
+   Restart=on-failure
+   ```
+   The socket is created 0666 and filtered by peer uid; its directory (`/run/vp-keys`, owned by `vp-keys`, 0755) must not be writable by the research user. A container reaches it by bind-mounting `/run/vp-keys` (read-only is enough to connect); allow the uid the container's processes have on the host (`--allow-uid`, repeatable).
+5. In every launcher of the run, set `VP_KEY_BROKER=/run/vp-keys/keys.sock`, and remove every key variable from the run's environment.
+6. Move every key copy the research user can read (`~/.config/vp/*.key` except `vp_contact.key`, environment files, shell profiles) to a root-only backup; check with `python3 -I tools/check_keys.py` (names from the broker) and `python3 -I tools/setup_keys.py <name> --check` (live, through the broker).
+
+Migrating from the PISTE broker: put `piste_client_id.key` and `piste_client_secret.key` among the key broker's credentials, start the key broker, **unset** `VP_PISTE_BROKER` in the launchers (the gateway then uses `VP_KEY_BROKER` for PISTE too; a set `VP_PISTE_BROKER` still wins, so both can run side by side during the switch), check `setup_keys.py piste --check`, then stop and disable the PISTE broker service and remove its user's copy of the pair. `tools/piste_broker.py` stays: the key broker imports it for the PISTE protocol.
 
 ## Key table (declared in the ```sources blocks of the plugins, or "keyed" options of their text)
 

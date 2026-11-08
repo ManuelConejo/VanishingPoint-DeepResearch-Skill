@@ -19,6 +19,8 @@ import urllib.error
 import urllib.request
 from urllib.parse import quote, urlencode, urlsplit
 
+import key_broker as kb   # optional key broker (KEYS.md "Key broker"): with VP_KEY_BROKER set, no key is ever read by this process
+
 CFG = json.loads((pathlib.Path(__file__).resolve().parent / 'config.json').read_text())
 INTERVAL = CFG['code_intervals']
 HL = CFG['http_limits']                            # deadlines, byte caps, cache and receipt sizes of the HTTP clients (Codex review 2026-10-31, items 9-10)
@@ -159,7 +161,14 @@ class CodeClient:
         total = float(HL['total_timeout_s']); deadline = time.monotonic() + total
 
         def go():
-            with self.opener.open(urllib.request.Request(url, data=body, headers=headers), timeout=float(HL['socket_timeout_s'])) as r:
+            req = urllib.request.Request(url, data=body, headers=headers)
+            if kb.needs(url, headers):                                   # a key placeholder: the key broker sends it, never a redirect
+                try:
+                    with kb.open_request(req) as r: return r.status, read_bounded(r, MAX_BYTES, deadline)
+                except urllib.error.HTTPError as e:
+                    if 300 <= e.code < 400: raise RedirectRefused(e.headers.get('Location') or '') from None
+                    raise
+            with self.opener.open(req, timeout=float(HL['socket_timeout_s'])) as r:
                 return r.status, read_bounded(r, MAX_BYTES, deadline)
         return with_deadline(go, total)
 
@@ -276,7 +285,12 @@ def parse_sourcegraph(sse, limit=None):
 def key(name):
     """Optional API key NAME, single rule (KEYS.md): 1. environment variable NAME; 2. ~/.config/vp/<name in lower case>.key
     (exact name, '_key' kept: OPENALEX_KEY -> openalex_key.key). No other fallback. Empty or unreadable = absent.
-    None when absent; the value is never printed nor logged."""
+    None when absent; the value is never printed nor logged.
+    With the key broker (environment variable config.json key_broker.env set): no file nor variable of a key is read; the answer is the
+    placeholder VPKB.<NAME>.VPKB when the broker holds that key (names asked to the broker), else None (key_broker.not_secret names,
+    VP_CONTACT, keep this rule)."""
+    if kb.active() and not kb.not_secret(name):
+        return kb.client_key(name)
     v = os.environ.get(name)
     if v and v.strip():
         return v.strip()

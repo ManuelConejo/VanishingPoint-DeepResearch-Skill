@@ -41,9 +41,21 @@ BROKER = CFG['piste_broker']
 
 
 def piste_broker():
-    """Socket path of the PISTE broker (environment variable config.json piste_broker.env), else None (direct path, the pair by key())."""
+    """Socket path of the PISTE broker (environment variable config.json piste_broker.env), else the generic key broker's socket when it also
+    serves PISTE (key_broker.env set and key_broker.piste true, tools/key_broker.py), else None (direct path, the pair by key())."""
     v = os.environ.get(BROKER['env'], '').strip()
+    if not v and CFG['key_broker'].get('piste'): v = sc.kb.socket_path() or ''
     return v or None
+
+
+def piste_present():
+    """The pair counts as present: a dedicated PISTE broker is set (VP_PISTE_BROKER), or the key broker says it holds both names, or
+    (no broker) key() finds both."""
+    if os.environ.get(BROKER['env'], '').strip(): return True
+    if sc.kb.active():
+        n = sc.kb.names()
+        return bool(piste_broker() and n and set(PISTE_KEYS) <= set(n['held']))
+    return bool(key('PISTE_CLIENT_ID') and key('PISTE_CLIENT_SECRET'))
 
 
 def piste_rate(host):
@@ -494,7 +506,7 @@ SOURCE = {
             'reason': 'Judilibre and Legifrance: 0 request, not_configured (token required by the service)', 'free': 'free, personal PISTE registration',
             'url': 'https://piste.gouv.fr/', 'suggest': ('Judilibre and Legifrance (PISTE)', '~5 min, then subscription to the APIs', True),
             'labels': ['Judilibre', 'Légifrance'], 'check': check_key,
-            'present': lambda: bool(piste_broker()) or bool(key('PISTE_CLIENT_ID') and key('PISTE_CLIENT_SECRET')),   # a broker stands for the pair
+            'present': lambda: piste_present(),                                   # a broker stands for the pair
             'prompt': {'PISTE_CLIENT_ID': 'PISTE Client ID', 'PISTE_CLIENT_SECRET': 'PISTE Client Secret'},
             'hint': 'create an application on piste.gouv.fr, subscribe it to the Judilibre and Légifrance APIs (production, accept their terms), '
                     'then copy its Client ID and Client Secret (piste.gouv.fr > Applications)',

@@ -8,6 +8,8 @@ Role instructions and citation check live next to this file and are used in plac
   verifier/fetch_fulltext.py   open-access full text retrieval (--fulltext)
   verifier/windows.py          claim windows: the spans of a long source sent to the model (config verifier.windows)
   verifier/code_files.py       code sources <path>@<SHA>: the whole file at the SHA, by git show (local git directories) or gateway code-file
+  verifier/verdicts.schema.json answer format of ROLE.md, passed to the host CLI (config verifier.structured_output)
+  verifier/numbers_check.py    figures of a FOUND claim against its fragments (config verifier.numbers); optional second judge: verifier.checker_command
 Measured on our benches (n = 50 questions, downstream): -4.2 points of false claims (CI 97.5 [-7.1; -1.5]); hardened set: 81/81.
 
 Command line:
@@ -64,8 +66,10 @@ import argparse, hashlib, json, os, pathlib, re, shutil, subprocess, sys, tempfi
 HERE = pathlib.Path(__file__).resolve().parent
 ROLE_DIR = HERE / 'verifier'
 ROLE_FILE = ROLE_DIR / 'ROLE.md'
+SCHEMA_FILE = ROLE_DIR / 'verdicts.schema.json'          # answer format of ROLE.md, passed to the host CLI (config verifier.structured_output)
 sys.path.insert(0, str(ROLE_DIR))
 from citation_check import check, norm, load_texts     # noqa: E402
+import numbers_check as _num                            # noqa: E402  (figures of a FOUND claim against its fragments, verifier/numbers_check.py)
 import windows as _win                                  # noqa: E402  (claim windows, verifier/windows.py)
 import code_files as _code                              # noqa: E402  (code sources <path>@<SHA> read by git show, verifier/code_files.py)
 sys.path.insert(0, str(HERE)); import sources as _reg   # noqa: E402,E702  (source registry: identifier kinds)
@@ -79,6 +83,10 @@ MAX_CHARS = int(CFG.get('max_chars_per_call', 200000))  # above: split per sourc
 FULLTEXT = bool(CFG.get('fulltext', False))            # full text when T is known and config verifier.fulltext is true (default: false)
 FULLTEXT_CAP = CFG.get('fulltext_cap')                  # documents fetched in full text per verification (config verifier.fulltext_cap; None = no cap)
 TIMEOUT = int(CFG.get('timeout_s', 1200))
+STRUCTURED = bool(CFG.get('structured_output', True))   # answer constrained by SCHEMA_FILE (schema_args of the host profile)
+NUMBERS = str(CFG.get('numbers') or 'off')              # flag | invalid | off (config verifier.note_determinism)
+CHECKER = CFG.get('checker_command')                    # optional second judge, a JSON list; None = none
+CHECKER_MIN_P = float(CFG.get('checker_min_p', 0.85))
 WIN_CFG = CFG.get('windows') or {}                      # claim windows (config verifier.windows; mode whole = no window)
 SANDBOX_MARKERS = [str(x).lower() for x in CFG.get('sandbox_failure_markers') or []]   # codex shell output of a sandbox that cannot start
 SANDBOX_MSG = ('codex sandbox unavailable: every shell command of the verifier failed before running ({detail}); the sources could not be '
@@ -200,6 +208,8 @@ def _parse_claude(stdout):
     m = {'cost_usd': out.get('total_cost_usd', 0) or 0,
          'tokens_in': (u.get('input_tokens', 0) or 0) + (u.get('cache_read_input_tokens', 0) or 0) + (u.get('cache_creation_input_tokens', 0) or 0),
          'tokens_out': u.get('output_tokens', 0) or 0, 'turns': out.get('num_turns')}
+    if isinstance(out.get('structured_output'), dict):              # --json-schema: the validated object, not the free text
+        out['result'] = json.dumps(out['structured_output'], ensure_ascii=False)
     sub = str(out.get('subtype') or '')
     if sub.startswith('error'):                                      # e.g. error_max_budget_usd: the call stopped, its cost is still counted
         m['error'] = f'model call stopped by the host ({sub})'
@@ -248,6 +258,15 @@ def budget_args(host, usd):
     return [str(a).replace('{usd}', f'{max(usd, 0):.2f}') for a in args]
 
 
+def schema_args(host):
+    """Arguments that constrain the answer to SCHEMA_FILE (config model_command[host].schema_args, '{schema_json}' / '{schema_file}'
+    replaced); [] when config verifier.structured_output is false or the profile has none."""
+    if not STRUCTURED: return []
+    args = ((CONFIG.get('model_command') or {}).get(host) or {}).get('schema_args') or []
+    sj = json.dumps(json.loads(SCHEMA_FILE.read_text(encoding='utf-8')), separators=(',', ':'))
+    return [str(a).replace('{schema_json}', sj).replace('{schema_file}', str(SCHEMA_FILE)) for a in args]
+
+
 def budget_limit(cli_usd, state):
     """Spending limit of the verifier: --budget-usd, else verifier_usd of <state>/budget.json (tools/cost.py --state), else None."""
     if cli_usd is not None: return float(cli_usd)
@@ -281,6 +300,8 @@ def model_call(prompt, workdir, model=None, host=None, budget_usd=None):
     argv = strip_model([a.replace('{model}', model) for a in model_command(host)])
     if budget_usd is not None and (extra := budget_args(host, budget_usd)):
         argv = argv[:-1] + extra + argv[-1:] if argv and argv[-1] == '-' else argv + extra   # codex: before the stdin marker
+    if extra := schema_args(host):
+        argv = argv[:-1] + extra + argv[-1:] if argv and argv[-1] == '-' else argv + extra
     stdin = None
     if host == 'claude':
         if '-p' in argv: argv.insert(argv.index('-p') + 1, prompt)
@@ -476,12 +497,14 @@ def _unit(card, sources, engine, workdir):
     expected = [a['id'] for a in card['claims'] if sources.get(key_of(a, card), {}).get('origin') != 'missing']
     prompt = PROMPT + (ABSTRACT_NOTE if abstract else '') + (WINDOWS_NOTE if any('full_text' in s for s in sources.values()) else '')
     src_of = {a['id']: fs_key(key_of(a, card)) for a in card['claims']}
+    text_of = {a['id']: a.get('text', '') for a in card['claims']}
+    num_pbs = lambda k, v: _num.problems(text_of[k], v.get('fragments')) if NUMBERS == 'invalid' and str(v.get('verdict')).upper() == 'FOUND' else []
     measures, verdicts, bad = [], {}, {}
     if expected:
         txt, m = engine(prompt, str(workdir)); measures.append(m)
         verdicts, bad = read_verdicts(txt, card['card_id'], expected)
     pin = pin_source(verdicts, src_of)
-    pbs = {k: pin.get(k, []) + check([v], texts).get(k, []) for k, v in verdicts.items()}
+    pbs = {k: pin.get(k, []) + check([v], texts).get(k, []) + num_pbs(k, v) for k, v in verdicts.items()}
     pbs = {k: v for k, v in pbs.items() if v}
     pbs.update({k: [m] for k, m in bad.items()})
     missing = [i for i in expected if i not in verdicts]
@@ -498,7 +521,7 @@ def _unit(card, sources, engine, workdir):
             verdicts.pop(k, None)
             if k in v2: verdicts[k] = v2[k]
         pin = pin_source(verdicts, src_of)
-        pbs = {k: pin.get(k, []) + check([v], texts).get(k, []) for k, v in verdicts.items()}
+        pbs = {k: pin.get(k, []) + check([v], texts).get(k, []) + num_pbs(k, v) for k, v in verdicts.items()}
         pbs = {k: v for k, v in pbs.items() if v}
         pbs.update({k: [m] for k, m in bad2.items()})
     failed = bool(measures) and 'error' in measures[0] and len(measures) == 1
@@ -514,7 +537,24 @@ def _unit(card, sources, engine, workdir):
         if status not in STATUSES: status, v = 'INVALID', dict(v, problems=[f'unknown verdict: {v.get("verdict")!r}'])
         out[i] = {'status': status, 'discrepancy': v.get('discrepancy', ''), 'fragments': v.get('fragments', []), 'location': v.get('location', ''),
                   'confidence': v.get('confidence', ''), 'elements': v.get('elements', []), **({'problems': v['problems']} if 'problems' in v else {})}
+        if status == 'FOUND':
+            if NUMBERS == 'flag' and (np := _num.problems(text_of[i], v.get('fragments'))): out[i]['number_problems'] = np
+            if CHECKER: out[i].update(second_judge(text_of[i], v.get('fragments') or []))
     return out, measures, retry
+
+
+def second_judge(claim, fragments, command=None, min_p=None):
+    """Optional second judge of a FOUND claim (config verifier.checker_command): {claim, fragments} on stdin, {label, p} on stdout.
+    Returns {'checker_disagrees': {...}} when it labels the claim otherwise than SUPPORTED with p >= min_p, {'checker_error': ...} when
+    it fails, else {}. Never changes the status: a flag for the orchestrator's reading (section 7), not a verdict."""
+    command = CHECKER if command is None else command; min_p = CHECKER_MIN_P if min_p is None else min_p
+    try:
+        r = subprocess.run(list(command), input=json.dumps({'claim': claim, 'fragments': fragments}, ensure_ascii=False),
+                           capture_output=True, text=True, timeout=120)
+        o = json.loads(r.stdout); label, p = str(o['label']).upper(), float(o['p'])
+    except (OSError, subprocess.TimeoutExpired, ValueError, KeyError, TypeError) as e:
+        return {'checker_error': str(e)[:200]}
+    return {'checker_disagrees': {'label': label, 'p': p}} if label != 'SUPPORTED' and p >= min_p else {}
 
 
 def window_view(card, sources, p):
@@ -587,6 +627,8 @@ def verify(card, sources, engine, work=None, mode='auto', max_chars=MAX_CHARS, w
                            **({'read': 'whole after windows' if a['id'] in escalated else 'windows'} if 'full_text' in s else {})})
     summary = {s: sum(a['status'] == s for a in claims) for s in STATUSES}
     verifiable = sum(summary[s] for s in ('FOUND', 'DISTORTED', 'ABSENT', 'INVALID'))
+    summary['number_flags'] = sum('number_problems' in a for a in claims)
+    summary['checker_flags'] = sum('checker_disagrees' in a for a in claims)
     summary['unsupported_rate'] = round(sum(summary[s] for s in UNSUPPORTED) / verifiable, 3) if verifiable else None
     return {'card_id': card['card_id'], 'question': card.get('question', ''), 'mode': 'source' if per_source else 'card',
             'role_file': 'tools/verifier/ROLE.md', 'claims': claims, 'summary': summary, 'retries': retries, 'measures': measures,

@@ -20,6 +20,7 @@ import urllib.error, urllib.parse, urllib.request
 P = pathlib.Path(__file__).resolve().parent.parent   # tools/
 if str(P) not in sys.path: sys.path.insert(0, str(P))
 import code_sources as sc   # noqa: E402  (key(), invalid_keys(), mark_invalid(): one key rule for the whole skill)
+import key_broker as kb     # noqa: E402  (optional key broker, KEYS.md "Key broker": a request carrying a key placeholder goes through it)
 
 CFG = json.loads((P / 'config.json').read_text())
 CASES_FILE = P.parent / 'tests' / 'fixtures' / 'bench_cases.json'   # date-barrier cases, data only, tests and --case only
@@ -73,11 +74,13 @@ def interval(host):
 
 def _get_bounded(req, timeout):
     """One request under config.json http_limits (Codex review 2026-10-31, item 9): fetch_total_timeout_s for the whole call (headers and body,
-    sc.with_deadline), the body read in chunks up to fetch_max_bytes + 1 bytes (sc.read_bounded)."""
+    sc.with_deadline), the body read in chunks up to fetch_max_bytes + 1 bytes (sc.read_bounded). A request carrying a key placeholder
+    (key broker mode) goes through the broker: same answer or HTTPError, never a redirect followed."""
     total = float(sc.HL['fetch_total_timeout_s']); deadline = time.monotonic() + total
+    brokered = kb.needs(req.full_url, dict(req.header_items()))
 
     def go():
-        with urllib.request.urlopen(req, timeout=timeout) as r:
+        with kb.open_request(req) if brokered else urllib.request.urlopen(req, timeout=timeout) as r:
             return sc.read_bounded(r, int(sc.HL['fetch_max_bytes']), deadline)
     return sc.with_deadline(go, total)
 
@@ -103,6 +106,10 @@ def fetch(url, headers=None):
             data = _get_bounded(urllib.request.Request(url, headers=dict(UA, **(headers or {}))), TIMEOUT.get(host, 40))
         except Exception as e:
             code = getattr(e, 'code', None) or ('timeout' if isinstance(e, TimeoutError) or isinstance(getattr(e, 'reason', None), TimeoutError) else None)
+            if isinstance(code, int) and 300 <= code < 400 and kb.needs(url, headers):   # the key broker never follows a redirect with a key
+                raise ProviderError(f'redirect_refused: HTTP {code} on a keyed request (key broker)') from None
+            if isinstance(e, kb.BrokerError) and 'unreachable' not in str(e):        # a broker verdict (refused, not_configured...): no retry
+                raise ProviderError(f'provider_error: {e}') from None
             rej = KEY_REJECTED.get(host)
             if rej and code in rej[1] and 'api_key=' in url and (lambda b: any(m in b for m in rej[2]))((e.read(int(sc.HL['error_body_bytes'])) or b'').lower()):   # key rejected: once without it, then key-less
                 sc.mark_invalid(STATE, rej[0]); url = strip_key(url)

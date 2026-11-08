@@ -73,6 +73,9 @@ Every key is optional for the skill. A source that cannot work without its key i
   - optionally `suggest`, `labels`, `check`, `rejected`, `interval_with_key`.
 
   `check_keys.py` and `setup_keys.py` read it from there. Also add the key to the table in `KEYS.md`, for humans.
+  The key broker (`tools/key_broker.py`, KEYS.md "Key broker") derives its routes from the same block (`vars`, `send`, `hosts`, read as
+  literals with `ast`): keep these three values literal, and send the key only through `fetch` / `CodeClient` (or `key_broker.open_request`),
+  so that in broker mode the placeholder `key(NAME)` returns is replaced by the broker, never by your code.
 - Resolve the key with `key(NAME)` or `live_key(NAME)`. Never read the environment yourself.
 - **A key never appears in a URL**, except as the declared query parameter sent to a declared host.
 - **A key never appears** in a receipt, the journal, an error message, the cache or a printed line. Only names go to

@@ -6,6 +6,8 @@ GitHub token (`read_token()`). Prints per plugin: active sources, degraded for l
 with the exact variable name, free or not, and the URL to obtain it (KEYS.md). Never a key value. Ends with the contradictor line
 ("Contradictors: none (...)" or the configured families, names only, and whether OPENROUTER_API_KEY is present) and the mode line
 ("Mode: standard" or "Mode: audit (set by VP_MODE|~/.config/vp/mode)").
+With VP_KEY_BROKER set (KEYS.md "Key broker") key() reads no key itself: a key is present when the broker says it holds it (names only,
+asked to the broker), and one line "Key broker: <socket> holds <names>" (or "does not answer") is added; --json gains "key_broker".
 With --announce it first runs tools/auto_update.py (at most once a day): one information line when a newer release exists or was
 installed, otherwise nothing; never an error, never another exit code.
 Usage: check_keys.py [--plugin P.md ...] [--json] [--announce]   (without --plugin: every plugins/*.md except _TEMPLATE). Exit code: 0.
@@ -188,7 +190,20 @@ def report(plugins=()):
     files = [gw.plugin_path(p) for p in plugins] or sorted(p for p in (P.parent / 'plugins').glob('*.md') if not p.name.startswith('_'))
     rs = [plugin_report(p) for p in files]
     missing = sorted({i['variable'] for r in rs for i in r['skipped'] + r['degraded'] + r.get('keyed_not_wired', [])})
-    return {'plugins': rs, 'missing_keys': missing, 'ok': not any(r['skipped'] or r['degraded'] for r in rs), 'mode': mode(), 'contradictors': contradictors()}
+    return {'plugins': rs, 'missing_keys': missing, 'ok': not any(r['skipped'] or r['degraded'] for r in rs), 'mode': mode(), 'contradictors': contradictors(),
+            **({'key_broker': broker_info()} if sc.kb.active() else {})}
+
+
+def broker_info():
+    """Key broker mode (VP_KEY_BROKER set, KEYS.md "Key broker"): the socket, whether it answers, and the NAMES of the keys it holds, as the
+    broker says (asked now, never a value); the key states above come from the same answer."""
+    n = sc.kb.names(force=True)
+    return {'socket': sc.kb.socket_path(), 'reachable': n is not None, 'held': sorted((n or {}).get('held') or [])}
+
+
+def broker_line(b):
+    if not b['reachable']: return f"Key broker: {b['socket']} does not answer; every key counts as absent (the run reads none itself)."
+    return f"Key broker: {b['socket']} holds " + (', '.join(b['held']) or 'no key') + ' (names only; the run reads no key itself).'
 
 
 def text(rep):
@@ -207,6 +222,7 @@ def text(rep):
         out.append('  keys present   : ' + (', '.join(r['keys_present']) or 'none') + '; absent: ' + (', '.join(r['keys_absent']) or 'none'))
         if r.get('unknown_keys'): out.append('  keys outside the catalogue (KEYS.md to complete): ' + ', '.join(r['unknown_keys']))
     out.append('Missing keys: ' + (', '.join(rep['missing_keys']) or 'none') + '. How to obtain and install them: python3 -I tools/setup_keys.py <NAME> (lists, installs and checks live; KEYS.md).')
+    if rep.get('key_broker'): out.append(broker_line(rep['key_broker']))
     out.append(contradictors_line())
     out.append(mode_line())
     return '\n'.join(out)

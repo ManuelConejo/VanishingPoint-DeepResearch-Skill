@@ -63,7 +63,7 @@ import argparse, datetime as dt, difflib, hashlib, json, os, pathlib, re, shutil
 from types import SimpleNamespace
 
 HERE = pathlib.Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE)); import whole_reading as W, code_sources as sc  # noqa: E402  (python3 -I does not add the script directory)
+sys.path.insert(0, str(HERE)); import whole_reading as W, code_sources as sc, key_broker as kb  # noqa: E402  (python3 -I does not add the script directory)
 CFG = json.loads((HERE / 'config.json').read_text())
 CO = CFG.get('contradictor', {})
 Y_CAP = int(CO.get('y_cap_chars', 220000)); MAX_USD = float(CO.get('max_usd', 4.0)); REREAD_USD = float(CO.get('reread_usd_per_call', 0.4))
@@ -281,7 +281,9 @@ def extract_json(txt):
 
 def http_call(spec, prompt, trace):
     """One chat-completions call to an OpenAI-compatible endpoint (fields of config "request" plus the provider's "extra").
-    Returns (text, measure); the key goes in the Authorization header only and is never written anywhere."""
+    Returns (text, measure); the key goes in the Authorization header only and is never written anywhere. With the key broker
+    (VP_KEY_BROKER, KEYS.md "Key broker") the key is a placeholder and the call goes through the broker, which adds the key itself
+    and only for that provider's host and chat path."""
     prov = spec['provider']; name = spec['via']
     url = os.environ.get('VP_CONTRADICTOR_URL_' + re.sub(r'\W', '_', name).upper()) or prov.get('url')
     if not url: return None, dict(error='provider_unknown', usd=0.0, note=f'provider {name}: no url (tools/config.json contradictor.providers)')
@@ -296,7 +298,8 @@ def http_call(spec, prompt, trace):
     req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers)
     t0 = time.monotonic()
     try:
-        with urllib.request.build_opener(sc._NoRedirect()).open(req, timeout=TIMEOUT) as r: rep = json.load(r)   # never follow a redirect with the key
+        with kb.open_request(req) if kb.needs(url, headers) else urllib.request.build_opener(sc._NoRedirect()).open(req, timeout=TIMEOUT) as r:
+            rep = json.load(r)                                                                          # never follow a redirect with the key
     except urllib.error.HTTPError as e: return None, dict(error=f'HTTP {e.code}', detail=e.read().decode('utf-8', 'replace')[:300], usd=0.0, seconds=round(time.monotonic() - t0))
     except (urllib.error.URLError, OSError, ValueError) as e: return None, dict(error=str(e)[:300], usd=0.0, seconds=round(time.monotonic() - t0))
     content = ((rep.get('choices') or [{}])[0].get('message') or {}).get('content') or ''; u = rep.get('usage') or {}
