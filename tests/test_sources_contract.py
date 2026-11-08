@@ -91,7 +91,7 @@ class Contract(unittest.TestCase):
                     if s['access'] == 'page' and 'interval' in v: self.assertGreaterEqual(v['interval'], 2.0)   # ACCESS-POLICY level 2
                 for e, v in s['engines'].items():
                     self.assertRegex(e, r'^[a-z0-9][a-z0-9.-]*$')
-                    self.assertTrue(set(v['options']) <= {'court', 'chamber', 'date_from', 'date_to', 'fund', 'language', 'repo'}, v['options'])
+                    self.assertTrue(set(v['options']) <= {'court', 'chamber', 'date_from', 'date_to', 'fund', 'generated', 'language', 'repo'}, v['options'])   # options gateway.py main passes
                 for i in s['ids']:
                     if i['form']: re.compile(i['form'])
                     if i['law_form']: re.compile(i['law_form'])

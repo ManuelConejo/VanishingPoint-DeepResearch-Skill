@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.6.23, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.6.24, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -297,7 +297,7 @@ Measured (private benches, small n, judged by models of other families and by th
   invented references (section "Academic research against web search" below);
 - whole reading before verdicts on code: exclusive verified findings in 5 of 6 code cases;
 - contradictor option: 6 code cases, three models of 2026-10-27;
-- every tool: an offline test suite (`tests/`, 707 tests, standard library only, about one minute).
+- every tool: an offline test suite (`tests/`, 718 tests, standard library only, about one minute).
 
 Not measured or not verified:
 - no public benchmark: the figures above cannot be reproduced from this repository yet;
@@ -362,7 +362,7 @@ The gateway reads, in the Sources section, a fenced block:
 
 ````
 ```sources
-engines: openalex, crossref, arxiv     # wired engines: pubmed, europepmc, crossref, openalex, arxiv, clinicaltrials, biorxiv, medrxiv, dblp, econbiz, dbnomics, fred (FRED_API_KEY), edgar (VP_CONTACT e-mail), opencitations, unpaywall (VP_CONTACT e-mail), datacite ; law: eurlex, justice-administrative, hal, theses-fr, hudoc, hudoc-feed, europarl, isidore, judilibre, legifrance (PISTE pair) ; ai: openreview, zenodo, hal-info, hf-models, hf-datasets, standards, proceedings ; web archive: wayback (Internet Archive, last capture of a page URL before T; id wayback:<url>) ; code, versions, paper-code, provenance, osv, ecosyste.ms, github-advisory
+engines: openalex, crossref, arxiv     # wired engines: pubmed, europepmc, crossref, openalex, arxiv, clinicaltrials, biorxiv, medrxiv, dblp, econbiz, dbnomics, fred (FRED_API_KEY), edgar (VP_CONTACT e-mail), opencitations, unpaywall (VP_CONTACT e-mail), datacite ; law: eurlex, justice-administrative, hal, theses-fr, hudoc, hudoc-feed, europarl, isidore, judilibre, legifrance (PISTE pair) ; ai: openreview, zenodo, hal-info, hf-models, hf-datasets, standards, proceedings, lacuna (optional index lane, ML/AI only; generated leads only with --generated, never citable) ; web archive: wayback (Internet Archive, last capture of a page URL before T; id wayback:<url>) ; code, versions, paper-code, provenance, osv, ecosyste.ms, github-advisory
 since: 2015                            # optional lower bound (year)
 cap: 60                                # optional safety cap on calls
 keys: OPENALEX_KEY                     # optional keys, resolved as in KEYS.md, never required

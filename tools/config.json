@@ -626,5 +626,13 @@
   "client_timeout_s": 120,
   "token_margin_s": 60,
   "note": "Optional PISTE broker (tools/piste_broker.py, KEYS.md 'PISTE broker'): a separate process, under another user, holds the PISTE pair and the bearer token and answers on a Unix socket; the gateway uses it when the environment variable named by env holds the socket path, and then never reads the pair nor writes <state>/piste-token.json. oauth = token endpoint; routes = the only method + URL (scheme, host and path, the query is free for GET, empty for POST whose body must be a JSON object) the broker forwards: the endpoints tools/sources/piste.py uses (Judilibre GET /search and /decision, Legifrance POST /search and /consult/getArticle, legiPart, jorf); anything else is refused before any request. intervals = seconds between two upstream calls per host inside the broker (same pace as the piste source hosts). max_request_bytes = longest request line accepted from a client; max_answer_bytes = longest upstream answer forwarded (same bound as piste.py PISTE_MAX); upstream_timeout_s = timeout of one upstream call (same as piste.py); client_timeout_s = how long the gateway waits for the broker (it serialises the upstream calls and paces them); token_margin_s = a cached token is renewed when fewer seconds than this are left. Bounds, not measured optima."
+ },
+ "lacuna": {
+  "api": "https://lacuna.tiptreesystems.com/api/v1/",
+  "interval_s": 1.5,
+  "page_max": 50,
+  "extra_pages": 2,
+  "generated_max": 20,
+  "note": "search-lacuna (tools/sources/lacuna.py, optional, keyless): api = base of the public Lacuna API (its host gets interval_s seconds between two calls, never under 1 s); page_max = results per request (the server caps a search at 50); extra_pages = most pages requested beyond the first (offset=) until n papers pass the local barrier and the DOI/arXiv recheck; generated_max = most research directions or generated hypotheses served by search-lacuna --generated. Bounds of politeness, not measured optima."
  }
 }

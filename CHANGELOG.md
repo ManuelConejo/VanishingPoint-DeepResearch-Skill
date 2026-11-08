@@ -1141,3 +1141,23 @@ README
   question, same budget cap as VP), reached a mean recall of 49 % against 39 % for VP, with 17.6 % invented or mismatched
   references against 6.5 % for VP. VP's measured advantage over a web search that really searches is the reliability of its
   references, not their number. Summary line in "What is measured, what is not" updated.
+
+## v0.6.24 - 2026-11-08 - optional Lacuna engine (ML/AI index lane)
+
+No change to `SKILL.md`. `plugins/cs-ai.md` lists one more optional engine.
+
+New source
+- `tools/sources/lacuna.py` (keyless, `access: api`): `search-lacuna` queries the public search API of Lacuna, a research map of
+  machine learning built with the method of arXiv 2603.01092. Papers only, `tier: index`; each hit is served under its DOI or arXiv
+  id (rechecked on Crossref or arXiv) when it has one, else `lacuna:<id>`; date barrier T as for every source (year-precision dates
+  read as a year, undated records refused); `read lacuna:art_<hex>`. Research directions and generated hypotheses are returned
+  only with `--generated direction|hypothesis`, marked `type: generated_hypothesis`, `evidence: false`, undated and with a
+  `leak_risk` note; their ids are refused by `card.json` / `result.json`, so they can never be cited. Scope: ML/AI only.
+- `tools/gateway.py`: option `--generated`; `tools/config.json`: block `lacuna` (pace, bounds).
+
+Measured once (6 ML/AI surveys of 2026, engine level, rule written before the runs): recall of the surveys' references 21.5 % without
+and 28.0 % with the engine, exclusive contribution 6.5 points (5.6 counting only hits with a DOI or arXiv id), no item dated after T.
+Thin margin over the 5-point rule; the comparison arm was weakened by OpenReview rate limits during the runs.
+
+Tests
+- `tests/test_engines_lacuna.py` (11 offline tests on recorded answers `tests/fixtures/lacuna_*.json`); two contract tests updated.

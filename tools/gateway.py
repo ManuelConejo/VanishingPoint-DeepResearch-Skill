@@ -65,6 +65,9 @@ Command line:
     standards (rfc:<n> | pep:<n> | w3c:<shortname>), proceedings (acl:<Anthology id> | pmlr:v<vol>/<key> | cvf:content/<CONF>/html/<name>_paper)
   PISTE engines (plugins/law.md, credentials PISTE_CLIENT_ID + PISTE_CLIENT_SECRET, else skipped with 0 request): judilibre [--court cc|ca|tj|tcom]
     [--chamber civ1|soc|cr...] [--from] [--to], legifrance [--fund code|loda|jorf] (read judilibre:<id> | legi:LEGIARTI.../LEGITEXT... | jorf:JORFTEXT...)
+  lacuna (plugins/cs-ai.md, optional, ML/AI only; index lane): search-lacuna "<q>" -> papers under doi: / arxiv: (rechecked) or lacuna:<artifact id>;
+    --generated direction|hypothesis -> research directions or generated hypotheses instead (type generated_hypothesis, evidence false, undated,
+    never citable: leads only, post-T leak risk); read lacuna:art_<hex>
   AI engines (plugins/cs-ai.md): openreview, zenodo, hal-info (id: openreview:<forum id> | zenodo:<record id>); code engine usage <pypi|npm|cargo|...>:<package> [--repo <owner>/<name>] (ecosyste.ms;
     also the names of dependent packages released before T, the highest version before T, and repo_mismatch for a namesake package)
   finance data engines (plugins/finance.md): dbnomics (keyless; current values marked as_of "now"; read dbnomics:<provider>/<dataset>/<series>),
@@ -389,10 +392,11 @@ def main():
     ap.add_argument('--court', default=None, help='search-justice-administrative: exact court code (CE, TA75, CAA69)')
     ap.add_argument('--from', dest='date_from', default=None); ap.add_argument('--to', dest='date_to', default=None, help='search-justice-administrative: decision-date window YYYY-MM-DD')
     ap.add_argument('--chamber', default=None, help='search-judilibre: chamber key (civ1, soc, cr...); --court cc|ca|tj|tcom'); ap.add_argument('--fund', default=None, help='search-legifrance: code|loda|jorf')
+    ap.add_argument('--generated', default=None, help='search-lacuna: direction|hypothesis -> research directions or generated hypotheses instead of papers (leads, never evidence; undated: post-T leak risk)')
     a = ap.parse_args()
     try: g = Gateway(a.plugin, T=a.T, case=a.case, run=a.run, state=a.state, cap=a.cap, since=a.since)
     except PluginNotFound as e: print(f'gateway.py: {e}', file=sys.stderr); sys.exit(2)
-    out = g.call(a.cmd, ' '.join(a.arg), a.n, language=a.language, repo=a.repo, path=a.path, ecosystem=a.ecosystem, issue_type=a.issue_type, issue_state=a.issue_state, use=a.use, court=a.court, date_from=a.date_from, date_to=a.date_to, chamber=a.chamber, fund=a.fund)
+    out = g.call(a.cmd, ' '.join(a.arg), a.n, language=a.language, repo=a.repo, path=a.path, ecosystem=a.ecosystem, issue_type=a.issue_type, issue_state=a.issue_state, use=a.use, court=a.court, date_from=a.date_from, date_to=a.date_to, chamber=a.chamber, fund=a.fund, generated=a.generated)
     print(json.dumps(served_view(out, a.cmd, a.lines), ensure_ascii=False))
 
 
