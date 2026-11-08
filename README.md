@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.6.22, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.6.23, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -292,7 +292,8 @@ traces are not part of this repository.
 Measured (private benches, small n, judged by models of other families and by the author):
 - downstream verification: -4.2 points of false claims at equal recall (50 questions);
 - recall equal to the reference deep-research method it rewrites (10 questions); about 2x its cost;
-- against the same model with plain web search, on 10 systematic reviews of 2026: about twice the recall, six times fewer
+- against the same model with web search, on 10 systematic reviews of 2026: about twice the recall of a plain web search and
+  six times fewer invented references; against a web search pushed to exhaustion, lower recall but about three times fewer
   invented references (section "Academic research against web search" below);
 - whole reading before verdicts on code: exclusive verified findings in 5 of 6 code cases;
 - contradictor option: 6 code cases, three models of 2026-10-27;
@@ -322,6 +323,14 @@ Private bench of 2026-11-08, protocol and decision rule frozen before the runs; 
 - **Limits**: 10 questions, one run each. The web-search arm searched little (about 4 searches of the 30 allowed): this measures
   the model as it behaves with a simple instruction, not a web agent pushed to exhaust its budget. The scorer counts an entry
   with a right identifier but a descriptive title as invented, which mostly lowers VP's figures.
+- **Second web arm, pushed to exhaustion** (same day, rule added before its runs): same model, instructed to run at least 20
+  web searches, query several databases, follow references and stop only at saturation, with the same budget cap as VP. It ran
+  about 58 searches per question. Mean recall 49 % against 39 % for VP (VP ahead on 3 questions, behind on 7; bootstrap 95 %
+  interval of VP minus this arm -24 to +2 points); invented or mismatched references 17.6 % against 6.5 % for VP; cost about
+  1.2 USD per question against 2.4 USD. By the rule fixed before the runs this is classed as worse for VP (-10.0 points against
+  a -10 threshold); with the two known scoring defects corrected for every arm the gap shrinks to about -2 points.
+- **Reading**: against a web search that really searches, VP's measured advantage is the reliability of its references, not
+  their number.
 
 ## Law: what is measured
 

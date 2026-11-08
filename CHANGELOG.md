@@ -1131,3 +1131,13 @@ README
   the included studies (mean recall 39 % against 20 %) with six times fewer invented references (6.5 % against 40 %) than the same
   model with plain web search, at about 22 times the cost; limits stated.
 - "What is measured, what is not": line added; offline suite count updated (707 tests).
+
+## v0.6.23 - 2026-11-08 - academic bench: second web arm pushed to exhaustion
+
+No change to the code, to `SKILL.md` or to any plugin instruction.
+
+README
+- "Academic research against web search": a second web-search arm, instructed to search to saturation (about 58 searches per
+  question, same budget cap as VP), reached a mean recall of 49 % against 39 % for VP, with 17.6 % invented or mismatched
+  references against 6.5 % for VP. VP's measured advantage over a web search that really searches is the reliability of its
+  references, not their number. Summary line in "What is measured, what is not" updated.
