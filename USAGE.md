@@ -119,7 +119,7 @@ All are off by default; none changes the standard deliverables unless stated.
 | Prior art | you want to know whether an idea, method or tool already existed at T | "Prior art? T = 2022-01-01. <idea>" ("has this already been done?", "does this already exist?") | `PRIOR-ART.md`: **Exists** / **Partially** / **Not found**, closest prior art with verified passages, what differs, what was searched; no `REPORT.md` | not measured; same engine and verifier as a standard run |
 | PRISMA, follow-ups | a systematic-review flow diagram, or next questions to ask | "with a PRISMA flow diagram", "with follow-up questions" | `PRISMA.md`, `PRISMA.svg`, `prisma.json`; `FOLLOWUPS.md`, `followups.json` (3 to 5 questions); both appended to `REPORT.html` | no model call, no gateway call |
 | Full-text verification | figures sit in the body of papers, not in abstracts | ask the assistant to run the verifier with `--fulltext`, or set `"fulltext": true` under `verifier` in `tools/config.json` | the verifier reads the open full text pinned before T of the sources carrying the most claims (at most `verifier.fulltext_cap`, 12) | multiplies the verifier cost: up to about 9 USD-equivalent for the verifier on a 12-paper report |
-| Audit | figures or rules that commit (law, finance, clinical) | `VP_MODE=audit`, or `~/.config/vp/mode` containing `audit`, or "audit mode" in the question | every atomic claim checked, by batches; corrections re-verified once | 6 to 7 times the standard mode (measured: -6.7 points of false claims) |
+| Audit | figures or rules that commit (law, finance, clinical) | `VP_MODE=audit`, or `~/.config/vp/mode` containing `audit`, or "audit mode" in the question | every atomic claim checked, by batches; corrections re-verified once | about 2 times the standard mode (measured: -6.7 points of false claims) |
 | Contradictor (every plugin) | a second model family should try to prove a report wrong | `VP_CONTRADICTORS` or `~/.config/vp/contradictors` = `openai[:<model>]`, `claude[:<model>]` or `<provider>:<model>` | `contradictor.json`; findings annotated "contradicted by <family>" or added and verified | 0 USD with Codex CLI on a subscription; about 0.26 USD per API call + about 0.6 USD of rereads per report |
 | Update a previous run | refresh a report at today's T | "update my review of <dir>" | a new run in a new directory, plus `UPDATE.md` and `update.json` (what changed) | a normal run |
 | Follow-up | more on a delivered report: one finding, one country, one population | "dig into point 3", "and for France?" | a short verified run in `<dir>/followups/<n>/` (`tools/followup.py`: same T and plugins, gateway cache and known sources reused), delivered as `<dir>/FOLLOWUP-<n>.md` / `.html` / `.pdf`; the main report is never modified | measured once: about 1.5 USD (Sonnet orchestrator, verification included) |
@@ -194,11 +194,11 @@ personal one) for the user agent that some sources ask for ([ACCESS-POLICY.md](A
 
 | Run | Measured cost (model usage) |
 |---|---|
-| academic question, standard mode, Claude Code | about 3 USD (2.8 to 3.0 USD measured, verification included) |
-| long legal texts | up to about 10 USD (the verifier reads long decisions whole) |
-| code study with the whole reading | about 7 USD |
+| academic question, standard mode, Claude Code | about 2.1 to 2.6 USD (10 questions measured on 2026-11-08, verification included) |
+| long legal texts | about 2 to 4.5 USD measured; up to about 10 USD when the verifier reads long decisions whole (one run) |
+| code study with the whole reading | about 6 to 7 USD |
 | full-text verification | extra; the example run: about 2.5 USD of research + about 9 USD of verifier, against 2.99 USD in total with defaults |
-| audit mode | 6 to 7 times the standard mode |
+| audit mode | about 2 times the standard mode (1.8x measured on 6 law questions) |
 | Codex CLI on a subscription | 0 USD metered; same number of gateway calls |
 
 The searches stop on saturation, not on a budget; each plugin caps gateway calls (`cap: 60`) and the verifier has its own

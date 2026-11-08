@@ -1193,3 +1193,23 @@ Three steps of a run move from model judgment to code; each has its own config s
 ### Tests
 - New: `tests/test_saturation.py`, `tests/test_numbers_check.py`, `tests/test_key_broker.py`; additions to `tests/test_verifier.py`.
   Offline suite: 754 tests, all passing.
+
+## v0.6.26 - 2026-11-08 - published figures re-checked against their raw evidence
+
+No change to the method. Every figure of README.md, USAGE.md and SKILL.md was traced back to the result files of its bench; the ones
+that did not hold were corrected or qualified:
+- **Audit mode cost**: "6 to 7 times the standard mode" compared the exhaustive variant with the reference method, not with the
+  standard mode. Measured directly against the standard mode (6 law questions, 2026-11-03): 1.8 times. Docs now say "about 2 times";
+  `tools/config.json` `estimates.audit_factor` (used by `tools/cost.py`) is now 1.8 to 3.0 instead of 6 to 7.
+- **Audit mode quality**: the "-6.7 points of false claims, confidence interval [-12.2; -1.1]" rested on three questions; the
+  interval is removed (too few questions to interpret).
+- **Standard mode cost**: about 2.1 to 2.6 USD per academic question (10 questions, 2026-11-08, Sonnet orchestrator and
+  searchers, verification included) instead of "2.8 to 3.0 USD"; law questions about 2 to 4.5 USD measured, one long-text run with
+  full-text verification about 10 USD; `estimates.standard_usd` and `estimates.law_usd` updated accordingly.
+- **Whole reading on code**: 1.3 to 2.6 USD for the reading itself (was "0.9 to 2.6").
+- **Against the reference method**: the bench behind "equal recall and F1" had 9 questions and was classed inconclusive for
+  incomplete data; the "about 2x its cost" figure was measured on an earlier version. Both are now said so.
+- **Engine recall 48.9 %** (SKILL.md): measured on the first version of the engine (October 2026); raw data archived.
+- **Test suite**: about three minutes, not one.
+- v0.6.24 note, added here for the record: in the Lacuna measurement, the title-matching rule was corrected after the results were
+  seen (6.9 -> 6.5 points of exclusive contribution); the published figure is the corrected, lower one.

@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.6.25, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.6.26, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -21,8 +21,9 @@ Status: v0.6.25, research preview. Measured on small private benches (3 to 50 ca
 - **You get**, in one directory: `REPORT.md` / `REPORT.html` (eight sections, numbered bibliography, each checked claim
   shown with the exact source passage), `card.json` / `result.json` / `verdicts.json` (machine annex and verdicts:
   FOUND, DISTORTED, ABSENT, INVALID, SOURCE-UNAVAILABLE, UNVERIFIED), `studies.csv` and `references.bib` / `.ris`.
-- **It costs**: about 3 USD of model usage per academic question on Claude Code (2.8 to 3.0 USD measured, verification
-  included), up to about 10 USD on long legal texts, more with the optional full-text verification (see the example);
+- **It costs**: about 2.1 to 2.6 USD of model usage per academic question on Claude Code (10 questions measured on
+  2026-11-08, Sonnet orchestrator and searchers, verification included), about 2 to 4.5 USD per law question, more with
+  the optional full-text verification (one long-legal-text run reached about 10 USD; see the example);
   0 USD metered on a Codex subscription.
 - **See a real run**: [`examples/report-cs-ai/`](examples/report-cs-ai/) (question, report, verdicts, cited passages,
   with its limits).
@@ -203,8 +204,8 @@ python3 -I "$SKILL/tools/gateway.py" --T 2026-10-26 --run try --state /tmp/vp-st
 
 | Mode | How to switch it on | What it does | Cost |
 |---|---|---|---|
-| standard (default) | nothing | the whole method; verification of what carries a decision, one pass | about 2-3 USD per academic question; about 7 USD per code study with the whole reading |
-| audit | `VP_MODE=audit`, or `~/.config/vp/mode` containing `audit`, or "audit mode" in the question | exhaustive card (every atomic claim), verification by batches at fresh context, corrections re-verified once | 6 to 7 times the standard mode (measured: -6.7 points of false claims) |
+| standard (default) | nothing | the whole method; verification of what carries a decision, one pass | about 2.1-2.6 USD per academic question; about 6-7 USD per code study with the whole reading |
+| audit | `VP_MODE=audit`, or `~/.config/vp/mode` containing `audit`, or "audit mode" in the question | exhaustive card (every atomic claim), verification by batches at fresh context, corrections re-verified once | about 2 times the standard mode (measured on 6 law questions) (measured: -6.7 points of false claims) |
 | contradictor (every plugin) | `VP_CONTRADICTORS` or `~/.config/vp/contradictors` = one or more of `openai[:<model>]` (Codex CLI), `claude[:<model>]` (`claude -p`), `<provider>:<model>` (any OpenAI-compatible API of `tools/config.json`: `openrouter`, `gemini`, `openai-api`, `mistral`, `ollama`, or yours); no model name is fixed in the skill | after the report (code plugin), or after the verification against the source texts the verifier read (other plugins), a model of another family tries to prove it wrong (false or too-strong statements, missing angles); what survives a mechanical check and a fresh-context reread is annotated or added by the orchestrator; the tool never edits the report | 0 USD for the Codex CLI on a subscription, about 0.26 USD per call through an API, + about 0.6 USD of rereads per report (measured on 6 code cases with three models of 2026-10-27); other plugins: about 0.75 USD of rereads per report (measured on 6 biology, cs-ai and law reports, 2026-10-29: Codex 20 true detections against 4 added errors, Kimi 15 against 4; finance, other models, providers and `claude` as contradictor not measured) |
 | prior art | ask "prior art?", "has this already been done?" | the idea is cut into essential elements; `PRIOR-ART.md` answers Exists / Partially / Not found, decided by code from the verified claims (no `REPORT.md`) | same engine and verifier; answer rule not measured |
 | PRISMA / follow-ups | ask for a PRISMA flow diagram or follow-up questions | `PRISMA.md` / `.svg` and `FOLLOWUPS.md`, derived by code from the run (`finish_run.py --prisma --followups`), appended to `REPORT.html` | no model or gateway call |
@@ -253,11 +254,13 @@ the shape of a context capsule.
 
 ## Costs measured
 
-- Standard mode, academic question (cs-ai, biology, finance): about 2 to 3 USD with an Opus orchestrator and Sonnet
-  searchers (Claude Code); about 2x the cost of the reference deep-research method for the same result.
-- Standard mode, code study with the whole reading before verdicts: about 7 USD (the whole reading alone: 0.9 to 2.6 USD,
+- Standard mode, academic question (cs-ai, biology, finance): about 2.1 to 2.6 USD with a Sonnet orchestrator and Sonnet
+  searchers (Claude Code, 10 questions, 2026-11-08); an earlier version cost about 2x the reference deep-research method
+  for a comparable result (one bench, October 2026).
+- Standard mode, code study with the whole reading before verdicts: about 7 USD (the whole reading alone: 1.3 to 2.6 USD,
   65-290 k input tokens, counted apart in `state/whole-reading/receipt.json`).
-- Audit mode: 6 to 7 times the standard mode.
+- Audit mode: about 2 times the standard mode (1.8x measured directly on 6 law questions, 2026-11-03); an earlier
+  measure gave 6 to 7 times the cost of the reference method, not of the standard mode.
 - Contradictor option (code plugin): 0 USD for the Codex CLI on a subscription (the natural contradictor on a Claude Code host),
   about 0.26 USD per call through an API (OpenRouter, 2026-10-27), plus about 0.6 USD of fresh-context rereads per report
   (`contradictor.json` carries the figures, and says when a provider does not report its cost).
@@ -269,13 +272,13 @@ the shape of a context capsule.
 
 ## Limits, measured honestly
 
-1. The skill does not find more than the reference deep-research method it rewrites: equal recall, equal F1 within noise
+1. The skill does not find more than the reference deep-research method it rewrites: comparable recall and F1 (one bench of 9 questions, classed inconclusive for incomplete data)
    (10 questions, same grader); the owner preferred the reference reports 5/5 blind for readability.
 2. Its value is elsewhere: the whole reading before verdicts (exclusive verified findings in 5 of 6 code cases), the
    downstream verification (-4.2 points of false claims at equal recall on 50 questions) and the discipline plugins
    (sources, biases, verification rules); the two reports were judged equally safe for a downstream reader (0 false
    reference propagated).
-3. It costs about 2x the reference method in standard mode; the form (eight sections rewritten after verification) is
+3. It cost about 2x the reference method in standard mode on an earlier version; the form (eight sections rewritten after verification) is
    most of that cost.
 4. On code, no variant beat a plain model on the "what would Y bring to X" task on our benches; finding candidate
    repositories ("need only") did not do better than the model alone, and neither a state-of-the-art brief nor a "Y given"
@@ -291,13 +294,13 @@ traces are not part of this repository.
 
 Measured (private benches, small n, judged by models of other families and by the author):
 - downstream verification: -4.2 points of false claims at equal recall (50 questions);
-- recall equal to the reference deep-research method it rewrites (10 questions); about 2x its cost;
+- recall comparable to the reference deep-research method it rewrites (9 questions, inconclusive: incomplete data); about 2x its cost on an earlier version;
 - against the same model with web search, on 10 systematic reviews of 2026: about twice the recall of a plain web search and
   six times fewer invented references; against a web search pushed to exhaustion, lower recall but about three times fewer
   invented references (section "Academic research against web search" below);
 - whole reading before verdicts on code: exclusive verified findings in 5 of 6 code cases;
 - contradictor option: 6 code cases, three models of 2026-10-27;
-- every tool: an offline test suite (`tests/`, 754 tests, standard library only, about one minute).
+- every tool: an offline test suite (`tests/`, 754 tests, standard library only, about three minutes).
 
 Not measured or not verified:
 - no public benchmark: the figures above cannot be reproduced from this repository yet;
@@ -390,7 +393,7 @@ python3 -I tests/test_gateway.py --online                 # optional, network: f
 ```
 
 Run the tests as a normal user (not root): the code-capsule and whole-reading tests create throwaway git repositories.
-Checked on Python 3.12 (Ubuntu 24.04, `env -i`, empty home): all files pass, about one minute. The system Python often has
+Checked on Python 3.12 (Ubuntu 24.04, `env -i`, empty home): all files pass, about three minutes. The system Python often has
 no `pytest`; without it, skip `test_code_capsule.py` or install it (`python3 -m pip install --user pytest`).
 
 ## Layout
