@@ -1,0 +1,4 @@
+{
+  "mode": "plan only",
+  "reason": "no isolated container engine (docker or podman) found on PATH"
+}

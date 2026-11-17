@@ -1,0 +1,9 @@
+{
+  "steps": [
+    {"step": "intake", "utc": "2026-11-14T08:55:00Z", "duration_s": "unknown", "cost_usd": "unknown"},
+    {"step": "vp_run", "utc": "2026-11-14T09:20:00Z", "duration_s": 1500, "cost_usd": "unknown", "vp_run": "prior_art", "note": "VP prior-art mode, contradiction hunt included"},
+    {"step": "tests", "utc": "2026-11-14T10:00:00Z", "duration_s": "unknown", "cost_usd": "unknown"},
+    {"step": "critique", "utc": "2026-11-14T10:30:00Z", "duration_s": "unknown", "cost_usd": 0},
+    {"step": "execution", "utc": "2026-11-14T12:03:00Z", "duration_s": 180, "cost_usd": "unknown", "note": "measured by tools/run_test.py"}
+  ]
+}

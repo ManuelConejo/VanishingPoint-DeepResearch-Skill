@@ -1,0 +1,25 @@
+{
+  "$comment": "Baseline of the V1 pilot (design section 6.4): T1 = the model alone, without search; T2 = one standard VP run on the idea, then a recommendation by the same model. Each test of 'tests' follows the item schema of schemas/tests.json (checked by tools/export_judge.py), so that tools/export_judge.py --baseline FILE gives a judge.json with the same keys as a Frontier directory, for the paired comparison. produced_by and recommendation never reach the judges.",
+  "type": "object",
+  "required": ["baseline", "idea", "domain", "T", "produced_by", "tests", "recommendation"],
+  "additionalProperties": false,
+  "properties": {
+    "baseline": {"enum": ["T1", "T2"]},
+    "idea": {"type": "string", "minLength": 1},
+    "domain": {"type": "string"},
+    "T": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "produced_by": {"type": "string", "minLength": 1, "description": "how the baseline was produced (no model name needed)"},
+    "vp_run": {"type": "string", "description": "path of the VP run (required for T2)"},
+    "hypotheses": {
+      "type": "array",
+      "items": {"type": "object", "required": ["id", "statement"],
+                "properties": {"id": {"type": "string"}, "statement": {"type": "string"}}}
+    },
+    "tests": {"type": "array", "minItems": 1, "items": {"type": "object"}},
+    "recommendation": {
+      "type": "object",
+      "required": ["verdict", "reason"],
+      "properties": {"verdict": {"enum": ["dig", "test first", "drop"]}, "reason": {"type": "string"}}
+    }
+  }
+}

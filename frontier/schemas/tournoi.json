@@ -1,0 +1,331 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$comment": "Optional step-8 debates only. Structural errors mark rather than block Frontier; Elo standings aggregate model judgments.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "source_file",
+    "config",
+    "candidates",
+    "matches",
+    "scope",
+    "repairs",
+    "source_digests",
+    "original_statements"
+  ],
+  "properties": {
+    "version": {
+      "const": 3
+    },
+    "source_file": {
+      "const": "rebound.json"
+    },
+    "config": {
+      "$ref": "#/definitions/config"
+    },
+    "source_digests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "sha256"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/definitions/id"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/candidate"
+      }
+    },
+    "matches": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/match"
+      }
+    },
+    "scope": {
+      "$ref": "#/definitions/scope"
+    },
+    "repairs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/repair"
+      }
+    },
+    "original_statements": {
+      "type": "object",
+      "additionalProperties": true,
+      "$comment": "Candidate ID to original statement; exact keys and nonempty string values checked by validate_state."
+    }
+  },
+  "definitions": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "ids": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/id"
+      }
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "top_count",
+        "initial_rating",
+        "k_factor",
+        "rating_scale",
+        "rating_base",
+        "debate_max_words",
+        "criteria",
+        "max_debates"
+      ],
+      "properties": {
+        "top_count": {
+          "$ref": "#/definitions/count"
+        },
+        "initial_rating": {
+          "type": "number"
+        },
+        "k_factor": {
+          "type": "number",
+          "minimum": 0
+        },
+        "rating_scale": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "rating_base": {
+          "type": "number",
+          "exclusiveMinimum": 1
+        },
+        "debate_max_words": {
+          "$ref": "#/definitions/count"
+        },
+        "criteria": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "max_debates": {
+          "$ref": "#/definitions/count"
+        }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        }
+      }
+    },
+    "match": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "a",
+        "b",
+        "result",
+        "input_sha256",
+        "route",
+        "judge_family",
+        "comparison"
+      ],
+      "properties": {
+        "a": {
+          "$ref": "#/definitions/id"
+        },
+        "b": {
+          "$ref": "#/definitions/id"
+        },
+        "result": {
+          "enum": [
+            "a",
+            "b",
+            "tie"
+          ]
+        },
+        "route": {
+          "enum": [
+            "author",
+            "critic"
+          ]
+        },
+        "judge_family": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "input_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "comparison": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "a_case",
+            "b_case",
+            "objection",
+            "reason"
+          ],
+          "properties": {
+            "a_case": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            "b_case": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            "objection": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            "hypothesis_ids": {
+              "$ref": "#/definitions/ids"
+            },
+            "test_ids": {
+              "$ref": "#/definitions/ids"
+            },
+            "proposed_change": {
+              "type": "string"
+            },
+            "numerical_claims": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "value",
+                  "status",
+                  "assumptions"
+                ],
+                "properties": {
+                  "value": {
+                    "type": "number"
+                  },
+                  "status": {
+                    "const": "estimate"
+                  },
+                  "assumptions": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "packet_marks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_kind",
+        "question",
+        "hypothesis_ids",
+        "test_ids",
+        "settings_rationale"
+      ],
+      "properties": {
+        "candidate_kind": {
+          "const": "ideas"
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1
+        },
+        "settings_rationale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hypothesis_ids": {
+          "$ref": "#/definitions/ids"
+        },
+        "test_ids": {
+          "$ref": "#/definitions/ids"
+        }
+      }
+    },
+    "repair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "before",
+        "after",
+        "reason",
+        "match_numbers"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "before": {
+          "type": "string",
+          "minLength": 1
+        },
+        "after": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "match_numbers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    }
+  }
+}

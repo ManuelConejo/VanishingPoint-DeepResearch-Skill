@@ -1,0 +1,1 @@
+My own neighbouring ideas for case 01, written before reading any list: rank by cited title length.

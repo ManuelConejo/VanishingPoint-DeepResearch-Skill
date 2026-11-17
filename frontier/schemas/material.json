@@ -1,0 +1,45 @@
+{
+  "$comment": "Frontier step 1-bis: existing code, datasets and benchmarks found live through VP's gateway (tools/matter.py), for the main idea and for every neighbouring idea. Licence and last activity are extracted from the saved gateway envelope, never typed. optional_sources records the optional local catalogue and directions index (used or skipped, never required). Structure only; the rules ([MAT-*]) are in tools/check.py.",
+  "type": "object",
+  "required": ["version", "generated_utc", "items", "searched", "optional_sources"],
+  "properties": {
+    "version": {"const": 1},
+    "generated_utc": {"type": "string"},
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["for", "kind", "name", "via"],
+        "properties": {
+          "for": {"type": "string", "description": "main, or an idea id of a rebound file (N1, B1...)."},
+          "kind": {"enum": ["code", "dataset", "benchmark"]},
+          "name": {"type": "string", "minLength": 1},
+          "url": {"type": ["string", "null"]},
+          "licence": {"type": "string"},
+          "last_activity": {"type": ["string", "null"]},
+          "last_activity_basis": {"type": "string"},
+          "via": {"enum": ["gateway", "host"]},
+          "command": {"type": "string"},
+          "envelope": {"type": "string"},
+          "envelope_sha256": {"type": "string"},
+          "note": {"type": "string"}
+        }
+      }
+    },
+    "searched": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["for", "kind", "queries", "result"],
+        "properties": {
+          "for": {"type": "string"},
+          "kind": {"enum": ["code", "dataset", "benchmark"]},
+          "queries": {"type": "array", "items": {"type": "string"}},
+          "result": {"enum": ["found", "not found"]},
+          "envelope": {"type": "string"}
+        }
+      }
+    },
+    "optional_sources": {"type": "object"}
+  }
+}

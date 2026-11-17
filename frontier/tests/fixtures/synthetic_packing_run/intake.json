@@ -1,0 +1,26 @@
+{
+  "frontier_version": 4,
+  "idea": "Compare reusable felt sleeves with folded paper cradles for protecting painted wooden tiles in a fictional workshop.",
+  "domain": "synthetic workshop packaging experiments",
+  "T": "2026-11-14",
+  "language": "en",
+  "justifying_gain": {
+    "text": "Synthetic packing case 3: compare felt sleeves and paper cradles using independent tile inspections.",
+    "source": "assumption"
+  },
+  "vp": {
+    "mode": "vp",
+    "dir": "unused-synthetic-gateway",
+    "runs": {
+      "prior_art": "vp-synthetic-packing-prior-art",
+      "repair": "vp-synthetic-packing-repair",
+      "reb_n1": "vp-synthetic-packing-reb-n1",
+      "reb_n2": "vp-synthetic-packing-reb-n2",
+      "reb_n3": "vp-synthetic-packing-reb-n3",
+      "reb_n4": "vp-synthetic-packing-reb-n4",
+      "reb_n5": "vp-synthetic-packing-reb-n5",
+      "reb_b1": "vp-synthetic-packing-reb-b1",
+      "reb_b2": "vp-synthetic-packing-reb-b2"
+    }
+  }
+}

@@ -1,0 +1,125 @@
+{
+  "$comment": "One host revision receipt; check.py treats all omissions/shape problems as [REVISION] marks in every format. Conditional semantics are in v4check.py.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "test",
+    "critique_item",
+    "weakest_inference",
+    "retrieval",
+    "decision",
+    "reason",
+    "predictions"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "test": {
+      "type": "string",
+      "minLength": 1
+    },
+    "critique_item": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "weakest_inference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "decision": {
+      "enum": [
+        "revised",
+        "no change"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "retrieval": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "run": {
+          "type": "string",
+          "minLength": 1
+        },
+        "query": {
+          "type": "string",
+          "minLength": 1
+        },
+        "not_needed": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "before": {
+      "type": "string",
+      "minLength": 1
+    },
+    "after": {
+      "type": "string",
+      "minLength": 1
+    },
+    "predictions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "H1",
+        "H2",
+        "H0"
+      ],
+      "properties": {
+        "H1": {
+          "$ref": "#/definitions/prediction"
+        },
+        "H2": {
+          "$ref": "#/definitions/prediction"
+        },
+        "H0": {
+          "$ref": "#/definitions/prediction"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "prediction": {
+      "type": "object",
+      "required": [
+        "hypothesis",
+        "direction",
+        "interval",
+        "unit"
+      ],
+      "properties": {
+        "hypothesis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "direction": {
+          "type": "string",
+          "minLength": 1
+        },
+        "magnitude": {
+          "type": "string",
+          "minLength": 1
+        },
+        "interval": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number"
+          }
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

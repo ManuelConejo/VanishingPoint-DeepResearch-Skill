@@ -1,0 +1,2 @@
+{"utc": "2026-11-14T11:00:00Z", "phase": "before", "test": "T1", "text": "If T1 shows no gain I drop the idea; if it shows a gain I run T2.", "by": "researcher", "fingerprint": "051866ee6ccc627aa1b542c3377c39f60186104353f13d7384522c94d1bcf41f"}
+{"utc": "2026-11-14T12:10:00Z", "phase": "after", "test": "T1", "text": "Gain seen; I schedule T2 next week.", "by": "researcher"}

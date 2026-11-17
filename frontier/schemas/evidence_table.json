@@ -1,0 +1,42 @@
+{
+  "$comment": "Frontier step 2-bis: expected effects already measured, one entry per main lead (load-bearing hypothesis). The source follows the reference rules (VP verdicts). needed_test_size is the block written by tools/sim.py --needed-n and rerun by tools/check.py ([EVID-SIZE]). Structure only; the rules ([EVID-*]) are in tools/check.py.",
+  "type": "object",
+  "required": ["version", "entries"],
+  "properties": {
+    "version": {"const": 1},
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "lead", "sample", "measured_effect", "replication"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "lead": {"type": "string", "minLength": 1, "description": "A load-bearing hypothesis id of hypotheses.json (H1...)."},
+          "source": {"type": ["object", "null"], "description": "{id, run, claim, says}: a reference read through VP; null only when no effect is reported."},
+          "sample": {"type": "string", "description": "What was measured, on what sample (size, population)."},
+          "measured_effect": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "number"},
+              "unit": {"type": "string"},
+              "ci": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}},
+              "text": {"type": "string"},
+              "not_reported": {"type": "string", "description": "The reason when the source gives no effect size."}
+            }
+          },
+          "replication": {"enum": ["yes", "no", "unknown"]},
+          "replication_note": {"type": "string"},
+          "needed_test_size": {"type": "object", "description": "tools/sim.py --needed-n block, or {not_computable: reason}."}
+        }
+      }
+    },
+    "no_evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["lead", "searched"],
+        "properties": {"lead": {"type": "string"}, "searched": {"type": "string"}, "note": {"type": "string"}}
+      }
+    }
+  }
+}

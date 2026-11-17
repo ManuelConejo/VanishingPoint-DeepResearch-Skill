@@ -1,0 +1,36 @@
+{
+  "$comment": "IDEA-TREE.json: the tree of ideas kept from one session to the next, one node per idea (a Frontier idea or a neighbouring idea), written by tools/rebound.py. Default place: the parent of the working directory. Integrity (unique ids, existing parents, no cycle) is checked by tools/rebound.py tree --check and by tools/check.py ([REB-TREE]).",
+  "definitions": {
+    "node": {
+      "type": "object",
+      "required": ["id", "parent", "idea", "title", "dir", "source", "operator", "recurring_ingredient", "materials", "status",
+                   "created_utc"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^I[0-9]+$"},
+        "parent": {"type": ["string", "null"]},
+        "idea": {"type": "string"},
+        "title": {"type": ["string", "null"]},
+        "dir": {"type": "string"},
+        "source": {
+          "type": ["object", "null"],
+          "required": ["file", "idea_id"],
+          "additionalProperties": false,
+          "properties": {"file": {"type": "string"}, "idea_id": {"type": "string"}}
+        },
+        "operator": {"type": ["string", "null"]},
+        "recurring_ingredient": {"type": ["boolean", "null"]},
+        "materials": {"type": "array", "items": {"type": "string"}},
+        "status": {"enum": ["active", "proposed", "retained", "rejected", "pursued", "abandoned"]},
+        "created_utc": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"}
+      }
+    }
+  },
+  "type": "object",
+  "required": ["version", "nodes"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {"enum": [1]},
+    "nodes": {"type": "array", "items": {"$ref": "#/definitions/node"}}
+  }
+}

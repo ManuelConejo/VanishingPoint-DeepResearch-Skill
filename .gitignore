@@ -9,6 +9,9 @@ runs/
 *.jsonl
 !tests/fixtures/*.jsonl
 !tests/fixtures/*/state/*.jsonl
+# Frontier test fixtures are recorded working directories: keep their journals
+!frontier/tests/fixtures/**/state/
+!frontier/tests/fixtures/**/*.jsonl
 # Secrets: keys live in ~/.config/vp/ or the environment, never in the repository
 *.key
 .config/

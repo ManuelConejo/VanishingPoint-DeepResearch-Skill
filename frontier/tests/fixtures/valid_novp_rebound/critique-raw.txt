@@ -1,0 +1,13 @@
+{"summary": "Same-family sub-agent: T2 needs the L0 control; T1 needs a positive control.",
+ "items": [{"test": "T1", "category": "missing_control", "severity": "major", "text": "No evidence the index reacts to titles."},
+           {"test": "all", "category": "other", "severity": "minor", "text": "Ranking scenarios ignore the cost of building the index."}],
+ "trap_verdicts": {
+  "T1": {"proxy_vs_target": {"verdict": "addressed", "why": "The card limits the claim to the index mechanism."},
+         "variants": {"verdict": "addressed", "why": "A single shortening rule is fixed before indexing."},
+         "positive_control": {"verdict": "addressed", "why": "Dropping the query term must lose rank."},
+         "data_split": {"verdict": "addressed", "why": "Pilot records are excluded by identifier."}},
+  "T2": {"proxy_vs_target": {"verdict": "unclear", "why": "Citations stand for use; only stated as a limit."},
+         "variants": {"verdict": "addressed", "why": "Two length measures with a Holm correction and a fixed primary."},
+         "positive_control": {"verdict": "addressed", "why": "The open-access effect must be recovered."},
+         "data_split": {"verdict": "addressed", "why": "Design and confirmation years are disjoint."}}
+ }}

@@ -1,0 +1,9 @@
+{
+  "$comment": "Frontier step 6 input of tools/card.py. One-sentence reason and no certification wording are checked by tools/check.py ([RECO]).",
+  "type": "object",
+  "required": ["verdict", "reason"],
+  "properties": {
+    "verdict": {"enum": ["dig", "test first", "drop"]},
+    "reason": {"type": "string", "minLength": 1}
+  }
+}

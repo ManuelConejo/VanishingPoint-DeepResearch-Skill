@@ -1,0 +1,31 @@
+{
+  "answer": "Partially",
+  "searched": "VP prior-art run vp-2026-11-14-short-titles-prior-art: 2 essential elements (E1 title length and citations; E2 retrieval mechanism), engines of plugins/cs-ai.md, T 2026-11-14.",
+  "vp_prior_art_md": "../vp_prior_art/PRIOR-ART.md",
+  "closest_work": [
+    {
+      "ref": {"id": "doi:10.1000/titles.2019", "run": "prior_art", "claim": "A1", "says": "shorter titles received more citations"},
+      "title": "Title length and citation counts across fields",
+      "year": "2019",
+      "what_differs": "Observational association only; no retrieval mechanism and no intervention on titles."
+    },
+    {
+      "ref": {"id": "arxiv:2101.00001", "run": "prior_art", "claim": "A2", "says": "rank depends on matches of title terms"},
+      "title": "Search-engine retrieval of scholarly records by title terms",
+      "year": "2021",
+      "what_differs": "Studies retrieval rank, not citations."
+    }
+  ],
+  "materials": {
+    "unexplained_anomalies": [
+      {"text": "The title-length association weakens after adjustment for journal but does not vanish.", "refs": [{"id": "doi:10.1000/titles.2019", "run": "prior_art", "claim": "A1"}]}
+    ],
+    "transferable_methods": [
+      {"text": "Query-log retrieval experiments with controlled title variants.", "refs": [{"id": "arxiv:2101.00001", "run": "prior_art", "claim": "A2"}]}
+    ],
+    "contradictory_results": [
+      {"text": "Prestige explains a large part of the association.", "refs": [{"id": "doi:10.1000/prestige.2020", "run": "prior_art", "claim": "A3"}]}
+    ]
+  },
+  "contradictions_md": "../vp_prior_art/CONTRADICTIONS.md"
+}

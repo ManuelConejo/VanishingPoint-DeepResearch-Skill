@@ -1,0 +1,985 @@
+{
+ "card_id": "dossier",
+ "question": "Which original studies (RCTs and NRSIs) compare larger versus smaller RBC volume per transfusion for anemia in hospitalized adults, children and preterm neonates?",
+ "mode": "card",
+ "role_file": "tools/verifier/ROLE.md",
+ "claims": [
+  {
+   "id": "A1",
+   "text": "Infants with birth weight 500 to 1,500 g were randomly assigned to 10 or 20 mL/kg red blood cells; post-transfusion hemoglobin was 14.2 versus 12.0 g/dL with 20 versus 10 mL/kg.",
+   "source": "S1",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "Infants with birth weights between 500 and 1,500 g were randomly assigned to receive 10 or 20 mL/kg red blood cells.",
+    "Infants with transfusions of 20 mL/kg had a greater hemoglobin (14.2 +/- 1.9 vs. 12.0 +/- 1.9 g/dL"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "population",
+     "card": "birth weight 500-1,500 g",
+     "source": "birth weights between 500 and 1,500 g",
+     "ok": true
+    },
+    {
+     "element": "design",
+     "card": "randomised 10 vs 20 mL/kg",
+     "source": "randomly assigned to receive 10 or 20 mL/kg",
+     "ok": true
+    },
+    {
+     "element": "figure",
+     "card": "Hb 14.2 vs 12.0 g/dL (20 vs 10)",
+     "source": "14.2 vs 12.0 g/dL for 20 vs 10 mL/kg",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A2",
+   "text": "Mallett: 22 hemodynamically stable VLBW infants in a randomized crossover study of 20 versus 15 mL/kg; hemoglobin 13.2 versus 11.8 g/dL.",
+   "source": "S4",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "The study enrolled 22 hemodynamically stable VLBW infants requiring PRBC transfusions",
+    "Infants had higher posttransfusion hemoglobin (13.2 g/dL vs 11.8 g/dL, P < 0.01)"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "design",
+     "card": "randomized crossover, 20 vs 15 mL/kg",
+     "source": "double-blinded, randomized, crossover study",
+     "ok": true
+    },
+    {
+     "element": "population",
+     "card": "22 hemodynamically stable VLBW infants",
+     "source": "22 hemodynamically stable VLBW infants",
+     "ok": true
+    },
+    {
+     "element": "figure",
+     "card": "Hb 13.2 vs 11.8",
+     "source": "13.2 g/dL vs 11.8 g/dL",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A3",
+   "text": "Chen: 73 newborns received 20 ml/kg and 78 received 15 ml/kg; transfusions 1.9 versus 2.6.",
+   "source": "S5",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "73 newborns received 20 ml/kg (large volume group) and 78 newborns received 15 ml/kg transfusion (small volume group).",
+    "The transfusion number of the large volume group is significantly less than that of the small volume group (1.9 ± 0.3 vs. 2.6 ± 0.9"
+   ],
+   "location": "abstract, Results",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "n",
+     "card": "73 at 20 ml/kg, 78 at 15 ml/kg",
+     "source": "73 newborns received 20 ml/kg ... 78 newborns received 15 ml/kg",
+     "ok": true
+    },
+    {
+     "element": "figure",
+     "card": "transfusions 1.9 vs 2.6",
+     "source": "1.9 ± 0.3 vs. 2.6 ± 0.9",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A4",
+   "text": "TRACT: 3196 African children with hemoglobin below 6 g/dL randomised to 20 versus 30 mL/kg; 28-day mortality 3.4% versus 4.5% (HR 0.76, 95% CI 0.54 to 1.08).",
+   "source": "S7",
+   "source_origin": "abstract",
+   "status": "DISTORTED",
+   "discrepancy": "direction/arm assignment: the card lists 20 versus 30 mL/kg with 3.4% versus 4.5%, which gives the 20 mL/kg arm the lower mortality. In the source, 3.4% is the 30 mL/kg arm and 4.5% is the 20 mL/kg arm. The HR of 0.76 also compares 30 with 20 mL/kg.",
+   "fragments": [
+    "55 children (3.4%) in the higher-volume group and 72 (4.5%) in the lower-volume group died before 28 days (hazard ratio, 0.76; 95% confidence interval [CI], 0.54 to 1.08",
+    "A total of 3196 eligible children (median age, 37 months; 2050 [64.1%] with malaria) were assigned to receive a transfusion of 30 ml per kilogram (1598 children) or 20 ml per kilogram (1598 children)"
+   ],
+   "location": "abstract, Results",
+   "confidence": "medium",
+   "elements": [
+    {
+     "element": "n/population",
+     "card": "3196 African children, Hb <6 g/dL",
+     "source": "3196 children, Hb <6 g/dL, Uganda and Malawi",
+     "ok": true
+    },
+    {
+     "element": "comparison",
+     "card": "20 vs 30 mL/kg",
+     "source": "20 vs 30 mL/kg",
+     "ok": true
+    },
+    {
+     "element": "mortality by arm",
+     "card": "3.4% versus 4.5%, listed in the order 20 vs 30 mL/kg, so 3.4% for 20 mL/kg",
+     "source": "3.4% was in the 30 mL/kg (higher-volume) group and 4.5% in the 20 mL/kg (lower-volume) group",
+     "ok": false
+    },
+    {
+     "element": "HR",
+     "card": "0.76 (0.54 to 1.08)",
+     "source": "HR 0.76 (0.54 to 1.08), for higher vs lower volume",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A5",
+   "text": "Byun: pilot randomised factorial trial in 91 AML patients on chemotherapy comparing Hb trigger 7 versus 8 g/dL and single versus double unit per transfusion; units per transfusion did not change total RBC use, outcomes or bleeding.",
+   "source": "S9",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "Initially 91 patients were randomized into 4 groups, but the protocol adherence rate was 90.1%.",
+    "The number of RBC units per transfusion did not affect the total \namount of RBC transfusion required during treatment. AML treatment outcomes and \nbleeding events did not differ across the 4 groups."
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "design",
+     "card": "pilot randomised 2x2 factorial, Hb trigger 7 vs 8 and single vs double unit",
+     "source": "2 by 2 factorial design, trigger 7 vs 8 g/dL, single vs double-unit",
+     "ok": true
+    },
+    {
+     "element": "n",
+     "card": "91",
+     "source": "Initially 91 patients were randomized",
+     "ok": true
+    },
+    {
+     "element": "result",
+     "card": "units per transfusion did not change total RBC use, outcomes or bleeding",
+     "source": "did not affect the total amount of RBC transfusion; outcomes and bleeding did not differ across the 4 groups",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A6",
+   "text": "Marco-Ayala: 187 patients under a single-unit policy versus 153 historical double-unit patients in autologous stem cell transplant; RBC use fell 32%; length of stay, discharge Hb and 30-day mortality did not differ.",
+   "source": "S11",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "of 187 patients transplanted from May 2019 to December 2022 under a 1-RBC \npolicy, with a historical cohort of 153 patients",
+    "The 1-RBC policy was associated with a \n32% reduction in RBC utilization",
+    "No significant \ndifferences in length of stay, hemoglobin levels at discharge or 30-day \nmortality were observed."
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "n",
+     "card": "187 vs 153 historical",
+     "source": "187 patients ... historical cohort of 153 patients",
+     "ok": true
+    },
+    {
+     "element": "RBC use",
+     "card": "fell 32%",
+     "source": "32% reduction in RBC utilization",
+     "ok": true
+    },
+    {
+     "element": "outcomes",
+     "card": "LOS, discharge Hb, 30-day mortality did not differ",
+     "source": "No significant differences in length of stay, hemoglobin levels at discharge or 30-day mortality",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A7",
+   "text": "Chantepie: patients with acute leukaemia or transplant randomly assigned to single RBC or double RBC per transfusion.",
+   "source": "S8",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "were randomly assigned to \nreceive either single RBC (1-RBC arm) or double RBC (2-RBC arm) per transfusion"
+   ],
+   "location": "abstract, Method",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "population",
+     "card": "acute leukaemia or transplant",
+     "source": "Acute leukemia patients requiring intensive chemotherapy or patients receiving autologous or allogeneic transplantation",
+     "ok": true
+    },
+    {
+     "element": "design",
+     "card": "randomly assigned single vs double RBC per transfusion",
+     "source": "randomly assigned to receive either single RBC (1-RBC arm) or double RBC (2-RBC arm) per transfusion",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A8",
+   "text": "Wong: randomised trial of high volume (20 ml/kg) versus standard volume (15 ml/kg) PRBC in premature infants.",
+   "source": "S2",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "We compared high volume (20 ml/kg) with standard volume (15 ml/kg) packed red \nblood cell (PRBC) transfusions in a randomized trial."
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "comparison",
+     "card": "20 ml/kg vs 15 ml/kg PRBC",
+     "source": "high volume (20 ml/kg) with standard volume (15 ml/kg)",
+     "ok": true
+    },
+    {
+     "element": "design",
+     "card": "randomised",
+     "source": "randomized trial",
+     "ok": true
+    },
+    {
+     "element": "population",
+     "card": "premature infants",
+     "source": "premature infants",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A9",
+   "text": "Choi: 39 infants born before 34 weeks randomly allocated to 20 versus 15 mL/kg.",
+   "source": "S3",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "A total of 39 infants born at <34 weeks of gestation and aged >2 weeks \nat the time of enrollment were randomly allocated to either a standard volume \n(15 mL/kg) or a large volume (20 mL/kg) group."
+   ],
+   "location": "abstract, Results",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "n",
+     "card": "39 infants",
+     "source": "A total of 39 infants",
+     "ok": true
+    },
+    {
+     "element": "gestational age",
+     "card": "<34 weeks",
+     "source": "born at <34 weeks of gestation",
+     "ok": true
+    },
+    {
+     "element": "design",
+     "card": "randomly allocated 20 vs 15 mL/kg",
+     "source": "randomly allocated to either a standard volume (15 mL/kg) or a large volume (20 mL/kg) group",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A10",
+   "text": "von Lindern: cohort comparison of 15 ml/kg in Unit A and 20 ml/kg in Unit B in extremely premature infants.",
+   "source": "S6",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "Observational follow-up study of a cohort of extremely premature born infants, treated in 2 neonatal intensive care units using a different transfusion volume (15 ml/kg in Unit A and 20 ml/kg in Unit B)."
+   ],
+   "location": "abstract, Methods",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "design",
+     "card": "cohort comparison",
+     "source": "comparative cohort study, observational follow-up",
+     "ok": true
+    },
+    {
+     "element": "volumes",
+     "card": "15 ml/kg Unit A, 20 ml/kg Unit B",
+     "source": "15 ml/kg in Unit A and 20 ml/kg in Unit B",
+     "ok": true
+    },
+    {
+     "element": "population",
+     "card": "extremely premature infants",
+     "source": "extremely premature born infants",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A11",
+   "text": "Bowman: before-after comparison in malignant haematology of a single-unit RBC transfusion policy.",
+   "source": "S10",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "Retrospective chart review compared malignant hematology patients \nbefore and after implementing single-unit RBC transfusion policy."
+   ],
+   "location": "abstract, Methods",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "design",
+     "card": "before-after comparison",
+     "source": "Retrospective chart review compared patients before and after implementing single-unit RBC transfusion policy",
+     "ok": true
+    },
+    {
+     "element": "population",
+     "card": "malignant haematology",
+     "source": "malignant hematology patients",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A12",
+   "text": "Heyes: six months before and after implementation of a single unit policy on eight general medical wards; single-unit orders rose from 30% to 53%.",
+   "source": "S12",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "eight general medical wards and all staff working in the blood transfusion \nlaboratory. We collected transfusion data for 12 months, (6 months before and \nafter implementation).",
+    "The number of single unit \ntransfusions, increased from 30 to 53% whilst the number of two units decreased \nfrom 65 to 43% (P < 0.001)."
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "setting",
+     "card": "eight general medical wards, 6 months before and after",
+     "source": "eight general medical wards; 12 months (6 months before and after implementation)",
+     "ok": true
+    },
+    {
+     "element": "figure",
+     "card": "single-unit orders 30% to 53%",
+     "source": "single unit transfusions increased from 30 to 53%",
+     "ok": true
+    }
+   ]
+  }
+ ],
+ "summary": {
+  "FOUND": 11,
+  "DISTORTED": 1,
+  "ABSENT": 0,
+  "SOURCE-UNAVAILABLE": 0,
+  "INVALID": 0,
+  "UNVERIFIED": 0,
+  "unsupported_rate": 0.083
+ },
+ "retries": 0,
+ "measures": [
+  {
+   "seconds": 36.4,
+   "host": "claude",
+   "cost_usd": 0.1808449,
+   "tokens_in": 102388,
+   "tokens_out": 6166,
+   "turns": 17
+  }
+ ],
+ "cost_usd": 0.1808,
+ "seconds": 36.4,
+ "windows": {
+  "mode": "whole",
+  "params": {
+   "window_chars": 1000,
+   "windows_per_claim": 6,
+   "head_chars": 1500,
+   "number_weight": 2,
+   "escalate_statuses": [
+    "ABSENT",
+    "SOURCE-UNAVAILABLE"
+   ],
+   "escalation_max_chars": 200000
+  },
+  "chars_available": 28445,
+  "chars_sent": 28445,
+  "sources_windowed": 0,
+  "per_source": {
+   "S1": {
+    "chars_available": 1082,
+    "chars_sent": 1082,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S10": {
+    "chars_available": 2895,
+    "chars_sent": 2895,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S11": {
+    "chars_available": 3588,
+    "chars_sent": 3588,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S12": {
+    "chars_available": 2561,
+    "chars_sent": 2561,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S2": {
+    "chars_available": 1078,
+    "chars_sent": 1078,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S3": {
+    "chars_available": 1939,
+    "chars_sent": 1939,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S4": {
+    "chars_available": 1535,
+    "chars_sent": 1535,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S5": {
+    "chars_available": 2468,
+    "chars_sent": 2468,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S6": {
+    "chars_available": 2037,
+    "chars_sent": 2037,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S7": {
+    "chars_available": 2534,
+    "chars_sent": 2534,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S8": {
+    "chars_available": 3602,
+    "chars_sent": 3602,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S9": {
+    "chars_available": 3126,
+    "chars_sent": 3126,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   }
+  },
+  "escalation": {
+   "claims": [],
+   "sources": [],
+   "chars_sent": 0,
+   "unverified": []
+  }
+ },
+ "sources_read": {
+  "per_source": {
+   "S1": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S10": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S11": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S12": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S2": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S3": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S4": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S5": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S6": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S7": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S8": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S9": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   }
+  },
+  "fulltext_attempted": 0,
+  "fulltext_obtained": 0,
+  "fulltext_not_tried_cap": 0,
+  "origins": {
+   "fulltext": 0,
+   "abstract": 12,
+   "missing": 0
+  },
+  "fulltext_mode": false,
+  "fulltext_cap": 12,
+  "gateway": {
+   "pool": "verifier",
+   "cap": 60,
+   "run": "dossier"
+  }
+ },
+ "filter": {
+  "kept": [
+   {
+    "id": "A1",
+    "text": "Infants with birth weight 500 to 1,500 g were randomly assigned to 10 or 20 mL/kg red blood cells; post-transfusion hemoglobin was 14.2 versus 12.0 g/dL with 20 versus 10 mL/kg.",
+    "source": "S1",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "Infants with birth weights between 500 and 1,500 g were randomly assigned to receive 10 or 20 mL/kg red blood cells.",
+     "Infants with transfusions of 20 mL/kg had a greater hemoglobin (14.2 +/- 1.9 vs. 12.0 +/- 1.9 g/dL"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "population",
+      "card": "birth weight 500-1,500 g",
+      "source": "birth weights between 500 and 1,500 g",
+      "ok": true
+     },
+     {
+      "element": "design",
+      "card": "randomised 10 vs 20 mL/kg",
+      "source": "randomly assigned to receive 10 or 20 mL/kg",
+      "ok": true
+     },
+     {
+      "element": "figure",
+      "card": "Hb 14.2 vs 12.0 g/dL (20 vs 10)",
+      "source": "14.2 vs 12.0 g/dL for 20 vs 10 mL/kg",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A2",
+    "text": "Mallett: 22 hemodynamically stable VLBW infants in a randomized crossover study of 20 versus 15 mL/kg; hemoglobin 13.2 versus 11.8 g/dL.",
+    "source": "S4",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "The study enrolled 22 hemodynamically stable VLBW infants requiring PRBC transfusions",
+     "Infants had higher posttransfusion hemoglobin (13.2 g/dL vs 11.8 g/dL, P < 0.01)"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "design",
+      "card": "randomized crossover, 20 vs 15 mL/kg",
+      "source": "double-blinded, randomized, crossover study",
+      "ok": true
+     },
+     {
+      "element": "population",
+      "card": "22 hemodynamically stable VLBW infants",
+      "source": "22 hemodynamically stable VLBW infants",
+      "ok": true
+     },
+     {
+      "element": "figure",
+      "card": "Hb 13.2 vs 11.8",
+      "source": "13.2 g/dL vs 11.8 g/dL",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A3",
+    "text": "Chen: 73 newborns received 20 ml/kg and 78 received 15 ml/kg; transfusions 1.9 versus 2.6.",
+    "source": "S5",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "73 newborns received 20 ml/kg (large volume group) and 78 newborns received 15 ml/kg transfusion (small volume group).",
+     "The transfusion number of the large volume group is significantly less than that of the small volume group (1.9 ± 0.3 vs. 2.6 ± 0.9"
+    ],
+    "location": "abstract, Results",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "n",
+      "card": "73 at 20 ml/kg, 78 at 15 ml/kg",
+      "source": "73 newborns received 20 ml/kg ... 78 newborns received 15 ml/kg",
+      "ok": true
+     },
+     {
+      "element": "figure",
+      "card": "transfusions 1.9 vs 2.6",
+      "source": "1.9 ± 0.3 vs. 2.6 ± 0.9",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A5",
+    "text": "Byun: pilot randomised factorial trial in 91 AML patients on chemotherapy comparing Hb trigger 7 versus 8 g/dL and single versus double unit per transfusion; units per transfusion did not change total RBC use, outcomes or bleeding.",
+    "source": "S9",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "Initially 91 patients were randomized into 4 groups, but the protocol adherence rate was 90.1%.",
+     "The number of RBC units per transfusion did not affect the total \namount of RBC transfusion required during treatment. AML treatment outcomes and \nbleeding events did not differ across the 4 groups."
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "design",
+      "card": "pilot randomised 2x2 factorial, Hb trigger 7 vs 8 and single vs double unit",
+      "source": "2 by 2 factorial design, trigger 7 vs 8 g/dL, single vs double-unit",
+      "ok": true
+     },
+     {
+      "element": "n",
+      "card": "91",
+      "source": "Initially 91 patients were randomized",
+      "ok": true
+     },
+     {
+      "element": "result",
+      "card": "units per transfusion did not change total RBC use, outcomes or bleeding",
+      "source": "did not affect the total amount of RBC transfusion; outcomes and bleeding did not differ across the 4 groups",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A6",
+    "text": "Marco-Ayala: 187 patients under a single-unit policy versus 153 historical double-unit patients in autologous stem cell transplant; RBC use fell 32%; length of stay, discharge Hb and 30-day mortality did not differ.",
+    "source": "S11",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "of 187 patients transplanted from May 2019 to December 2022 under a 1-RBC \npolicy, with a historical cohort of 153 patients",
+     "The 1-RBC policy was associated with a \n32% reduction in RBC utilization",
+     "No significant \ndifferences in length of stay, hemoglobin levels at discharge or 30-day \nmortality were observed."
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "n",
+      "card": "187 vs 153 historical",
+      "source": "187 patients ... historical cohort of 153 patients",
+      "ok": true
+     },
+     {
+      "element": "RBC use",
+      "card": "fell 32%",
+      "source": "32% reduction in RBC utilization",
+      "ok": true
+     },
+     {
+      "element": "outcomes",
+      "card": "LOS, discharge Hb, 30-day mortality did not differ",
+      "source": "No significant differences in length of stay, hemoglobin levels at discharge or 30-day mortality",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A7",
+    "text": "Chantepie: patients with acute leukaemia or transplant randomly assigned to single RBC or double RBC per transfusion.",
+    "source": "S8",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "were randomly assigned to \nreceive either single RBC (1-RBC arm) or double RBC (2-RBC arm) per transfusion"
+    ],
+    "location": "abstract, Method",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "population",
+      "card": "acute leukaemia or transplant",
+      "source": "Acute leukemia patients requiring intensive chemotherapy or patients receiving autologous or allogeneic transplantation",
+      "ok": true
+     },
+     {
+      "element": "design",
+      "card": "randomly assigned single vs double RBC per transfusion",
+      "source": "randomly assigned to receive either single RBC (1-RBC arm) or double RBC (2-RBC arm) per transfusion",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A8",
+    "text": "Wong: randomised trial of high volume (20 ml/kg) versus standard volume (15 ml/kg) PRBC in premature infants.",
+    "source": "S2",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "We compared high volume (20 ml/kg) with standard volume (15 ml/kg) packed red \nblood cell (PRBC) transfusions in a randomized trial."
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "comparison",
+      "card": "20 ml/kg vs 15 ml/kg PRBC",
+      "source": "high volume (20 ml/kg) with standard volume (15 ml/kg)",
+      "ok": true
+     },
+     {
+      "element": "design",
+      "card": "randomised",
+      "source": "randomized trial",
+      "ok": true
+     },
+     {
+      "element": "population",
+      "card": "premature infants",
+      "source": "premature infants",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A9",
+    "text": "Choi: 39 infants born before 34 weeks randomly allocated to 20 versus 15 mL/kg.",
+    "source": "S3",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "A total of 39 infants born at <34 weeks of gestation and aged >2 weeks \nat the time of enrollment were randomly allocated to either a standard volume \n(15 mL/kg) or a large volume (20 mL/kg) group."
+    ],
+    "location": "abstract, Results",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "n",
+      "card": "39 infants",
+      "source": "A total of 39 infants",
+      "ok": true
+     },
+     {
+      "element": "gestational age",
+      "card": "<34 weeks",
+      "source": "born at <34 weeks of gestation",
+      "ok": true
+     },
+     {
+      "element": "design",
+      "card": "randomly allocated 20 vs 15 mL/kg",
+      "source": "randomly allocated to either a standard volume (15 mL/kg) or a large volume (20 mL/kg) group",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A10",
+    "text": "von Lindern: cohort comparison of 15 ml/kg in Unit A and 20 ml/kg in Unit B in extremely premature infants.",
+    "source": "S6",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "Observational follow-up study of a cohort of extremely premature born infants, treated in 2 neonatal intensive care units using a different transfusion volume (15 ml/kg in Unit A and 20 ml/kg in Unit B)."
+    ],
+    "location": "abstract, Methods",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "design",
+      "card": "cohort comparison",
+      "source": "comparative cohort study, observational follow-up",
+      "ok": true
+     },
+     {
+      "element": "volumes",
+      "card": "15 ml/kg Unit A, 20 ml/kg Unit B",
+      "source": "15 ml/kg in Unit A and 20 ml/kg in Unit B",
+      "ok": true
+     },
+     {
+      "element": "population",
+      "card": "extremely premature infants",
+      "source": "extremely premature born infants",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A11",
+    "text": "Bowman: before-after comparison in malignant haematology of a single-unit RBC transfusion policy.",
+    "source": "S10",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "Retrospective chart review compared malignant hematology patients \nbefore and after implementing single-unit RBC transfusion policy."
+    ],
+    "location": "abstract, Methods",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "design",
+      "card": "before-after comparison",
+      "source": "Retrospective chart review compared patients before and after implementing single-unit RBC transfusion policy",
+      "ok": true
+     },
+     {
+      "element": "population",
+      "card": "malignant haematology",
+      "source": "malignant hematology patients",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A12",
+    "text": "Heyes: six months before and after implementation of a single unit policy on eight general medical wards; single-unit orders rose from 30% to 53%.",
+    "source": "S12",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "eight general medical wards and all staff working in the blood transfusion \nlaboratory. We collected transfusion data for 12 months, (6 months before and \nafter implementation).",
+     "The number of single unit \ntransfusions, increased from 30 to 53% whilst the number of two units decreased \nfrom 65 to 43% (P < 0.001)."
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "setting",
+      "card": "eight general medical wards, 6 months before and after",
+      "source": "eight general medical wards; 12 months (6 months before and after implementation)",
+      "ok": true
+     },
+     {
+      "element": "figure",
+      "card": "single-unit orders 30% to 53%",
+      "source": "single unit transfusions increased from 30 to 53%",
+      "ok": true
+     }
+    ]
+   }
+  ],
+  "removed": [
+   {
+    "id": "A4",
+    "text": "TRACT: 3196 African children with hemoglobin below 6 g/dL randomised to 20 versus 30 mL/kg; 28-day mortality 3.4% versus 4.5% (HR 0.76, 95% CI 0.54 to 1.08).",
+    "source": "S7",
+    "source_origin": "abstract",
+    "status": "DISTORTED",
+    "discrepancy": "direction/arm assignment: the card lists 20 versus 30 mL/kg with 3.4% versus 4.5%, which gives the 20 mL/kg arm the lower mortality. In the source, 3.4% is the 30 mL/kg arm and 4.5% is the 20 mL/kg arm. The HR of 0.76 also compares 30 with 20 mL/kg.",
+    "fragments": [
+     "55 children (3.4%) in the higher-volume group and 72 (4.5%) in the lower-volume group died before 28 days (hazard ratio, 0.76; 95% confidence interval [CI], 0.54 to 1.08",
+     "A total of 3196 eligible children (median age, 37 months; 2050 [64.1%] with malaria) were assigned to receive a transfusion of 30 ml per kilogram (1598 children) or 20 ml per kilogram (1598 children)"
+    ],
+    "location": "abstract, Results",
+    "confidence": "medium",
+    "elements": [
+     {
+      "element": "n/population",
+      "card": "3196 African children, Hb <6 g/dL",
+      "source": "3196 children, Hb <6 g/dL, Uganda and Malawi",
+      "ok": true
+     },
+     {
+      "element": "comparison",
+      "card": "20 vs 30 mL/kg",
+      "source": "20 vs 30 mL/kg",
+      "ok": true
+     },
+     {
+      "element": "mortality by arm",
+      "card": "3.4% versus 4.5%, listed in the order 20 vs 30 mL/kg, so 3.4% for 20 mL/kg",
+      "source": "3.4% was in the 30 mL/kg (higher-volume) group and 4.5% in the 20 mL/kg (lower-volume) group",
+      "ok": false
+     },
+     {
+      "element": "HR",
+      "card": "0.76 (0.54 to 1.08)",
+      "source": "HR 0.76 (0.54 to 1.08), for higher vs lower volume",
+      "ok": true
+     }
+    ]
+   }
+  ],
+  "to_flag": []
+ }
+}

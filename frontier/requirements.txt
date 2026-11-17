@@ -1,0 +1,2 @@
+# Packages for the skill-local virtual environment (frontier/.venv), one per line.
+# None is required in this version: tools/setup.py creates no venv while this file lists no package.

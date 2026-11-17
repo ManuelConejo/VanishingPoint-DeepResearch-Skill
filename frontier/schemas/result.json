@@ -1,0 +1,37 @@
+{
+  "$comment": "Frontier step 5 (optional): 'plan only' (no isolated container engine) or 'executed' by tools/run_test.py, then the observation and the decision applied by the agent from the rule fixed before ([RESULT], [PROOF] in tools/check.py).",
+  "type": "object",
+  "required": ["mode"],
+  "properties": {
+    "mode": {"enum": ["plan only", "executed"]},
+    "reason": {"type": "string"},
+    "test": {"type": "string"},
+    "engine": {"enum": ["docker", "podman"]},
+    "image": {"type": "string"},
+    "command": {"type": "array", "items": {"type": "string"}},
+    "before_fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "before_utc": {"type": "string"},
+    "environment_note": {"type": "string"},
+    "limits": {"type": "object"},
+    "execution": {
+      "type": "object",
+      "properties": {
+        "started_utc": {"type": "string"},
+        "ended_utc": {"type": "string"},
+        "duration_s": {"type": "number"},
+        "exit_code": {"type": ["integer", "null"]},
+        "timed_out": {"type": "boolean"},
+        "stdout_tail": {"type": "string"},
+        "stderr_tail": {"type": "string"},
+        "stdout_bytes": {"type": "integer"},
+        "stderr_bytes": {"type": "integer"},
+        "stdout_truncated": {"type": "boolean"},
+        "stderr_truncated": {"type": "boolean"},
+        "output_files": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "observed": {"type": ["string", "null"]},
+    "decision": {"type": ["string", "null"]},
+    "decision_rule_applied": {"type": ["string", "null"]}
+  }
+}

@@ -1,0 +1,848 @@
+{
+  "$comment": "Frontier steps 8 and 8-bis: neighbouring ideas (rebound.json, rebound_after.json). Structure only; the semantic rules ([REB-OPERATOR], [REB-MATERIAL], [REB-PRIOR-ART], [REB-ORDER], [REB-QUOTA], [REB-DUP], [REB-FEAS], [REB-SELECT], [REB-AFTER], [REB-NOVELTY], references) are in tools/check.py. No field holds a novelty score: the only number of an idea is feasibility.*.amount.",
+  "definitions": {
+    "text_list": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "internal_history": {
+      "type": "array",
+      "description": "Step 0-bis: citations of the CLASSED trials of the user's own archives that this idea overlaps (see schemas/tests.json internal_history).",
+      "items": {
+        "type": "object",
+        "required": [
+          "entry",
+          "cited",
+          "verdict_quoted",
+          "decision",
+          "reopen_condition",
+          "condition_met"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "entry": {
+            "type": "string"
+          },
+          "cited": {
+            "type": "string"
+          },
+          "verdict_quoted": {
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "kept"
+            ]
+          },
+          "reopen_condition": {
+            "type": "string"
+          },
+          "reopen_condition_source": {
+            "type": "string"
+          },
+          "condition_met": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "internal_history_removed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "cited",
+          "what",
+          "why"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "cited": {
+            "type": "string"
+          },
+          "what": {
+            "type": "string"
+          },
+          "why": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ref": {
+      "type": "object",
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*:.+"
+        },
+        "run": {
+          "type": "string"
+        },
+        "claim": {
+          "type": "string",
+          "pattern": "^A[0-9]+$"
+        },
+        "says": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "year": {
+          "type": "string"
+        }
+      }
+    },
+    "material": {
+      "type": "object",
+      "required": [
+        "kind",
+        "why"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "reference",
+            "entry"
+          ]
+        },
+        "ref": {
+          "$ref": "#/definitions/ref"
+        },
+        "entry": {
+          "type": "string",
+          "pattern": "^[a-z_]+\\.json:.+"
+        },
+        "why": {
+          "type": "string"
+        }
+      }
+    },
+    "closest_work": {
+      "type": "object",
+      "required": [
+        "ref",
+        "title",
+        "what_differs"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ref": {
+          "$ref": "#/definitions/ref"
+        },
+        "title": {
+          "type": "string"
+        },
+        "year": {
+          "type": "string"
+        },
+        "what_differs": {
+          "type": "string"
+        }
+      }
+    },
+    "prior_art": {
+      "type": "object",
+      "required": [
+        "status",
+        "queries",
+        "scope",
+        "date",
+        "closest_work"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "Exists",
+            "Partially",
+            "Not found",
+            "Insufficient search"
+          ]
+        },
+        "queries": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "scope": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+        },
+        "vp_run": {
+          "type": "string"
+        },
+        "closest_work": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/closest_work"
+          }
+        },
+        "difference": {
+          "type": "string"
+        },
+        "uncontrolled": {
+          "type": "boolean"
+        },
+        "recognised_by_model_only": {
+          "type": "boolean"
+        },
+        "deepen": {
+          "description": "Optional V3 host selection for deeper search: {selected: true, reason: nonempty explanation}. Above the per-neighbour VP cap without it gives soft [REBOUND-BUDGET]."
+        }
+      }
+    },
+    "feasibility_element": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "established",
+            "not established"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "access": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "unit": {
+          "type": "string"
+        },
+        "why": {
+          "type": "string"
+        },
+        "ref": {
+          "$ref": "#/definitions/ref"
+        }
+      }
+    },
+    "idea": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "statement",
+        "operator",
+        "recurring_ingredient",
+        "materials",
+        "mechanism",
+        "hypothesis",
+        "test",
+        "prior_art",
+        "feasibility",
+        "teaches",
+        "tradeoffs"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[NB][0-9]+$"
+        },
+        "title": {
+          "type": "string"
+        },
+        "statement": {
+          "type": "string"
+        },
+        "operator": {
+          "enum": [
+            "facet_recombination",
+            "analogy",
+            "literature_bridge",
+            "anomaly",
+            "revived_old_idea",
+            "hypothesis_inversion",
+            "morphological_analysis"
+          ]
+        },
+        "recurring_ingredient": {
+          "type": "boolean"
+        },
+        "follow_up_kind": {
+          "enum": [
+            "competing_explanation",
+            "repairable_variant",
+            "scope_extension",
+            "transfer"
+          ]
+        },
+        "analogy": {
+          "type": "object",
+          "required": [
+            "source_domain",
+            "target_domain",
+            "partial",
+            "corresponds",
+            "breaks"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "source_domain": {
+              "type": "string"
+            },
+            "target_domain": {
+              "type": "string"
+            },
+            "partial": {
+              "type": "boolean"
+            },
+            "corresponds": {
+              "type": "string"
+            },
+            "breaks": {
+              "type": "string"
+            }
+          }
+        },
+        "bridge": {
+          "type": "object",
+          "required": [
+            "intermediate_concept",
+            "neighbouring_field"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "intermediate_concept": {
+              "type": "string"
+            },
+            "neighbouring_field": {
+              "type": "string"
+            }
+          }
+        },
+        "materials": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/material"
+          }
+        },
+        "mechanism": {
+          "type": "object",
+          "required": [
+            "summary",
+            "goal"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "goal": {
+              "type": "string"
+            }
+          }
+        },
+        "hypothesis": {
+          "type": "object",
+          "required": [
+            "statement",
+            "false_if"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "statement": {
+              "type": "string"
+            },
+            "false_if": {
+              "type": "string"
+            }
+          }
+        },
+        "test": {
+          "type": "object",
+          "required": [
+            "one_line",
+            "variable",
+            "if_holds",
+            "if_fails"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "one_line": {
+              "type": "string"
+            },
+            "variable": {
+              "type": "string"
+            },
+            "if_holds": {
+              "type": "string"
+            },
+            "if_fails": {
+              "type": "string"
+            }
+          }
+        },
+        "prior_art": {
+          "$ref": "#/definitions/prior_art"
+        },
+        "feasibility": {
+          "type": "object",
+          "required": [
+            "data",
+            "tool",
+            "time",
+            "compute"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "data": {
+              "$ref": "#/definitions/feasibility_element"
+            },
+            "tool": {
+              "$ref": "#/definitions/feasibility_element"
+            },
+            "time": {
+              "$ref": "#/definitions/feasibility_element"
+            },
+            "compute": {
+              "$ref": "#/definitions/feasibility_element"
+            }
+          }
+        },
+        "teaches": {
+          "type": "string"
+        },
+        "internal_history": {
+          "$ref": "#/definitions/internal_history"
+        },
+        "search_plan": {
+          "type": "object",
+          "description": "Frontier v2 (tools/v2check.py [REB-PLAN]): the plan-search-revision loop that produced the idea: 2 to 3 iterations {n, fields [{field, why, keywords}], revision {learned, changes} | stop_reason, queries (last iteration: the queries of prior_art.queries)} and differs_from_previous.",
+          "properties": {
+            "iterations": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "differs_from_previous": {
+              "type": "string"
+            }
+          }
+        },
+        "tradeoffs": {
+          "type": "object",
+          "required": [
+            "gains",
+            "costs",
+            "assumptions",
+            "uncertainties"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "gains": {
+              "$ref": "#/definitions/text_list"
+            },
+            "costs": {
+              "$ref": "#/definitions/text_list"
+            },
+            "assumptions": {
+              "$ref": "#/definitions/text_list"
+            },
+            "uncertainties": {
+              "$ref": "#/definitions/text_list"
+            }
+          }
+        },
+        "original_statement": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "original_identity": {
+          "type": "object",
+          "required": [
+            "id",
+            "operator",
+            "goal"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "\\S"
+            },
+            "operator": {
+              "type": "string",
+              "pattern": "\\S"
+            },
+            "goal": {
+              "type": "string",
+              "pattern": "\\S"
+            }
+          }
+        },
+        "original_prior_art": {
+          "$ref": "#/definitions/prior_art"
+        },
+        "critique": {
+          "$ref": "#/definitions/idea_critique"
+        },
+        "statement_changed": {
+          "type": "boolean"
+        },
+        "repair": {
+          "$ref": "#/definitions/idea_repair"
+        }
+      }
+    },
+    "idea_critique": {
+      "type": "object",
+      "required": [
+        "objections",
+        "proposed_change",
+        "route",
+        "critic_family",
+        "date"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "objections": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "string",
+            "pattern": "\\S"
+          }
+        },
+        "proposed_change": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "route": {
+          "enum": [
+            "critic",
+            "subagent",
+            "author"
+          ]
+        },
+        "critic_family": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "date": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+        }
+      }
+    },
+    "idea_repair": {
+      "type": "object",
+      "required": [
+        "statement",
+        "rationale",
+        "critique_items",
+        "critique_sha256",
+        "date"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+        },
+        "statement": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "rationale": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "critique_items": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+            "items": {
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          }
+        },
+        "critique_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    }
+  },
+  "type": "object",
+  "required": [
+    "stage",
+    "generated_utc",
+    "parent_idea",
+    "ideas",
+    "duplicate_groups"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "stage": {
+      "enum": [
+        "8",
+        "8-bis"
+      ]
+    },
+    "generated_utc": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "header": {
+      "type": "string"
+    },
+    "parent_idea": {
+      "type": "string"
+    },
+    "tree": {
+      "type": "string"
+    },
+    "after_test": {
+      "type": "string"
+    },
+    "outcome": {
+      "enum": [
+        "refuted",
+        "confirmed",
+        "indeterminate"
+      ]
+    },
+    "outcome_source": {
+      "enum": [
+        "result.json",
+        "researcher",
+        "assumption",
+        "scenario"
+      ]
+    },
+    "ideas": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/idea"
+      }
+    },
+    "internal_history_removed": {
+      "$ref": "#/definitions/internal_history_removed"
+    },
+    "duplicate_groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "ids",
+          "fields"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "ids": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "string"
+            }
+          },
+          "fields": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "enum": [
+                "mechanism",
+                "hypothesis",
+                "test",
+                "text"
+              ]
+            }
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ranking": {
+      "type": "object",
+      "required": [
+        "basis",
+        "ranked_utc",
+        "scenarios"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "basis": {
+          "type": "string"
+        },
+        "ranked_utc": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+        },
+        "scenarios": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "if",
+              "then",
+              "why",
+              "prefer"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "if": {
+                "type": "string"
+              },
+              "then": {
+                "type": "string"
+              },
+              "why": {
+                "type": "string"
+              },
+              "prefer": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "selection_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "retained",
+          "rejected",
+          "decided_by",
+          "decided_utc"
+        ],
+        "properties": {
+          "retained": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rejected": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "decided_by": {
+            "enum": [
+              "user",
+              "assumption"
+            ]
+          },
+          "decided_utc": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "selection": {
+      "type": "object",
+      "required": [
+        "retained",
+        "rejected",
+        "decided_by",
+        "decided_utc"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "retained": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rejected": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "reason"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "decided_by": {
+          "enum": [
+            "user",
+            "assumption"
+          ]
+        },
+        "decided_utc": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "idea_critique": {
+      "type": "object",
+      "required": [
+        "input_sha256",
+        "author_family",
+        "idea_ids"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "input_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "author_family": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "idea_ids": {
+          "type": "array",
+          "minItems": 1,
+            "items": {
+            "type": "string",
+            "pattern": "\\S"
+          }
+        }
+      }
+    }
+  }
+}

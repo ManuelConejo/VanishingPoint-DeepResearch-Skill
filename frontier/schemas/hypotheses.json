@@ -1,0 +1,63 @@
+{
+  "$comment": "Frontier step 2. Counts (2-4 load-bearing, >= 1 rival, >= 1 variant) and references are checked by tools/check.py.",
+  "definitions": {
+    "ref": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*:.+"},
+        "run": {"type": "string"},
+        "claim": {"type": "string", "pattern": "^A[0-9]+$"},
+        "says": {"type": "string"},
+        "title": {"type": "string"},
+        "year": {"type": "string"}
+      }
+    },
+    "refs": {"type": "array", "items": {"$ref": "#/definitions/ref"}}
+  },
+  "type": "object",
+  "required": ["hypotheses", "rivals", "repairable_variants"],
+  "properties": {
+    "hypotheses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "statement", "for", "against"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^H[0-9]+$"},
+          "statement": {"type": "string"},
+          "for": {"$ref": "#/definitions/refs"},
+          "against": {"$ref": "#/definitions/refs"}
+        }
+      }
+    },
+    "rivals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "statement", "why_plausible"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^R[0-9]+$"},
+          "statement": {"type": "string"},
+          "why_plausible": {"type": "string"},
+          "for": {"$ref": "#/definitions/refs"},
+          "against": {"$ref": "#/definitions/refs"}
+        }
+      }
+    },
+    "repairable_variants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "statement", "repairs"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^V[0-9]+$"},
+          "statement": {"type": "string"},
+          "repairs": {"type": "string"}
+        }
+      }
+    },
+    "contradictions": {"type": "array"}
+  }
+}

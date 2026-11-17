@@ -1,0 +1,30 @@
+{
+  "baseline": "T2",
+  "idea": "In preterm infants, transfusing 20 mL/kg instead of 15 mL/kg of red cells reduces the number of transfusions without more adverse events.",
+  "domain": "neonatology",
+  "T": "2025-08-05",
+  "produced_by": "one standard VP run on the idea, then a recommendation by the same model",
+  "vp_run": "vp_real_q01",
+  "hypotheses": [
+    {"id": "H1", "statement": "A larger volume per transfusion lowers the number of transfusions."},
+    {"id": "R1", "statement": "Transfusion thresholds, not volumes, drive the count."}
+  ],
+  "tests": [
+    {
+      "id": "T1",
+      "title": "Pool the randomised neonatal volume trials",
+      "competing_hypotheses": ["H1", "R1"],
+      "predictions": [
+        {"hypothesis": "H1", "direction": "decrease", "magnitude": "fewer transfusions", "interval": [-1.0, -0.3], "unit": "transfusions per infant"},
+        {"hypothesis": "R1", "direction": "no change", "magnitude": "no difference", "interval": [-0.1, 0.1], "unit": "transfusions per infant"}
+      ],
+      "compatible_with_both": "A difference between -0.3 and -0.1.",
+      "unexpected_under_both": "More transfusions with the larger volume.",
+      "decisive_intervention": {"kind": ["randomisation"], "description": "Randomised arms only."},
+      "sensitivity": {"smallest_useful_effect": "0.3 transfusion", "expected_noise": "about 0.9", "replications": "pooled arms"},
+      "decision_rule": {"continue_if": "pooled difference below -0.3", "revise_if": "between -0.3 and -0.1", "stop_if": "inside [-0.1, 0.1]", "indeterminate_if": "otherwise", "fixed_before_observation": true},
+      "feasibility": {"data": "published trials", "human_time": "two days", "compute": "minutes", "technical_risk": "heterogeneous reporting"}
+    }
+  ],
+  "recommendation": {"verdict": "dig", "reason": "Several randomised trials report fewer transfusions with the larger volume."}
+}

@@ -1,0 +1,26 @@
+{
+  "$comment": "Frontier step 0-quater: candidate key numbers found by tools/context.py extract in the README, results and lessons files of intake.json project_dirs. The host confirms some (tools/context.py confirm) into intake.json context.key_numbers. This file is LOCAL: its excerpts never enter a request (tools/check.py [HISTORY-LEAK]).",
+  "type": "object",
+  "required": ["stage", "project_dirs", "candidates"],
+  "properties": {
+    "stage": {"const": "context"},
+    "project_dirs": {"type": "array", "items": {"type": "string"}},
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "class", "value", "file", "line", "excerpt"],
+        "properties": {
+          "id": {"type": "string"},
+          "class": {"enum": ["n_periods", "n_units", "ic", "cost", "sharpe", "sd"]},
+          "value": {"type": "number"},
+          "unit": {"type": "string"},
+          "file": {"type": "string"},
+          "root": {"type": "integer"},
+          "line": {"type": "integer", "minimum": 1},
+          "excerpt": {"type": "string"}
+        }
+      }
+    }
+  }
+}

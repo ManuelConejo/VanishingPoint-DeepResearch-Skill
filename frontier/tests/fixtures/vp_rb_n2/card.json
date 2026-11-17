@@ -1,0 +1,37 @@
+{
+  "card_id": "vp-2026-11-14-vp-rb-n2",
+  "question": "Prior art? A headline study",
+  "sources": {
+    "S1": {
+      "doi": "10.1000/rb.n2.2021",
+      "title": "A headline study",
+      "year": "2021"
+    },
+    "S2": {
+      "doi": "10.1000/rb.n2.2021.b",
+      "title": "Second work of vp_rb_n2",
+      "year": "2021"
+    }
+  },
+  "claims": [
+    {
+      "id": "A1",
+      "text": "Headline length relates to rank in news search.",
+      "source": {
+        "key": "S1"
+      },
+      "location": "abstract",
+      "element": "E1"
+    },
+    {
+      "id": "A2",
+      "text": "A second claim of vp_rb_n2.",
+      "source": {
+        "key": "S2"
+      },
+      "location": "abstract",
+      "element": "E1"
+    }
+  ],
+  "conclusion": "Synthetic fixture."
+}

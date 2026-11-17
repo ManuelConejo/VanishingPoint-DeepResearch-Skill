@@ -1,0 +1,5 @@
+{"status": "done", "note": "synthetic transcript of a VP contradictor answer (general mode) on the Frontier critique pack",
+ "elements": [
+  {"kind": "miss", "status": "miss verified", "claim": "Nothing shows the index is sensitive to titles at all.", "why": "A null result would not separate a broken index from a refutation."},
+  {"kind": "false", "status": "false detected", "quote": "clarity rating", "why": "An LLM rating title clarity may know which papers became famous."}
+ ]}

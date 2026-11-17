@@ -1,0 +1,78 @@
+{
+  "$comment": "Frontier step 0-bis \"Already tried here\": history.json, written by tools/history.py only (local search of the project archives of intake.json project_dirs). Structure only; the semantic rules ([HISTORY-MISSING], [HISTORY-STALE], [HISTORY-QUERY], [HISTORY-OVERLAP], [HISTORY-CITE], [HISTORY-LEAK]) are in tools/check.py. The content of this file is private to the user's machine: it never enters a request of VP or any command that reaches the network.",
+  "type": "object",
+  "required": ["stage", "generated_utc", "project_dirs", "scan", "queries", "entries", "note"],
+  "properties": {
+    "stage": {"const": "history"},
+    "generated_utc": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+    "project_dirs": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "limits": {"type": "object"},
+    "scan": {
+      "type": "object",
+      "required": ["files_scanned", "files_skipped", "truncated"],
+      "properties": {
+        "files_scanned": {"type": "integer", "minimum": 0},
+        "files_skipped": {"type": "object"},
+        "bytes_scanned": {"type": "integer", "minimum": 0},
+        "truncated": {"type": "boolean"},
+        "entries_capped": {"type": "integer", "minimum": 0}
+      }
+    },
+    "queries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["label", "utc", "terms"],
+        "additionalProperties": false,
+        "properties": {
+          "label": {"enum": ["intake", "tests", "rebound"]},
+          "utc": {"type": "string"},
+          "terms": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["term", "synonyms", "group"],
+              "additionalProperties": false,
+              "properties": {
+                "term": {"type": "string", "minLength": 1},
+                "synonyms": {"type": "array", "items": {"type": "string"}},
+                "group": {"enum": ["idea", "hypothesis", "test", "neighbour"]},
+                "for": {"type": "string", "minLength": 1},
+                "generic": {"type": "boolean"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "root", "file", "line", "excerpt", "terms", "matched", "labels", "for", "verdict", "markers",
+                     "verdict_line", "verdict_excerpt", "reopen_condition", "reopen_line"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^E[0-9]+$"},
+          "root": {"type": "string"},
+          "file": {"type": "string", "minLength": 1},
+          "line": {"type": "integer", "minimum": 1},
+          "excerpt": {"type": "string"},
+          "terms": {"type": "array", "items": {"type": "string"}},
+          "matched": {"type": "array", "items": {"type": "string"}},
+          "labels": {"type": "array", "items": {"enum": ["intake", "tests", "rebound"]}},
+          "for": {"type": "array", "items": {"type": "string"}},
+          "verdict": {"enum": ["classed", "tried", "none"]},
+          "markers": {"type": "array", "items": {"type": "string"}},
+          "verdict_line": {"type": ["integer", "null"]},
+          "verdict_excerpt": {"type": ["string", "null"]},
+          "reopen_condition": {"type": ["string", "null"]},
+          "reopen_line": {"type": ["integer", "null"]}
+        }
+      }
+    },
+    "note": {"type": "string"}
+  }
+}

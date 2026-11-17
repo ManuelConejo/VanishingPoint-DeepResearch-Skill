@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.6.27, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.6.28, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -28,6 +28,8 @@ Status: v0.6.27, research preview. Measured on small private benches (3 to 50 ca
 - **See a real run**: [`examples/report-cs-ai/`](examples/report-cs-ai/) (question, report, verdicts, cited passages,
   with its limits).
 - **Use it**: [USAGE.md](USAGE.md) (how to ask, reading the result, plugins, optional modes, keys, costs, troubleshooting).
+
+Rebound is an optional creative aid with no guarantee ([frontier/SKILL.md](frontier/SKILL.md)), used only on explicit request and opened with the disclaimer from `frontier/tools/disclaimer.py`; its proposals and test plans are judged by models, not measured. Cards may include executed test results.
 
 ## Installation
 

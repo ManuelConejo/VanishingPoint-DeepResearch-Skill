@@ -1,0 +1,29 @@
+{
+  "baseline": "T1",
+  "idea": "Preprints with shorter titles collect more citations at two years because search engines retrieve them more often.",
+  "domain": "scientometrics",
+  "T": "2026-11-14",
+  "produced_by": "the host model alone, without search, with the same idea statement",
+  "hypotheses": [
+    {"id": "H1", "statement": "Shorter titles are retrieved more often."},
+    {"id": "R1", "statement": "Prestigious journals impose short titles and attract citations."}
+  ],
+  "tests": [
+    {
+      "id": "T1",
+      "title": "Regress citations on title length with journal fixed effects",
+      "competing_hypotheses": ["H1", "R1"],
+      "predictions": [
+        {"hypothesis": "H1", "direction": "increase", "magnitude": "negative length coefficient within journals", "interval": [1.05, 1.3], "unit": "citation ratio short over long"},
+        {"hypothesis": "R1", "direction": "no change", "magnitude": "no within-journal effect", "interval": [0.97, 1.03], "unit": "citation ratio short over long"}
+      ],
+      "compatible_with_both": "A ratio between 1.03 and 1.05.",
+      "unexpected_under_both": "Long titles cited more within journals.",
+      "decisive_intervention": {"kind": ["negative_control"], "description": "Page count as a negative control."},
+      "sensitivity": {"smallest_useful_effect": "ratio 1.05", "expected_noise": "unknown", "replications": "all preprints of 2022"},
+      "decision_rule": {"continue_if": "ratio above 1.05", "revise_if": "ratio between 1.03 and 1.05", "stop_if": "ratio below 1.03", "indeterminate_if": "otherwise", "fixed_before_observation": true},
+      "feasibility": {"data": "open citation counts", "human_time": "one day", "compute": "minutes", "technical_risk": "missing journal of record"}
+    }
+  ],
+  "recommendation": {"verdict": "test first", "reason": "A within-journal regression separates prestige from title length cheaply."}
+}

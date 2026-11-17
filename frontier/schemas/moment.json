@@ -1,0 +1,35 @@
+{
+  "$comment": "Frontier step 1-bis: the moment of the subject (rising, saturating, revived, unclear) from dated publication totals read through VP's gateway (index_total at several dates T). Written by tools/matter.py moment; recomputed by tools/check.py ([MOMENT-*]). Structure only.",
+  "type": "object",
+  "required": ["version", "query", "engine", "series", "periods", "reading", "line", "thresholds"],
+  "properties": {
+    "version": {"const": 1},
+    "query": {"type": "string", "minLength": 1},
+    "engine": {"type": "string"},
+    "series": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["as_of", "total", "envelope", "envelope_sha256"],
+        "properties": {
+          "as_of": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+          "total": {"type": "number"},
+          "envelope": {"type": "string"},
+          "envelope_sha256": {"type": "string"}
+        }
+      }
+    },
+    "periods": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to", "count", "per_year"],
+        "properties": {"from": {"type": "string"}, "to": {"type": "string"}, "count": {"type": "number"}, "per_year": {"type": "number"}}
+      }
+    },
+    "reading": {"enum": ["rising", "saturating", "revived", "unclear"]},
+    "line": {"type": "string", "minLength": 10},
+    "thresholds": {"type": "object"},
+    "directions_note": {"type": ["string", "null"]}
+  }
+}

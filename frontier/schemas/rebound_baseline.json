@@ -1,0 +1,42 @@
+{
+  "$comment": "Baseline of the three-arm rebound pilot (tools/export_rebound.py --manifest): arm B = the model with VP but without the operators of step 8 (vp_run names the VP run used, vp_runs maps run names to directories, every reference carries its VP run and claim), arm C = the model alone (references carry an identifier only). Arm A is a Frontier working directory (rebound.json). parent_idea and T must be those of arm A's intake.json; generated_utc must be later than the researcher's notes. The three arms are exported in one anonymised format; prior art is NOT part of a baseline (it is evaluated apart, by one procedure for the three arms).",
+  "definitions": {
+    "reference": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*:.+"},
+        "run": {"type": "string"},
+        "claim": {"type": "string", "pattern": "^A[0-9]+$"}
+      }
+    },
+    "idea": {
+      "type": "object",
+      "required": ["title", "statement", "mechanism", "hypothesis", "minimal_test"],
+      "additionalProperties": false,
+      "properties": {
+        "title": {"type": "string"},
+        "statement": {"type": "string"},
+        "mechanism": {"type": "string"},
+        "hypothesis": {"type": "string"},
+        "minimal_test": {"type": "string"},
+        "references": {"type": "array", "items": {"$ref": "#/definitions/reference"}}
+      }
+    }
+  },
+  "type": "object",
+  "required": ["arm", "parent_idea", "T", "generated_utc", "ideas"],
+  "additionalProperties": false,
+  "properties": {
+    "arm": {"enum": ["B", "C"]},
+    "parent_idea": {"type": "string"},
+    "domain": {"type": "string"},
+    "T": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "generated_utc": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+    "produced_by": {"type": "string"},
+    "vp_run": {"type": "string"},
+    "vp_runs": {"type": "object"},
+    "ideas": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/idea"}}
+  }
+}

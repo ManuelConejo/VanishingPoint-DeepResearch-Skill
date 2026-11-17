@@ -1,0 +1,28 @@
+{
+  "hypotheses": [
+    {
+      "id": "H1",
+      "statement": "Shorter titles rank higher in scholarly search engines for typical topical queries.",
+      "for": [{"id": "arxiv:2101.00001", "run": "prior_art", "claim": "A2", "says": "rank depends on matches of title terms"}],
+      "against": []
+    },
+    {
+      "id": "H2",
+      "statement": "Higher retrieval rank translates into more citations at two years.",
+      "for": [{"id": "doi:10.1000/titles.2019", "run": "prior_art", "claim": "A1", "says": "shorter titles received more citations"}],
+      "against": [{"id": "doi:10.1000/prestige.2020", "run": "prior_art", "claim": "A3", "says": "prestige explains a large part"}]
+    }
+  ],
+  "rivals": [
+    {
+      "id": "R1",
+      "statement": "Journal prestige drives both short titles (house style) and citations; title length has no effect of its own.",
+      "why_plausible": "Prestige explains a large part of the association in the closest work.",
+      "for": [{"id": "doi:10.1000/prestige.2020", "run": "prior_art", "claim": "A3"}],
+      "against": []
+    }
+  ],
+  "repairable_variants": [
+    {"id": "V1", "statement": "Title informativeness (query-term coverage), not length, drives retrieval.", "repairs": "Length may only proxy for term match."}
+  ]
+}

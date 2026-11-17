@@ -1,0 +1,289 @@
+{
+  "$comment": "Frontier step 3: 1 to 3 strong-inference tests. Types only here; the complete grid ([GRID], [COMPETING], [PRED], [PRED-IDENTICAL], [PRED-OVERLAP], [RULE], [L0], [SIM], [SIM-LINK], [SIM-RERUN]), the four traps ([TRAP]) and the ranking without numbers ([RANK]) are checked by tools/check.py. The items of 'tests' are also the format of the tests of a baseline (schemas/baseline.json).",
+  "type": "object",
+  "required": [
+    "tests",
+    "ranking"
+  ],
+  "properties": {
+    "internal_history_removed": {
+      "type": "array",
+      "description": "Step 0-bis. Tests dropped because they overlap a CLASSED trial of the user's own archives: the file:line of the classed passage (read again in the project folder by tools/check.py), what was dropped, why.",
+      "items": {
+        "type": "object",
+        "required": [
+          "cited",
+          "what",
+          "why"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "cited": {
+            "type": "string"
+          },
+          "what": {
+            "type": "string"
+          },
+          "why": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^T[0-9]+$"
+          },
+          "title": {
+            "type": "string"
+          },
+          "internal_history": {
+            "type": "array",
+            "description": "Step 0-bis. One item per CLASSED trial of the user's own archives (history.json) that this test overlaps and that the test keeps despite it: the entry id, its file:line, the verdict quoted, the written reopening condition (from the entry, or from reopen_condition_source = file:line read locally) and why that condition is met now. A test that is removed carries nothing: see internal_history_removed.",
+            "items": {
+              "type": "object",
+              "required": [
+                "entry",
+                "cited",
+                "verdict_quoted",
+                "decision",
+                "reopen_condition",
+                "condition_met"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "entry": {
+                  "type": "string"
+                },
+                "cited": {
+                  "type": "string"
+                },
+                "verdict_quoted": {
+                  "type": "string"
+                },
+                "decision": {
+                  "enum": [
+                    "kept"
+                  ]
+                },
+                "reopen_condition": {
+                  "type": "string"
+                },
+                "reopen_condition_source": {
+                  "type": "string"
+                },
+                "condition_met": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "competing_hypotheses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "predictions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "hypothesis"
+              ],
+              "properties": {
+                "hypothesis": {
+                  "type": "string"
+                },
+                "direction": {
+                  "type": "string"
+                },
+                "magnitude": {
+                  "type": "string"
+                },
+                "interval": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 2,
+                  "maxItems": 2
+                },
+                "unit": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "compatible_with_both": {
+            "type": "string"
+          },
+          "unexpected_under_both": {
+            "type": "string"
+          },
+          "decisive_intervention": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "description": {
+                "type": "string"
+              }
+            }
+          },
+          "sensitivity": {
+            "type": "object",
+            "properties": {
+              "smallest_useful_effect": {
+                "type": "string"
+              },
+              "expected_noise": {
+                "type": "string"
+              },
+              "replications": {
+                "type": [
+                  "string",
+                  "integer"
+                ]
+              },
+              "simulation": {
+                "type": "object"
+              },
+              "simulation_not_applicable": {
+                "type": "string"
+              },
+              "minimum_useful_effect": {
+                "description": "V3 numeric minimum useful effect in the simulation units; otherwise use stored robust.useful_effect. No extraction from prose."
+              },
+              "power_at_minimum": {
+                "description": "Optional V3 claimed continue-decision frequency, compared with the local minimum-effect rerun at stated decimal precision retained by JSON numeric parsing. Show count/reps. Numeric arithmetic mismatch blocks [POWER-MIN-MISMATCH]; nonnumeric/nonfinite optional values mark [POWER-INPUTS]."
+              }
+            }
+          },
+          "decision_rule": {
+            "type": "object",
+            "properties": {
+              "continue_if": {
+                "type": "string"
+              },
+              "revise_if": {
+                "type": "string"
+              },
+              "stop_if": {
+                "type": "string"
+              },
+              "indeterminate_if": {
+                "type": "string"
+              },
+              "fixed_before_observation": {
+                "type": "boolean"
+              },
+              "fixed_utc": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+              },
+              "thresholds": {
+                "type": "object",
+                "required": [
+                  "continue_if_lower_above",
+                  "stop_if_upper_below"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "continue_if_lower_above": {
+                    "type": "number"
+                  },
+                  "stop_if_upper_below": {
+                    "type": "number"
+                  }
+                }
+              },
+              "equivalence": {
+                "type": "object"
+              }
+            }
+          },
+          "feasibility": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "type": "string"
+              },
+              "human_time": {
+                "type": "string"
+              },
+              "compute": {
+                "type": "string"
+              },
+              "technical_risk": {
+                "type": "string"
+              }
+            }
+          },
+          "llm_judges_history": {
+            "type": "boolean"
+          },
+          "l0_leakage_control": {
+            "type": "object"
+          },
+          "traps": {
+            "type": "object"
+          },
+          "kind": {
+            "description": "V3: prospective for at most one zero-cost long-horizon companion alongside 1 to 3 primary tests; extra companions are marked [PROSPECTIVE]. Existing grid remains applicable."
+          },
+          "start_action": {
+            "description": "V3 prospective: the concrete action to start now."
+          },
+          "readout_date": {
+            "description": "V3 prospective: read-out calendar date YYYY-MM-DD; missing/invalid is soft [PROSPECTIVE]."
+          },
+          "pre_critique": {
+            "description": "V3: {rule_escape_hatch, target_signal_circularity, proxy_as_target}, each {answer: present|absent|uncertain, where: tests.T1.path}. Missing/empty is soft [PITFALL-CHECK]."
+          }
+        }
+      }
+    },
+    "ranking": {
+      "type": "object",
+      "required": [
+        "basis",
+        "order",
+        "scenarios"
+      ],
+      "properties": {
+        "basis": {
+          "type": "string"
+        },
+        "order": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "scenarios": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "prospective_not_applicable": {
+      "description": "V3: reason no zero-cost long-horizon test is proposed; omission is a soft [PROSPECTIVE]."
+    }
+  }
+}

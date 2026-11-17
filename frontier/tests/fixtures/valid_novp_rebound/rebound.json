@@ -1,0 +1,477 @@
+{
+  "stage": "8",
+  "generated_utc": "2026-11-14T13:30:00Z",
+  "header": "References not verified (VP not installed)",
+  "parent_idea": "Preprints with shorter titles collect more citations at two years because search engines retrieve them more often.",
+  "ideas": [
+    {
+      "id": "N1",
+      "title": "Abstract term coverage instead of title length",
+      "statement": "Keep the goal (raise retrieval visibility) and change the mechanism: the coverage of query terms in the abstract, not the length of the title, is the lever.",
+      "operator": "facet_recombination",
+      "recurring_ingredient": true,
+      "materials": [
+        {
+          "kind": "reference",
+          "ref": {
+            "id": "doi:10.1000/titles.2019",
+            "says": "shorter titles received more citations"
+          },
+          "why": "The association that the idea tries to explain by another mechanism."
+        },
+        {
+          "kind": "entry",
+          "entry": "hypotheses.json:V1",
+          "why": "The repairable variant already names term coverage."
+        }
+      ],
+      "mechanism": {
+        "summary": "Query-term coverage of the abstract drives the rank of a record in scholarly search.",
+        "goal": "Raise retrieval visibility of a preprint."
+      },
+      "hypothesis": {
+        "statement": "Abstract term coverage predicts retrieval rank better than title length does.",
+        "false_if": "Rank is unchanged when the abstract is rewritten for coverage."
+      },
+      "test": {
+        "one_line": "Rewrite 200 abstracts for term coverage and lengthen 200 controls, then compare the paired rank change.",
+        "variable": "retrieval rank of the same preprint",
+        "if_holds": "The coverage rewrite gains rank and the length change does not.",
+        "if_fails": "Neither change moves the rank."
+      },
+      "prior_art": {
+        "status": "Partially",
+        "queries": [
+          "abstract term coverage retrieval rank preprint"
+        ],
+        "scope": "OpenAlex and arXiv, documents dated before 2026-11-14, titles and abstracts.",
+        "date": "2026-11-14T13:40:00Z",
+        "closest_work": [
+          {
+            "ref": {
+              "id": "doi:10.1000/rb.n1.2021"
+            },
+            "title": "Abstract wording and retrieval in scholarly search",
+            "year": "2021",
+            "what_differs": "Observational on one engine; no paired rewrite of the same preprint."
+          }
+        ],
+        "difference": "The closest work is observational; the idea adds a paired intervention on the same preprints."
+      },
+      "feasibility": {
+        "data": {
+          "status": "established",
+          "name": "OpenAlex works snapshot",
+          "access": "https://openalex.org (public API)"
+        },
+        "tool": {
+          "status": "established",
+          "name": "pandas and a title-rewrite script",
+          "access": "local script of the T1 apparatus"
+        },
+        "time": {
+          "status": "established",
+          "amount": 3,
+          "unit": "person-days"
+        },
+        "compute": {
+          "status": "established",
+          "amount": 0,
+          "unit": "GPU-hours"
+        }
+      },
+      "teaches": "Whether the lever is the title at all or the wording of the whole record, which decides where authors should act.",
+      "tradeoffs": {
+        "gains": [
+          "Cheapest test, reuses the T1 apparatus."
+        ],
+        "costs": [
+          "Needs consent-free rewriting of public records only."
+        ],
+        "assumptions": [
+          "The engine indexes abstracts."
+        ],
+        "uncertainties": [
+          "Engines may weight titles more than abstracts."
+        ]
+      }
+    },
+    {
+      "id": "N2",
+      "title": "News headline length applied to preprint titles",
+      "statement": "Transfer the headline-length findings of news search to preprint titles in scholarly search.",
+      "operator": "analogy",
+      "recurring_ingredient": true,
+      "analogy": {
+        "source_domain": "news headline search",
+        "target_domain": "scholarly search",
+        "partial": true,
+        "corresponds": "Both rank short text fields mostly by term match.",
+        "breaks": "Scholarly engines also weight citation counts and venue; news engines weight recency."
+      },
+      "materials": [
+        {
+          "kind": "reference",
+          "ref": {
+            "id": "arxiv:2101.00001",
+            "says": "rank depends on matches of title terms"
+          },
+          "why": "Retrieval rank by title-term match is the shared mechanism."
+        }
+      ],
+      "mechanism": {
+        "summary": "Short text fields are ranked by exact term match, so a shorter field concentrates the match weight.",
+        "goal": "Increase the chance that a short text is retrieved."
+      },
+      "hypothesis": {
+        "statement": "The match-weight effect measured for news headlines also holds for preprint titles.",
+        "false_if": "Scholarly engines weight citation counts so heavily that title match no longer moves the rank."
+      },
+      "test": {
+        "one_line": "Replay the headline experiment design on a sample of preprint titles in two scholarly engines.",
+        "variable": "rank position under a fixed query",
+        "if_holds": "Shorter titles rank higher at equal content.",
+        "if_fails": "Rank is flat in title length once citations are held fixed."
+      },
+      "prior_art": {
+        "status": "Not found",
+        "queries": [
+          "headline length retrieval news search preprint title"
+        ],
+        "scope": "OpenAlex and arXiv, documents dated before 2026-11-14, titles and abstracts.",
+        "date": "2026-11-14T13:40:00Z",
+        "closest_work": []
+      },
+      "feasibility": {
+        "data": {
+          "status": "established",
+          "name": "OpenAlex works snapshot",
+          "access": "https://openalex.org (public API)"
+        },
+        "tool": {
+          "status": "not established",
+          "why": "No accessible item identified yet."
+        },
+        "time": {
+          "status": "established",
+          "amount": 3,
+          "unit": "person-days"
+        },
+        "compute": {
+          "status": "established",
+          "amount": 0,
+          "unit": "GPU-hours"
+        }
+      },
+      "teaches": "Whether the retrieval mechanism is general across text genres.",
+      "tradeoffs": {
+        "gains": [
+          "Reuses a published design."
+        ],
+        "costs": [
+          "The two domains rank differently."
+        ],
+        "assumptions": [
+          "Headline data can be replayed."
+        ],
+        "uncertainties": [
+          "Engines differ in how much they weight citations."
+        ]
+      }
+    },
+    {
+      "id": "N3",
+      "title": "Title-term matching in dataset search as a bridge",
+      "statement": "Use the literature on query-title matching in dataset retrieval as an intermediate concept that links the idea to a neighbouring field.",
+      "operator": "literature_bridge",
+      "recurring_ingredient": true,
+      "bridge": {
+        "intermediate_concept": "click-through of search results",
+        "neighbouring_field": "dataset retrieval"
+      },
+      "materials": [
+        {
+          "kind": "reference",
+          "ref": {
+            "id": "arxiv:2101.00001",
+            "says": "rank depends on matches of title terms"
+          },
+          "why": "Start of the bridge: title-term match drives rank."
+        },
+        {
+          "kind": "reference",
+          "ref": {
+            "id": "doi:10.1000/clicks.2022",
+            "says": "title wording affects click-through"
+          },
+          "why": "End of the bridge: wording changes clicks, an intermediate step to citations."
+        }
+      ],
+      "mechanism": {
+        "summary": "Title wording changes click-through, which feeds usage and then citations.",
+        "goal": "Explain the link between titles and citations through usage."
+      },
+      "hypothesis": {
+        "statement": "Click-through mediates the effect of title wording on citations.",
+        "false_if": "Title wording changes clicks but citations do not follow clicks."
+      },
+      "test": {
+        "one_line": "Mediation analysis of title wording, clicks and citations on public usage logs of one repository.",
+        "variable": "indirect effect of wording on citations through clicks",
+        "if_holds": "The indirect effect is clearly above zero.",
+        "if_fails": "The indirect effect is zero or opposite."
+      },
+      "prior_art": {
+        "status": "Exists",
+        "queries": [
+          "title wording click-through citations mediation"
+        ],
+        "scope": "OpenAlex and arXiv, documents dated before 2026-11-14, titles and abstracts.",
+        "date": "2026-11-14T13:40:00Z",
+        "closest_work": [
+          {
+            "ref": {
+              "id": "doi:10.1000/rb.n3.2020"
+            },
+            "title": "Clicks as a mediator of citations",
+            "year": "2020",
+            "what_differs": "Same bridge, applied to dataset titles only."
+          }
+        ]
+      },
+      "feasibility": {
+        "data": {
+          "status": "not established",
+          "why": "No accessible item identified yet."
+        },
+        "tool": {
+          "status": "not established",
+          "why": "No accessible item identified yet."
+        },
+        "time": {
+          "status": "not established",
+          "why": "No accessible item identified yet."
+        },
+        "compute": {
+          "status": "established",
+          "amount": 0,
+          "unit": "GPU-hours"
+        }
+      },
+      "teaches": "Whether usage is the missing link between retrieval and citations.",
+      "tradeoffs": {
+        "gains": [
+          "Connects two literatures."
+        ],
+        "costs": [
+          "Usage logs are rarely public."
+        ],
+        "assumptions": [
+          "A repository shares its logs."
+        ],
+        "uncertainties": [
+          "Logs may be too sparse for a mediation estimate."
+        ]
+      }
+    },
+    {
+      "id": "N4",
+      "title": "Author title-crafting skill as the residual",
+      "statement": "Explain the association that survives the journal adjustment by author-level skill in crafting titles.",
+      "operator": "anomaly",
+      "recurring_ingredient": false,
+      "materials": [
+        {
+          "kind": "entry",
+          "entry": "prior_art.json:materials.contradictory_results[0]",
+          "why": "The residual association is the anomaly this idea tries to explain."
+        }
+      ],
+      "mechanism": {
+        "summary": "Authors who craft concise titles also craft clearer papers, which collect more citations.",
+        "goal": "Explain the residual association left after adjusting for journal."
+      },
+      "hypothesis": {
+        "statement": "The residual association disappears when author identity is held fixed.",
+        "false_if": "It persists inside authors who change title length between papers."
+      },
+      "test": {
+        "one_line": "Author fixed-effects regression of citations on title length over 5000 multi-paper authors.",
+        "variable": "title-length coefficient inside authors",
+        "if_holds": "The coefficient shrinks to about zero.",
+        "if_fails": "The coefficient is unchanged."
+      },
+      "prior_art": {
+        "status": "Not found",
+        "queries": [
+          "author fixed effects title length citations"
+        ],
+        "scope": "OpenAlex and arXiv, documents dated before 2026-11-14, titles and abstracts.",
+        "date": "2026-11-14T13:40:00Z",
+        "closest_work": []
+      },
+      "feasibility": {
+        "data": {
+          "status": "established",
+          "name": "OpenAlex works snapshot",
+          "access": "https://openalex.org (public API)"
+        },
+        "tool": {
+          "status": "established",
+          "name": "pandas and a title-rewrite script",
+          "access": "local script of the T1 apparatus"
+        },
+        "time": {
+          "status": "not established",
+          "why": "No accessible item identified yet."
+        },
+        "compute": {
+          "status": "established",
+          "amount": 0,
+          "unit": "GPU-hours"
+        }
+      },
+      "teaches": "Whether the association is a property of authors or of titles.",
+      "tradeoffs": {
+        "gains": [
+          "Uses public metadata only."
+        ],
+        "costs": [
+          "Needs author disambiguation."
+        ],
+        "assumptions": [
+          "Author identifiers are reliable enough."
+        ],
+        "uncertainties": [
+          "Disambiguation errors may bias the coefficient."
+        ]
+      }
+    },
+    {
+      "id": "N5",
+      "title": "Longer titles gain in narrow fields",
+      "statement": "Invert the hypothesis: in narrow fields, longer and more specific titles are retrieved more because they match precise queries.",
+      "operator": "hypothesis_inversion",
+      "recurring_ingredient": false,
+      "materials": [
+        {
+          "kind": "entry",
+          "entry": "hypotheses.json:H1",
+          "why": "The inverted hypothesis is H1."
+        },
+        {
+          "kind": "reference",
+          "ref": {
+            "id": "doi:10.1000/titles.2019",
+            "says": "shorter titles received more citations"
+          },
+          "why": "Its sign is the one being inverted."
+        }
+      ],
+      "mechanism": {
+        "summary": "Specific long titles match the rare terms of precise queries in narrow fields.",
+        "goal": "Find the field type where title length helps retrieval."
+      },
+      "hypothesis": {
+        "statement": "The sign of the title-length effect reverses in fields with few papers.",
+        "false_if": "The effect is negative in every field size."
+      },
+      "test": {
+        "one_line": "Interaction of title length and field size in the retrieval rank model of T1.",
+        "variable": "sign of the interaction coefficient",
+        "if_holds": "A positive interaction with field narrowness.",
+        "if_fails": "No interaction."
+      },
+      "prior_art": {
+        "status": "Insufficient search",
+        "queries": [
+          "title length narrow field retrieval sign reversal"
+        ],
+        "scope": "OpenAlex only, one engine, documents dated before 2026-11-14; arXiv was not searched.",
+        "date": "2026-11-14T13:40:00Z",
+        "closest_work": []
+      },
+      "feasibility": {
+        "data": {
+          "status": "established",
+          "name": "OpenAlex works snapshot",
+          "access": "https://openalex.org (public API)"
+        },
+        "tool": {
+          "status": "established",
+          "name": "pandas and a title-rewrite script",
+          "access": "local script of the T1 apparatus"
+        },
+        "time": {
+          "status": "established",
+          "amount": 3,
+          "unit": "person-days"
+        },
+        "compute": {
+          "status": "established",
+          "amount": 0,
+          "unit": "GPU-hours"
+        }
+      },
+      "teaches": "Whether a single sign of the effect can be assumed across fields.",
+      "tradeoffs": {
+        "gains": [
+          "Cheap extension of T1."
+        ],
+        "costs": [
+          "Small fields give noisy estimates."
+        ],
+        "assumptions": [
+          "Field size is measurable."
+        ],
+        "uncertainties": [
+          "Field boundaries are arbitrary."
+        ]
+      }
+    }
+  ],
+  "duplicate_groups": [],
+  "ranking": {
+    "basis": "Feasibility from verifiable elements, cheapest minimal test, and what each idea would teach for the next decision; scenarios, no score.",
+    "ranked_utc": "2026-11-14T14:00:00Z",
+    "scenarios": [
+      {
+        "if": "The researcher wants the cheapest test of the retrieval mechanism.",
+        "then": "Start from N1.",
+        "why": "Its data, tool, time and compute are established and its test reuses the T1 apparatus.",
+        "prefer": [
+          "N1"
+        ]
+      },
+      {
+        "if": "The researcher wants to understand the residual association first.",
+        "then": "Start from N4.",
+        "why": "It needs only public metadata but the time cost is not established.",
+        "prefer": [
+          "N4"
+        ]
+      },
+      {
+        "if": "The researcher worries about work already done.",
+        "then": "Read N3 before anything else.",
+        "why": "Prior art says it exists: read it, do not redo it.",
+        "prefer": [
+          "N3"
+        ]
+      }
+    ]
+  },
+  "selection": {
+    "retained": [
+      "N1"
+    ],
+    "rejected": [
+      {
+        "id": "N2",
+        "reason": "Needs a headline dataset that is not at hand."
+      }
+    ],
+    "decided_by": "user",
+    "decided_utc": "2026-11-14T14:30:00Z"
+  }
+}

@@ -1,0 +1,141 @@
+{
+  "$comment": "Frontier step 1. Semantic rules ([PRIOR-ART], [HEADER], references) are in tools/check.py.",
+  "definitions": {
+    "ref": {
+      "type": "object",
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*:.+"
+        },
+        "run": {
+          "type": "string"
+        },
+        "claim": {
+          "type": "string",
+          "pattern": "^A[0-9]+$"
+        },
+        "says": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "year": {
+          "type": "string"
+        }
+      }
+    },
+    "material": {
+      "type": "object",
+      "required": [
+        "text",
+        "refs"
+      ],
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ref"
+          }
+        }
+      }
+    }
+  },
+  "type": "object",
+  "required": [
+    "answer",
+    "searched",
+    "closest_work",
+    "materials"
+  ],
+  "properties": {
+    "header": {
+      "type": "string"
+    },
+    "answer": {
+      "enum": [
+        "Exists",
+        "Partially",
+        "Not found"
+      ]
+    },
+    "searched": {
+      "type": "string"
+    },
+    "vp_prior_art_md": {
+      "type": "string"
+    },
+    "contradictions_md": {
+      "type": "string"
+    },
+    "closest_work": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "ref",
+          "title"
+        ],
+        "properties": {
+          "ref": {
+            "$ref": "#/definitions/ref"
+          },
+          "title": {
+            "type": "string"
+          },
+          "year": {
+            "type": "string"
+          },
+          "what_differs": {
+            "type": "string"
+          },
+          "kind": {
+            "description": "V3 kind: paper | software | platform | dataset | other. Missing kind stays compatible; invalid kind is a soft [PRIOR-TOOLS]."
+          },
+          "overlap_dimensions": {
+            "description": "Optional V4 host assessment: array of problem/method/data/setting/claim. Kept unconstrained here for legacy compatibility; malformed dimensions give advisory [OVERLAP-LEDGER]."
+          }
+        }
+      }
+    },
+    "materials": {
+      "type": "object",
+      "required": [
+        "unexplained_anomalies",
+        "transferable_methods",
+        "contradictory_results"
+      ],
+      "properties": {
+        "unexplained_anomalies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/material"
+          }
+        },
+        "transferable_methods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/material"
+          }
+        },
+        "contradictory_results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/material"
+          }
+        }
+      }
+    },
+    "software_platform_search": {
+      "description": "Optional V3 record: {queries: [software/platform queries], result?} or {not_applicable: reason}. Omissions and malformed records are soft [PRIOR-TOOLS]."
+    }
+  }
+}

@@ -1,0 +1,2412 @@
+{
+ "card_id": "dossier",
+ "question": "A researcher has one research idea and wants to bounce from it to adjacent, exploitable ideas: what methods exist (LLM ideation, literature-based discovery, analogy mining, facet recombination) and how well do they work?",
+ "mode": "card",
+ "role_file": "tools/verifier/ROLE.md",
+ "claims": [
+  {
+   "id": "A1",
+   "text": "In the largest expert study, over 100 NLP researchers judged LLM-generated ideas more novel than human ideas (p < 0.05) and slightly weaker on feasibility.",
+   "source": "S1",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "we find LLM-generated ideas are judged as more novel (p < 0.05) than human expert ideas while being judged slightly weaker on feasibility"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "result",
+     "card": "LLM ideas more novel p<0.05, slightly weaker feasibility, 100+ NLP researchers",
+     "source": "same",
+     "ok": true
+    }
+   ],
+   "number_problems": [
+    "figure '100' of the claim not shown by the fragments"
+   ]
+  },
+  {
+   "id": "A2",
+   "text": "In the execution study, 43 experts spent over 100 hours each executing assigned ideas; scores of LLM ideas dropped significantly more than those of human ideas (p < 0.05), with rankings flipping on many metrics.",
+   "source": "S2",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "recruiting 43 expert researchers to execute randomly-assigned ideas",
+    "the scores of the LLM-generated ideas decrease significantly more than expert-written ideas on all evaluation metrics"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "43 experts, 100+ hours, p<0.05, ranking flips",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ],
+   "number_problems": [
+    "figure '100' of the claim not shown by the fragments",
+    "figure '0.05' of the claim not shown by the fragments"
+   ]
+  },
+  {
+   "id": "A3",
+   "text": "In a time-split test a retrieval-augmented system received 2.5 times higher scores (p < 0.001) while an LLM judge saw no difference (p = 0.584).",
+   "source": "S3",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "LLM-as-Judge finds no significant difference between retrieval-augmented and vanilla idea generation ($p{=}0.584$)"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "2.5x, p<0.001, judge p=0.584",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ],
+   "number_problems": [
+    "figure '2.5' of the claim not shown by the fragments"
+   ]
+  },
+  {
+   "id": "A4",
+   "text": "Planned retrieval gave 3.4 times more unique novel ideas and at least 2.5 times more top-rated ideas over 170 seed papers in a Swiss Tournament evaluation.",
+   "source": "S4",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "The number of unique novel ideas produced by our framework is 3.4 times higher than without it.",
+    "generating at least 2.5 times more top-rated ideas based on 170 seed papers in a Swiss Tournament evaluation"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "3.4x, 2.5x, 170 seed papers, Swiss Tournament",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A5",
+   "text": "Facet recombination improved human exploration in a user study of 19 participants.",
+   "source": "S5",
+   "source_origin": "abstract",
+   "status": "DISTORTED",
+   "discrepancy": "outcome: card says improved exploration, source says participants identified significantly more interesting ideas compared to a baseline",
+   "fragments": [
+    "In a within-subjects user study, 19 computer-science researchers identified significantly more interesting ideas using Scideator compared to a strong baseline"
+   ],
+   "location": "abstract",
+   "confidence": "medium",
+   "elements": [
+    {
+     "element": "outcome",
+     "card": "improved human exploration",
+     "source": "identified significantly more interesting ideas",
+     "ok": false
+    },
+    {
+     "element": "N",
+     "card": "19",
+     "source": "19",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A6",
+   "text": "Structured refinement of idea facets improved human exploration in a user study of 20 participants.",
+   "source": "S6",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "Our lab study (N=20) showed that participants, while using IdeaSynth, explored more alternative ideas and expanded initial ideas with more details"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "N=20, more alternatives explored",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A7",
+   "text": "24 % of 50 LLM-generated research documents were judged by 13 experts to be paraphrased or significantly borrowed from existing work, and automated plagiarism detectors missed them.",
+   "source": "S7",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "the experts identify $24\\%$ of the $50$ evaluated research documents to be either paraphrased",
+    "bypass inbuilt plagiarism detectors"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "24% of 50, 13 experts, detectors missed",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ],
+   "number_problems": [
+    "figure '13' of the claim not shown by the fragments"
+   ]
+  },
+  {
+   "id": "A8",
+   "text": "A retrieve-then-rerank novelty checker raised agreement with expert labels by about 13 %.",
+   "source": "S8",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "our novelty checker achieves approximately 13% higher agreement than existing approaches"
+   ],
+   "location": "abstract",
+   "confidence": "medium",
+   "elements": [
+    {
+     "element": "~13% higher agreement",
+     "card": "13%",
+     "source": "approximately 13% higher agreement than existing approaches",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A9",
+   "text": "Analogy mining beat information-retrieval baselines and increased creative idea generation in an experiment.",
+   "source": "S9",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "analogies retrieved by our models significantly increased people's likelihood of generating creative ideas compared to analogies retrieved by traditional methods"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "beat IR baselines, increased creative ideas",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A10",
+   "text": "Word embeddings trained on materials-science literature recommended materials for functional applications several years before their discovery.",
+   "source": "S10",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "an unsupervised method can recommend materials for functional applications several years before their discovery"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "recommend materials years before discovery",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "A11",
+   "text": "A 2023 critique argues that literature-based discovery evaluation has relied on Swanson's two discoveries for 30 years.",
+   "source": "S11",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "Thus LBD evaluation has been mostly relying on the same small set of discoveries as benchmark for the past three decades."
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "two discoveries, three decades",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ],
+   "number_problems": [
+    "figure '30' of the claim not shown by the fragments"
+   ]
+  },
+  {
+   "id": "B1",
+   "text": "Nova, on 170 seed papers in a Swiss Tournament evaluation, reports 3.4 times more unique novel ideas and at least 2.5 times more top-rated ideas; the abstract does not say who the judges were.",
+   "source": "S4",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "generating at least 2.5 times more top-rated ideas based on 170 seed papers in a Swiss Tournament evaluation"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "figures; judges unspecified",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ],
+   "number_problems": [
+    "figure '3.4' of the claim not shown by the fragments"
+   ]
+  },
+  {
+   "id": "B2",
+   "text": "Chain of Ideas costs about $0.50 per idea and, per its abstract, outperforms other methods and is comparable to humans, with no sample size stated.",
+   "source": "S13",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "the CoI agent consistently outperforms other methods and shows comparable quality as humans in research idea generation",
+    "with a minimum cost of \\$0.50 to generate a candidate idea"
+   ],
+   "location": "abstract",
+   "confidence": "medium",
+   "elements": [
+    {
+     "element": "$0.50, outperforms, comparable to humans",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "B3",
+   "text": "In a within-subjects study with 19 computer-science researchers, Scideator users identified significantly more interesting ideas than with a search-plus-LLM baseline, no effect size in the abstract.",
+   "source": "S5",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "In a within-subjects user study, 19 computer-science researchers identified significantly more interesting ideas using Scideator compared to a strong baseline"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "19 researchers, significantly more interesting ideas",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "B4",
+   "text": "In a lab study with 20 participants, IdeaSynth users explored more alternative ideas and expanded their initial ideas with more detail than with a strong LLM baseline; a deployment study had 7 participants.",
+   "source": "S6",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "Our deployment study (N=7) demonstrated that participants effectively used IdeaSynth for real-world research projects"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "N=20 lab, N=7 deployment",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ],
+   "number_problems": [
+    "figure '20' of the claim not shown by the fragments"
+   ]
+  },
+  {
+   "id": "B5",
+   "text": "The AI Scientist-v2 submitted three fully autonomous manuscripts to an ICLR workshop and one exceeded the average human acceptance threshold.",
+   "source": "S19",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "We evaluated The AI Scientist-v2 by submitting three fully autonomous manuscripts to a peer-reviewed ICLR workshop.",
+    "one manuscript achieved high enough scores to exceed the average human acceptance threshold"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "3 manuscripts, one exceeded threshold",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "B6",
+   "text": "The end-to-end AI Scientist costs under $15 per paper across three ML subfields and was scored by an automated reviewer described as near-human.",
+   "source": "S18",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "Each idea is implemented and developed into a full paper at a cost of less than $15 per paper.",
+    "achieves near-human performance in evaluating paper scores"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "<$15/paper, three subfields, near-human reviewer",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "C1",
+   "text": "Blind review by over 100 NLP researchers found LLM ideas more novel (p < 0.05) and slightly weaker on feasibility, with failures of LLM self-evaluation and lack of diversity.",
+   "source": "S1",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "including failures of LLM self-evaluation and their lack of diversity in generation"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "novelty, feasibility, self-evaluation failure, lack of diversity",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ],
+   "number_problems": [
+    "figure '100' of the claim not shown by the fragments",
+    "figure '0.05' of the claim not shown by the fragments"
+   ]
+  },
+  {
+   "id": "C2",
+   "text": "43 experts carried out randomly assigned ideas over 100 hours each; after execution LLM idea scores dropped significantly more than human ones (p < 0.05) and rankings flipped on many metrics.",
+   "source": "S2",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "Each expert spent over 100 hours implementing the idea",
+    "for many metrics there is a flip in rankings where human ideas score higher than LLM ideas"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "43 experts, 100 h, drop, flip",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ],
+   "number_problems": [
+    "figure '43' of the claim not shown by the fragments",
+    "figure '0.05' of the claim not shown by the fragments"
+   ]
+  },
+  {
+   "id": "C3",
+   "text": "Ideation Arena collected over 6,000 pairwise comparisons from 105 researchers over 14 LLMs and 5 agent frameworks; the best LLM judge reaches 72.56 % soft accuracy against expert preferences.",
+   "source": "S20",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "We collect over 6,000 double blind pairwise comparisons from 105 active computer science researchers",
+    "the best judge reaching 72.56% Soft Accuracy on Overall Quality"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "6000 comparisons, 105 researchers, 14 LLMs, 5 agents, 72.56%",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ],
+   "number_problems": [
+    "figure '14' of the claim not shown by the fragments"
+   ]
+  },
+  {
+   "id": "C4",
+   "text": "A study of 912 AI-generated and 41 human economics papers found an idea-quality gap of d = 2.23 and an execution gap of d = 0.90, idea quality accounting for about 71 % of the difference, judged by models.",
+   "source": "S21",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "The idea quality gap is large (Cohen's d = 2.23, p < 0.001)",
+    "Idea quality accounts for approximately 71% of the overall quality difference"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "912/41, d=2.23, 0.90, 71%",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ],
+   "number_problems": [
+    "figure '912' of the claim not shown by the fragments",
+    "figure '41' of the claim not shown by the fragments",
+    "figure '0.90' of the claim not shown by the fragments"
+   ]
+  },
+  {
+   "id": "C5",
+   "text": "Station rediscovers 62.7 % of the original findings of three ICLR oral papers, against 15.4 % for a Codex multi-agent baseline and 14.4 to 20.6 % for AI Scientist-v2.",
+   "source": "S22",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "Station rediscovers 62.7% of the criteria on average, compared with 15.4% for Codex Multiagent-v2 and 14.4-20.6% for AI Scientist-v2."
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "62.7%, 15.4%, 14.4-20.6%",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "C6",
+   "text": "Execution-grounded evolutionary search reached 69.4 % against 48.0 % for a GRPO baseline, and reinforcement learning on execution reward suffered mode collapse.",
+   "source": "S23",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "it finds a method that significantly outperforms the GRPO baseline (69.4% vs 48.0%) on post-training",
+    "Reinforcement learning from execution reward, on the other hand, suffers from mode collapse."
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "69.4 vs 48.0, RL mode collapse",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "D1",
+   "text": "HindSight, over 10 AI/ML topics and 30 months after a cutoff, gave retrieval-augmented generation 2.5 times higher scores (p < 0.001) while an LLM judge found no difference (p = 0.584); HindSight scores correlated negatively with LLM-judged novelty (rho = -0.29).",
+   "source": "S3",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "scores are \\emph{negatively} correlated with LLM-judged novelty ($ρ{=}{-}0.29$, $p{<}0.01$)",
+    "evaluate its outputs against papers published in the subsequent 30 months"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "10 topics, 30 months, 2.5x, rho -0.29",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ],
+   "number_problems": [
+    "figure '10' of the claim not shown by the fragments",
+    "figure '2.5' of the claim not shown by the fragments",
+    "figure '0.584' of the claim not shown by the fragments"
+   ]
+  },
+  {
+   "id": "D2",
+   "text": "Across six judges, small prompt changes shifted pairwise accuracy by over 50 points, and retrieval and larger reasoning budgets helped little.",
+   "source": "S25",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "shifting pairwise accuracy by over 50 points and occasionally pushing it below chance",
+    "Retrieval and larger reasoning budgets help little"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "six judges, >50 points, retrieval helps little",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "D3",
+   "text": "RINoBench gathers 1,381 expert-judged research ideas; LLM novelty judgments diverge significantly from the human gold standard, including for reasoning models.",
+   "source": "S26",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "It comprises 1,381 research ideas derived from and judged by human experts",
+    "diverge significantly from human gold standard judgments - even among leading reasoning-capable models"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "1,381 ideas, divergence incl. reasoning models",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "D4",
+   "text": "Swapping the judge on 4,000 Chatbot Arena battles gave a median Cohen's kappa of 0.22.",
+   "source": "S28",
+   "source_origin": "abstract",
+   "status": "DISTORTED",
+   "discrepancy": "kappa 0.22 is the median agreement of five judges with the human vote, not a result of swapping the judge",
+   "fragments": [
+    "Agreement with the human vote was low at the verdict level (median Cohen's kappa = 0.22)"
+   ],
+   "location": "abstract",
+   "confidence": "medium",
+   "elements": [
+    {
+     "element": "what kappa measures",
+     "card": "result of swapping judge (judge-to-judge)",
+     "source": "agreement of judge with the human vote",
+     "ok": false
+    },
+    {
+     "element": "figure",
+     "card": "0.22",
+     "source": "0.22",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "D5",
+   "text": "Judge flip rates were roughly 5 % on average and about 40 % on close calls across 4 judges and 3 benchmarks.",
+   "source": "S29",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "per-item flip rates of roughly 5% on average and about 40% on the close-call items that decide leaderboard margins"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "5% avg, 40% close calls, 4 judges, 3 benchmarks",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "E1",
+   "text": "Thirteen experts judged 50 LLM-generated research documents and found 24 % paraphrased or significantly borrowed from existing work, confirmed by source authors; plagiarism detectors missed them.",
+   "source": "S7",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "These reported instances are cross-verified by authors of the source papers."
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "13 experts, 50 docs, 24%, cross-verified, detectors",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ],
+   "number_problems": [
+    "figure '50' of the claim not shown by the fragments",
+    "figure '24' of the claim not shown by the fragments"
+   ]
+  },
+  {
+   "id": "E2",
+   "text": "In a budgeted-refinement study over 10 random seeds and 10 ideation environments, raw generation and reranking yielded no research-strong nonduplicate ideas, and MMR-k refinement gave the lowest duplicate rate (proxy ratings).",
+   "source": "S32",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "raw generation and reranking alone produce no research-strong nonduplicate ideas under the benchmark rubric",
+    "the lowest duplicate rate among successful methods"
+   ],
+   "location": "abstract",
+   "confidence": "medium",
+   "elements": [
+    {
+     "element": "10 seeds, 10 envs, no strong nonduplicate from raw/rerank, MMR-k lowest duplicate",
+     "card": "same (qualifier 'among successful methods' omitted)",
+     "source": "same",
+     "ok": true
+    }
+   ],
+   "number_problems": [
+    "figure '10' of the claim not shown by the fragments"
+   ]
+  },
+  {
+   "id": "E3",
+   "text": "CrossTrace's human check of 150 stratified records found a 0.0 % fabrication rate in its reasoning traces.",
+   "source": "S33",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "Human validation of 150 stratified records confirms 99.7% step-level grounding accuracy and a 0.0% fabrication rate."
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "150 records, 0.0% fabrication",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "E4",
+   "text": "An inspiration-retrieval method improves HitRate@top4% by more than 10 percentage points over MOOSE-Chem on ResearchBench.",
+   "source": "S34",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "improving HitRate@top4% over MOOSE-Chem by more than 10 percentage points"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": ">10 pp HitRate@top4% over MOOSE-Chem on ResearchBench",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "E5",
+   "text": "A retrieve-then-rerank novelty checker with expert-labelled examples reaches about 13 % higher agreement than existing approaches; the facet-based re-ranker ablation matters.",
+   "source": "S8",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "Ablation studies further showcases the importance of the facet-based re-ranker in identifying the most relevant literature for novelty evaluation.",
+    "It incorporates expert-labeled examples to guide the system"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "13% higher agreement, expert-labelled examples, facet re-ranker ablation",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ],
+   "number_problems": [
+    "figure '13' of the claim not shown by the fragments"
+   ]
+  },
+  {
+   "id": "E6",
+   "text": "In a design experiment with 32 undergraduate students and three expert raters, AI support was higher on problem framing and mechanism while human-only work was higher on innovation and solution strategy.",
+   "source": "S35",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "AI-assisted outputs received higher ratings for problem framing, mechanism, creator perspective, and evaluator perspective, whereas human-only outputs received higher ratings for innovation and proposed solution strategies."
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "32 students, 3 raters, AI higher framing/mechanism, human higher innovation/strategy",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ],
+   "number_problems": [
+    "figure '32' of the claim not shown by the fragments"
+   ]
+  },
+  {
+   "id": "F1",
+   "text": "Context-based ABC raised B-entity precision from 27.1 % and 22.1 % (co-occurrence) to 71.4 % and 77.9 % (context-based), and to 89 % and 97.5 % with context assignment, on two relations.",
+   "source": "S39",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "In context-based ABC model, precision of extracted B entities was 71.4% for \"APOE-MAPT\", and 77.9% for \"FUS-TARDBP\"."
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "27.1/22.1 -> 71.4/77.9 -> 89/97.5",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ],
+   "number_problems": [
+    "figure '27.1' of the claim not shown by the fragments",
+    "figure '22.1' of the claim not shown by the fragments",
+    "figure '89' of the claim not shown by the fragments",
+    "figure '97.5' of the claim not shown by the fragments"
+   ]
+  },
+  {
+   "id": "F2",
+   "text": "A 2021 case study of eight neurodegenerative-disease discoveries shows the limits of the ABC model in open-ended settings and proposes a contrastive approach.",
+   "source": "S37",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "Through a case study of 8 recent discoveries related to neurodegenerative diseases (NDs), we show the limitations of the ABC model in an open-ended context."
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "8 discoveries, ABC limits, contrastive approach",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "F3",
+   "text": "AGATHA used a temporal holdout predicting connections first introduced after 2015 across the twenty most popular relationship types, reporting best-in-class performance without numbers in the abstract.",
+   "source": "S38",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "we predict connections first introduced after 2015 using data published beforehand",
+    "This system achieves best-in-class performance on an established benchmark"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "temporal holdout after 2015, twenty relationship types, best-in-class no numbers",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "F4",
+   "text": "A retrieval-augmented LLM evaluating A-B-C hypotheses reached Cohen's kappa of 0.84 with four experts on 14 hypotheses; it scores hypotheses and does not generate them.",
+   "source": "S43",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "SKiM-GPT achieves strong ordinal agreement with four expert",
+    "prompts an LLM to evaluate the user’s"
+   ],
+   "location": "abstract",
+   "confidence": "medium",
+   "elements": [
+    {
+     "element": "kappa 0.84, 4 experts, 14 hypotheses, evaluates not generates",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ],
+   "number_problems": [
+    "figure '0.84' of the claim not shown by the fragments",
+    "figure '14' of the claim not shown by the fragments"
+   ]
+  },
+  {
+   "id": "G1",
+   "text": "Analogy mining vectors gave higher precision and recall than information-retrieval baselines, and retrieved analogies significantly increased the likelihood of creative ideas in an ideation experiment (products and patents, no sample size in the abstract).",
+   "source": "S9",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "We demonstrate that these learned vectors allow us to find analogies with higher precision and recall than traditional information-retrieval methods."
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "higher precision/recall, creative ideas increased, no N",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "G2",
+   "text": "A cross-pollination retrieval benchmark of 1,300 queries in 26 fields shows the best of 11 retrievers at Recall@10 of 0.26, an LLM reranker at 0.81 and fine-tuning up to 0.70.",
+   "source": "S44",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "the best of eleven existing retrievers reaches a Recall@10 of only 0.26, whereas an LLM reranker reaches 0.81"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "1,300 queries, 26 fields, 0.26, 0.81, 0.70",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ],
+   "number_problems": [
+    "figure '1,300' of the claim not shown by the fragments",
+    "figure '11' of the claim not shown by the fragments",
+    "figure '0.70' of the claim not shown by the fragments"
+   ]
+  },
+  {
+   "id": "G3",
+   "text": "A design-ideation experiment found a significant effect of conceptual-similarity inspiration images on novelty, variety and quantity of ideas against random images, sample not stated.",
+   "source": "S45",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "has a significant effect on the novelty, variety, and quantity of ideas during human design ideation"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": "significant effect on novelty, variety, quantity vs random images",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "id": "G4",
+   "text": "CHIMERA provides a knowledge base of over 28,000 recombination examples from which a model predicts directions researchers find inspiring, with no figure in the abstract.",
+   "source": "S46",
+   "source_origin": "abstract",
+   "status": "FOUND",
+   "discrepancy": "",
+   "fragments": [
+    "yielding a KB of over 28K recombination examples",
+    "which predicts new recombination directions that real-world researchers find inspiring"
+   ],
+   "location": "abstract",
+   "confidence": "high",
+   "elements": [
+    {
+     "element": ">28K examples, predicts inspiring directions",
+     "card": "same",
+     "source": "same",
+     "ok": true
+    }
+   ]
+  }
+ ],
+ "summary": {
+  "FOUND": 40,
+  "DISTORTED": 2,
+  "ABSENT": 0,
+  "SOURCE-UNAVAILABLE": 0,
+  "INVALID": 0,
+  "UNVERIFIED": 0,
+  "number_flags": 19,
+  "checker_flags": 0,
+  "unsupported_rate": 0.048
+ },
+ "retries": 0,
+ "measures": [
+  {
+   "seconds": 93.3,
+   "host": "claude",
+   "cost_usd": 0.3556735,
+   "tokens_in": 178824,
+   "tokens_out": 11805,
+   "turns": 38
+  }
+ ],
+ "cost_usd": 0.3557,
+ "seconds": 93.3,
+ "windows": {
+  "mode": "whole",
+  "params": {
+   "window_chars": 1000,
+   "windows_per_claim": 6,
+   "head_chars": 1500,
+   "number_weight": 2,
+   "escalate_statuses": [
+    "ABSENT",
+    "SOURCE-UNAVAILABLE"
+   ],
+   "escalation_max_chars": 200000
+  },
+  "chars_available": 61877,
+  "chars_sent": 61877,
+  "sources_windowed": 0,
+  "per_source": {
+   "S1": {
+    "chars_available": 1689,
+    "chars_sent": 1689,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S2": {
+    "chars_available": 1728,
+    "chars_sent": 1728,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S3": {
+    "chars_available": 1177,
+    "chars_sent": 1177,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S4": {
+    "chars_available": 1243,
+    "chars_sent": 1243,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S5": {
+    "chars_available": 1273,
+    "chars_sent": 1273,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S6": {
+    "chars_available": 1359,
+    "chars_sent": 1359,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S7": {
+    "chars_available": 1406,
+    "chars_sent": 1406,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S8": {
+    "chars_available": 1272,
+    "chars_sent": 1272,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S9": {
+    "chars_available": 1786,
+    "chars_sent": 1786,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S10": {
+    "chars_available": 1954,
+    "chars_sent": 1954,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S11": {
+    "chars_available": 6206,
+    "chars_sent": 6206,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S13": {
+    "chars_available": 1589,
+    "chars_sent": 1589,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S18": {
+    "chars_available": 2069,
+    "chars_sent": 2069,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S19": {
+    "chars_available": 2017,
+    "chars_sent": 2017,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S20": {
+    "chars_available": 1897,
+    "chars_sent": 1897,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S21": {
+    "chars_available": 1761,
+    "chars_sent": 1761,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S22": {
+    "chars_available": 1689,
+    "chars_sent": 1689,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S23": {
+    "chars_available": 1757,
+    "chars_sent": 1757,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S25": {
+    "chars_available": 1554,
+    "chars_sent": 1554,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S26": {
+    "chars_available": 1697,
+    "chars_sent": 1697,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S28": {
+    "chars_available": 1678,
+    "chars_sent": 1678,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S29": {
+    "chars_available": 2087,
+    "chars_sent": 2087,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S32": {
+    "chars_available": 2060,
+    "chars_sent": 2060,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S33": {
+    "chars_available": 1869,
+    "chars_sent": 1869,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S34": {
+    "chars_available": 1362,
+    "chars_sent": 1362,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S35": {
+    "chars_available": 1849,
+    "chars_sent": 1849,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S37": {
+    "chars_available": 1880,
+    "chars_sent": 1880,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S38": {
+    "chars_available": 1538,
+    "chars_sent": 1538,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S39": {
+    "chars_available": 2824,
+    "chars_sent": 2824,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S43": {
+    "chars_available": 3660,
+    "chars_sent": 3660,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S44": {
+    "chars_available": 1413,
+    "chars_sent": 1413,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S45": {
+    "chars_available": 1149,
+    "chars_sent": 1149,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   },
+   "S46": {
+    "chars_available": 1385,
+    "chars_sent": 1385,
+    "windows": 0,
+    "whole": true,
+    "reason": "mode whole"
+   }
+  },
+  "escalation": {
+   "claims": [],
+   "sources": [],
+   "chars_sent": 0,
+   "unverified": []
+  }
+ },
+ "sources_read": {
+  "per_source": {
+   "S1": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S2": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S3": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S4": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S5": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S6": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S7": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S8": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S9": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S10": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S11": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S13": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S18": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S19": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S20": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S21": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S22": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S23": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S25": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S26": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S28": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S29": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S32": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S33": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S34": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S35": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S37": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S38": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S39": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S43": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S44": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S45": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   },
+   "S46": {
+    "origin": "abstract",
+    "note": "(record + abstract)"
+   }
+  },
+  "fulltext_attempted": 0,
+  "fulltext_obtained": 0,
+  "fulltext_not_tried_cap": 0,
+  "origins": {
+   "fulltext": 0,
+   "abstract": 33,
+   "missing": 0
+  },
+  "fulltext_mode": false,
+  "fulltext_cap": 12,
+  "gateway": {
+   "pool": "verifier",
+   "cap": 60,
+   "run": "dossier"
+  }
+ },
+ "filter": {
+  "kept": [
+   {
+    "id": "A1",
+    "text": "In the largest expert study, over 100 NLP researchers judged LLM-generated ideas more novel than human ideas (p < 0.05) and slightly weaker on feasibility.",
+    "source": "S1",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "we find LLM-generated ideas are judged as more novel (p < 0.05) than human expert ideas while being judged slightly weaker on feasibility"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "result",
+      "card": "LLM ideas more novel p<0.05, slightly weaker feasibility, 100+ NLP researchers",
+      "source": "same",
+      "ok": true
+     }
+    ],
+    "number_problems": [
+     "figure '100' of the claim not shown by the fragments"
+    ]
+   },
+   {
+    "id": "A2",
+    "text": "In the execution study, 43 experts spent over 100 hours each executing assigned ideas; scores of LLM ideas dropped significantly more than those of human ideas (p < 0.05), with rankings flipping on many metrics.",
+    "source": "S2",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "recruiting 43 expert researchers to execute randomly-assigned ideas",
+     "the scores of the LLM-generated ideas decrease significantly more than expert-written ideas on all evaluation metrics"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "43 experts, 100+ hours, p<0.05, ranking flips",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ],
+    "number_problems": [
+     "figure '100' of the claim not shown by the fragments",
+     "figure '0.05' of the claim not shown by the fragments"
+    ]
+   },
+   {
+    "id": "A3",
+    "text": "In a time-split test a retrieval-augmented system received 2.5 times higher scores (p < 0.001) while an LLM judge saw no difference (p = 0.584).",
+    "source": "S3",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "LLM-as-Judge finds no significant difference between retrieval-augmented and vanilla idea generation ($p{=}0.584$)"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "2.5x, p<0.001, judge p=0.584",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ],
+    "number_problems": [
+     "figure '2.5' of the claim not shown by the fragments"
+    ]
+   },
+   {
+    "id": "A4",
+    "text": "Planned retrieval gave 3.4 times more unique novel ideas and at least 2.5 times more top-rated ideas over 170 seed papers in a Swiss Tournament evaluation.",
+    "source": "S4",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "The number of unique novel ideas produced by our framework is 3.4 times higher than without it.",
+     "generating at least 2.5 times more top-rated ideas based on 170 seed papers in a Swiss Tournament evaluation"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "3.4x, 2.5x, 170 seed papers, Swiss Tournament",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A6",
+    "text": "Structured refinement of idea facets improved human exploration in a user study of 20 participants.",
+    "source": "S6",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "Our lab study (N=20) showed that participants, while using IdeaSynth, explored more alternative ideas and expanded initial ideas with more details"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "N=20, more alternatives explored",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A7",
+    "text": "24 % of 50 LLM-generated research documents were judged by 13 experts to be paraphrased or significantly borrowed from existing work, and automated plagiarism detectors missed them.",
+    "source": "S7",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "the experts identify $24\\%$ of the $50$ evaluated research documents to be either paraphrased",
+     "bypass inbuilt plagiarism detectors"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "24% of 50, 13 experts, detectors missed",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ],
+    "number_problems": [
+     "figure '13' of the claim not shown by the fragments"
+    ]
+   },
+   {
+    "id": "A8",
+    "text": "A retrieve-then-rerank novelty checker raised agreement with expert labels by about 13 %.",
+    "source": "S8",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "our novelty checker achieves approximately 13% higher agreement than existing approaches"
+    ],
+    "location": "abstract",
+    "confidence": "medium",
+    "elements": [
+     {
+      "element": "~13% higher agreement",
+      "card": "13%",
+      "source": "approximately 13% higher agreement than existing approaches",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A9",
+    "text": "Analogy mining beat information-retrieval baselines and increased creative idea generation in an experiment.",
+    "source": "S9",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "analogies retrieved by our models significantly increased people's likelihood of generating creative ideas compared to analogies retrieved by traditional methods"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "beat IR baselines, increased creative ideas",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A10",
+    "text": "Word embeddings trained on materials-science literature recommended materials for functional applications several years before their discovery.",
+    "source": "S10",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "an unsupervised method can recommend materials for functional applications several years before their discovery"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "recommend materials years before discovery",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "A11",
+    "text": "A 2023 critique argues that literature-based discovery evaluation has relied on Swanson's two discoveries for 30 years.",
+    "source": "S11",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "Thus LBD evaluation has been mostly relying on the same small set of discoveries as benchmark for the past three decades."
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "two discoveries, three decades",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ],
+    "number_problems": [
+     "figure '30' of the claim not shown by the fragments"
+    ]
+   },
+   {
+    "id": "B1",
+    "text": "Nova, on 170 seed papers in a Swiss Tournament evaluation, reports 3.4 times more unique novel ideas and at least 2.5 times more top-rated ideas; the abstract does not say who the judges were.",
+    "source": "S4",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "generating at least 2.5 times more top-rated ideas based on 170 seed papers in a Swiss Tournament evaluation"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "figures; judges unspecified",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ],
+    "number_problems": [
+     "figure '3.4' of the claim not shown by the fragments"
+    ]
+   },
+   {
+    "id": "B2",
+    "text": "Chain of Ideas costs about $0.50 per idea and, per its abstract, outperforms other methods and is comparable to humans, with no sample size stated.",
+    "source": "S13",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "the CoI agent consistently outperforms other methods and shows comparable quality as humans in research idea generation",
+     "with a minimum cost of \\$0.50 to generate a candidate idea"
+    ],
+    "location": "abstract",
+    "confidence": "medium",
+    "elements": [
+     {
+      "element": "$0.50, outperforms, comparable to humans",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "B3",
+    "text": "In a within-subjects study with 19 computer-science researchers, Scideator users identified significantly more interesting ideas than with a search-plus-LLM baseline, no effect size in the abstract.",
+    "source": "S5",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "In a within-subjects user study, 19 computer-science researchers identified significantly more interesting ideas using Scideator compared to a strong baseline"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "19 researchers, significantly more interesting ideas",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "B4",
+    "text": "In a lab study with 20 participants, IdeaSynth users explored more alternative ideas and expanded their initial ideas with more detail than with a strong LLM baseline; a deployment study had 7 participants.",
+    "source": "S6",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "Our deployment study (N=7) demonstrated that participants effectively used IdeaSynth for real-world research projects"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "N=20 lab, N=7 deployment",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ],
+    "number_problems": [
+     "figure '20' of the claim not shown by the fragments"
+    ]
+   },
+   {
+    "id": "B5",
+    "text": "The AI Scientist-v2 submitted three fully autonomous manuscripts to an ICLR workshop and one exceeded the average human acceptance threshold.",
+    "source": "S19",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "We evaluated The AI Scientist-v2 by submitting three fully autonomous manuscripts to a peer-reviewed ICLR workshop.",
+     "one manuscript achieved high enough scores to exceed the average human acceptance threshold"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "3 manuscripts, one exceeded threshold",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "B6",
+    "text": "The end-to-end AI Scientist costs under $15 per paper across three ML subfields and was scored by an automated reviewer described as near-human.",
+    "source": "S18",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "Each idea is implemented and developed into a full paper at a cost of less than $15 per paper.",
+     "achieves near-human performance in evaluating paper scores"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "<$15/paper, three subfields, near-human reviewer",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "C1",
+    "text": "Blind review by over 100 NLP researchers found LLM ideas more novel (p < 0.05) and slightly weaker on feasibility, with failures of LLM self-evaluation and lack of diversity.",
+    "source": "S1",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "including failures of LLM self-evaluation and their lack of diversity in generation"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "novelty, feasibility, self-evaluation failure, lack of diversity",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ],
+    "number_problems": [
+     "figure '100' of the claim not shown by the fragments",
+     "figure '0.05' of the claim not shown by the fragments"
+    ]
+   },
+   {
+    "id": "C2",
+    "text": "43 experts carried out randomly assigned ideas over 100 hours each; after execution LLM idea scores dropped significantly more than human ones (p < 0.05) and rankings flipped on many metrics.",
+    "source": "S2",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "Each expert spent over 100 hours implementing the idea",
+     "for many metrics there is a flip in rankings where human ideas score higher than LLM ideas"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "43 experts, 100 h, drop, flip",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ],
+    "number_problems": [
+     "figure '43' of the claim not shown by the fragments",
+     "figure '0.05' of the claim not shown by the fragments"
+    ]
+   },
+   {
+    "id": "C3",
+    "text": "Ideation Arena collected over 6,000 pairwise comparisons from 105 researchers over 14 LLMs and 5 agent frameworks; the best LLM judge reaches 72.56 % soft accuracy against expert preferences.",
+    "source": "S20",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "We collect over 6,000 double blind pairwise comparisons from 105 active computer science researchers",
+     "the best judge reaching 72.56% Soft Accuracy on Overall Quality"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "6000 comparisons, 105 researchers, 14 LLMs, 5 agents, 72.56%",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ],
+    "number_problems": [
+     "figure '14' of the claim not shown by the fragments"
+    ]
+   },
+   {
+    "id": "C4",
+    "text": "A study of 912 AI-generated and 41 human economics papers found an idea-quality gap of d = 2.23 and an execution gap of d = 0.90, idea quality accounting for about 71 % of the difference, judged by models.",
+    "source": "S21",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "The idea quality gap is large (Cohen's d = 2.23, p < 0.001)",
+     "Idea quality accounts for approximately 71% of the overall quality difference"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "912/41, d=2.23, 0.90, 71%",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ],
+    "number_problems": [
+     "figure '912' of the claim not shown by the fragments",
+     "figure '41' of the claim not shown by the fragments",
+     "figure '0.90' of the claim not shown by the fragments"
+    ]
+   },
+   {
+    "id": "C5",
+    "text": "Station rediscovers 62.7 % of the original findings of three ICLR oral papers, against 15.4 % for a Codex multi-agent baseline and 14.4 to 20.6 % for AI Scientist-v2.",
+    "source": "S22",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "Station rediscovers 62.7% of the criteria on average, compared with 15.4% for Codex Multiagent-v2 and 14.4-20.6% for AI Scientist-v2."
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "62.7%, 15.4%, 14.4-20.6%",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "C6",
+    "text": "Execution-grounded evolutionary search reached 69.4 % against 48.0 % for a GRPO baseline, and reinforcement learning on execution reward suffered mode collapse.",
+    "source": "S23",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "it finds a method that significantly outperforms the GRPO baseline (69.4% vs 48.0%) on post-training",
+     "Reinforcement learning from execution reward, on the other hand, suffers from mode collapse."
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "69.4 vs 48.0, RL mode collapse",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "D1",
+    "text": "HindSight, over 10 AI/ML topics and 30 months after a cutoff, gave retrieval-augmented generation 2.5 times higher scores (p < 0.001) while an LLM judge found no difference (p = 0.584); HindSight scores correlated negatively with LLM-judged novelty (rho = -0.29).",
+    "source": "S3",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "scores are \\emph{negatively} correlated with LLM-judged novelty ($ρ{=}{-}0.29$, $p{<}0.01$)",
+     "evaluate its outputs against papers published in the subsequent 30 months"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "10 topics, 30 months, 2.5x, rho -0.29",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ],
+    "number_problems": [
+     "figure '10' of the claim not shown by the fragments",
+     "figure '2.5' of the claim not shown by the fragments",
+     "figure '0.584' of the claim not shown by the fragments"
+    ]
+   },
+   {
+    "id": "D2",
+    "text": "Across six judges, small prompt changes shifted pairwise accuracy by over 50 points, and retrieval and larger reasoning budgets helped little.",
+    "source": "S25",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "shifting pairwise accuracy by over 50 points and occasionally pushing it below chance",
+     "Retrieval and larger reasoning budgets help little"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "six judges, >50 points, retrieval helps little",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "D3",
+    "text": "RINoBench gathers 1,381 expert-judged research ideas; LLM novelty judgments diverge significantly from the human gold standard, including for reasoning models.",
+    "source": "S26",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "It comprises 1,381 research ideas derived from and judged by human experts",
+     "diverge significantly from human gold standard judgments - even among leading reasoning-capable models"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "1,381 ideas, divergence incl. reasoning models",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "D5",
+    "text": "Judge flip rates were roughly 5 % on average and about 40 % on close calls across 4 judges and 3 benchmarks.",
+    "source": "S29",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "per-item flip rates of roughly 5% on average and about 40% on the close-call items that decide leaderboard margins"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "5% avg, 40% close calls, 4 judges, 3 benchmarks",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "E1",
+    "text": "Thirteen experts judged 50 LLM-generated research documents and found 24 % paraphrased or significantly borrowed from existing work, confirmed by source authors; plagiarism detectors missed them.",
+    "source": "S7",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "These reported instances are cross-verified by authors of the source papers."
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "13 experts, 50 docs, 24%, cross-verified, detectors",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ],
+    "number_problems": [
+     "figure '50' of the claim not shown by the fragments",
+     "figure '24' of the claim not shown by the fragments"
+    ]
+   },
+   {
+    "id": "E2",
+    "text": "In a budgeted-refinement study over 10 random seeds and 10 ideation environments, raw generation and reranking yielded no research-strong nonduplicate ideas, and MMR-k refinement gave the lowest duplicate rate (proxy ratings).",
+    "source": "S32",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "raw generation and reranking alone produce no research-strong nonduplicate ideas under the benchmark rubric",
+     "the lowest duplicate rate among successful methods"
+    ],
+    "location": "abstract",
+    "confidence": "medium",
+    "elements": [
+     {
+      "element": "10 seeds, 10 envs, no strong nonduplicate from raw/rerank, MMR-k lowest duplicate",
+      "card": "same (qualifier 'among successful methods' omitted)",
+      "source": "same",
+      "ok": true
+     }
+    ],
+    "number_problems": [
+     "figure '10' of the claim not shown by the fragments"
+    ]
+   },
+   {
+    "id": "E3",
+    "text": "CrossTrace's human check of 150 stratified records found a 0.0 % fabrication rate in its reasoning traces.",
+    "source": "S33",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "Human validation of 150 stratified records confirms 99.7% step-level grounding accuracy and a 0.0% fabrication rate."
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "150 records, 0.0% fabrication",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "E4",
+    "text": "An inspiration-retrieval method improves HitRate@top4% by more than 10 percentage points over MOOSE-Chem on ResearchBench.",
+    "source": "S34",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "improving HitRate@top4% over MOOSE-Chem by more than 10 percentage points"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": ">10 pp HitRate@top4% over MOOSE-Chem on ResearchBench",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "E5",
+    "text": "A retrieve-then-rerank novelty checker with expert-labelled examples reaches about 13 % higher agreement than existing approaches; the facet-based re-ranker ablation matters.",
+    "source": "S8",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "Ablation studies further showcases the importance of the facet-based re-ranker in identifying the most relevant literature for novelty evaluation.",
+     "It incorporates expert-labeled examples to guide the system"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "13% higher agreement, expert-labelled examples, facet re-ranker ablation",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ],
+    "number_problems": [
+     "figure '13' of the claim not shown by the fragments"
+    ]
+   },
+   {
+    "id": "E6",
+    "text": "In a design experiment with 32 undergraduate students and three expert raters, AI support was higher on problem framing and mechanism while human-only work was higher on innovation and solution strategy.",
+    "source": "S35",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "AI-assisted outputs received higher ratings for problem framing, mechanism, creator perspective, and evaluator perspective, whereas human-only outputs received higher ratings for innovation and proposed solution strategies."
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "32 students, 3 raters, AI higher framing/mechanism, human higher innovation/strategy",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ],
+    "number_problems": [
+     "figure '32' of the claim not shown by the fragments"
+    ]
+   },
+   {
+    "id": "F1",
+    "text": "Context-based ABC raised B-entity precision from 27.1 % and 22.1 % (co-occurrence) to 71.4 % and 77.9 % (context-based), and to 89 % and 97.5 % with context assignment, on two relations.",
+    "source": "S39",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "In context-based ABC model, precision of extracted B entities was 71.4% for \"APOE-MAPT\", and 77.9% for \"FUS-TARDBP\"."
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "27.1/22.1 -> 71.4/77.9 -> 89/97.5",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ],
+    "number_problems": [
+     "figure '27.1' of the claim not shown by the fragments",
+     "figure '22.1' of the claim not shown by the fragments",
+     "figure '89' of the claim not shown by the fragments",
+     "figure '97.5' of the claim not shown by the fragments"
+    ]
+   },
+   {
+    "id": "F2",
+    "text": "A 2021 case study of eight neurodegenerative-disease discoveries shows the limits of the ABC model in open-ended settings and proposes a contrastive approach.",
+    "source": "S37",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "Through a case study of 8 recent discoveries related to neurodegenerative diseases (NDs), we show the limitations of the ABC model in an open-ended context."
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "8 discoveries, ABC limits, contrastive approach",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "F3",
+    "text": "AGATHA used a temporal holdout predicting connections first introduced after 2015 across the twenty most popular relationship types, reporting best-in-class performance without numbers in the abstract.",
+    "source": "S38",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "we predict connections first introduced after 2015 using data published beforehand",
+     "This system achieves best-in-class performance on an established benchmark"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "temporal holdout after 2015, twenty relationship types, best-in-class no numbers",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "F4",
+    "text": "A retrieval-augmented LLM evaluating A-B-C hypotheses reached Cohen's kappa of 0.84 with four experts on 14 hypotheses; it scores hypotheses and does not generate them.",
+    "source": "S43",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "SKiM-GPT achieves strong ordinal agreement with four expert",
+     "prompts an LLM to evaluate the user’s"
+    ],
+    "location": "abstract",
+    "confidence": "medium",
+    "elements": [
+     {
+      "element": "kappa 0.84, 4 experts, 14 hypotheses, evaluates not generates",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ],
+    "number_problems": [
+     "figure '0.84' of the claim not shown by the fragments",
+     "figure '14' of the claim not shown by the fragments"
+    ]
+   },
+   {
+    "id": "G1",
+    "text": "Analogy mining vectors gave higher precision and recall than information-retrieval baselines, and retrieved analogies significantly increased the likelihood of creative ideas in an ideation experiment (products and patents, no sample size in the abstract).",
+    "source": "S9",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "We demonstrate that these learned vectors allow us to find analogies with higher precision and recall than traditional information-retrieval methods."
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "higher precision/recall, creative ideas increased, no N",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "G2",
+    "text": "A cross-pollination retrieval benchmark of 1,300 queries in 26 fields shows the best of 11 retrievers at Recall@10 of 0.26, an LLM reranker at 0.81 and fine-tuning up to 0.70.",
+    "source": "S44",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "the best of eleven existing retrievers reaches a Recall@10 of only 0.26, whereas an LLM reranker reaches 0.81"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "1,300 queries, 26 fields, 0.26, 0.81, 0.70",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ],
+    "number_problems": [
+     "figure '1,300' of the claim not shown by the fragments",
+     "figure '11' of the claim not shown by the fragments",
+     "figure '0.70' of the claim not shown by the fragments"
+    ]
+   },
+   {
+    "id": "G3",
+    "text": "A design-ideation experiment found a significant effect of conceptual-similarity inspiration images on novelty, variety and quantity of ideas against random images, sample not stated.",
+    "source": "S45",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "has a significant effect on the novelty, variety, and quantity of ideas during human design ideation"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": "significant effect on novelty, variety, quantity vs random images",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "G4",
+    "text": "CHIMERA provides a knowledge base of over 28,000 recombination examples from which a model predicts directions researchers find inspiring, with no figure in the abstract.",
+    "source": "S46",
+    "source_origin": "abstract",
+    "status": "FOUND",
+    "discrepancy": "",
+    "fragments": [
+     "yielding a KB of over 28K recombination examples",
+     "which predicts new recombination directions that real-world researchers find inspiring"
+    ],
+    "location": "abstract",
+    "confidence": "high",
+    "elements": [
+     {
+      "element": ">28K examples, predicts inspiring directions",
+      "card": "same",
+      "source": "same",
+      "ok": true
+     }
+    ]
+   }
+  ],
+  "removed": [
+   {
+    "id": "A5",
+    "text": "Facet recombination improved human exploration in a user study of 19 participants.",
+    "source": "S5",
+    "source_origin": "abstract",
+    "status": "DISTORTED",
+    "discrepancy": "outcome: card says improved exploration, source says participants identified significantly more interesting ideas compared to a baseline",
+    "fragments": [
+     "In a within-subjects user study, 19 computer-science researchers identified significantly more interesting ideas using Scideator compared to a strong baseline"
+    ],
+    "location": "abstract",
+    "confidence": "medium",
+    "elements": [
+     {
+      "element": "outcome",
+      "card": "improved human exploration",
+      "source": "identified significantly more interesting ideas",
+      "ok": false
+     },
+     {
+      "element": "N",
+      "card": "19",
+      "source": "19",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "id": "D4",
+    "text": "Swapping the judge on 4,000 Chatbot Arena battles gave a median Cohen's kappa of 0.22.",
+    "source": "S28",
+    "source_origin": "abstract",
+    "status": "DISTORTED",
+    "discrepancy": "kappa 0.22 is the median agreement of five judges with the human vote, not a result of swapping the judge",
+    "fragments": [
+     "Agreement with the human vote was low at the verdict level (median Cohen's kappa = 0.22)"
+    ],
+    "location": "abstract",
+    "confidence": "medium",
+    "elements": [
+     {
+      "element": "what kappa measures",
+      "card": "result of swapping judge (judge-to-judge)",
+      "source": "agreement of judge with the human vote",
+      "ok": false
+     },
+     {
+      "element": "figure",
+      "card": "0.22",
+      "source": "0.22",
+      "ok": true
+     }
+    ]
+   }
+  ],
+  "to_flag": []
+ }
+}

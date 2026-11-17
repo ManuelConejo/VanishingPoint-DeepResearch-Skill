@@ -1,0 +1,21 @@
+{
+  "card_id": "vp-2026-11-14-short-titles-prior-art",
+  "question": "Prior art? Shorter preprint titles get more citations because they are easier to retrieve.",
+  "sources": {
+    "S1": {"doi": "10.1000/titles.2019", "title": "Title length and citation counts across fields", "year": "2019"},
+    "S2": {"arxiv": "2101.00001", "title": "Search-engine retrieval of scholarly records by title terms", "year": "2021"},
+    "S3": {"doi": "10.1000/prestige.2020", "title": "Journal prestige confounds title-level bibliometrics", "year": "2020"},
+    "S4": {"doi": "10.1000/ghost.2021", "title": "A study the verifier could not confirm", "year": "2021"},
+    "S5": {"doi": "10.1000/bad.2018", "title": "A study with invalid fragments", "year": "2018"},
+    "S6": {"doi": "10.1000/clicks.2022", "title": "Title wording and click-through in scholarly search", "year": "2022"}
+  },
+  "claims": [
+    {"id": "A1", "text": "Shorter titles are associated with more citations in several fields.", "source": {"key": "S1"}, "location": "abstract", "element": "E1"},
+    {"id": "A2", "text": "Retrieval rank depends on title term matches.", "source": {"key": "S2"}, "location": "abstract", "element": "E2"},
+    {"id": "A3", "text": "Journal prestige explains most of the title-length association.", "source": {"key": "S3"}, "location": "abstract", "element": "E1"},
+    {"id": "A4", "text": "Title length causes citations.", "source": {"key": "S4"}, "location": "abstract", "element": "E1"},
+    {"id": "A5", "text": "Title length has no association with citations.", "source": {"key": "S5"}, "location": "abstract", "element": "E1"},
+    {"id": "A6", "text": "Title wording affects click-through in search results.", "source": {"key": "S6"}, "location": "abstract", "element": "E2"}
+  ],
+  "conclusion": "Partially anticipated."
+}

@@ -1,0 +1,28 @@
+{
+  "hypotheses": [
+    {
+      "id": "H1",
+      "statement": "A 20 mL/kg transfusion raises haemoglobin enough to delay the next transfusion.",
+      "for": [{"id": "doi:10.1080/08998280.2016.11929387", "run": "q01", "claim": "A2", "says": "hemoglobin 13.2 versus 11.8 g/dL"}],
+      "against": []
+    },
+    {
+      "id": "H2",
+      "statement": "Fewer transfusions per infant follow from the larger volume.",
+      "for": [{"id": "doi:10.1016/j.transci.2023.103839", "run": "q01", "claim": "A3"}],
+      "against": [{"id": "doi:10.1056/nejmoa1900100", "run": "q01", "claim": "A4", "says": "higher-volume arm, lower mortality, in children"}]
+    }
+  ],
+  "rivals": [
+    {
+      "id": "R1",
+      "statement": "Unit transfusion thresholds, not the volume, set the number of transfusions.",
+      "why_plausible": "The comparisons found differ by centre and period, which also changes thresholds.",
+      "for": [{"id": "pmid:32645234", "run": "q01", "claim": "A9"}],
+      "against": []
+    }
+  ],
+  "repairable_variants": [
+    {"id": "V1", "statement": "The gain holds only for infants above 1,000 g.", "repairs": "Volume tolerance may depend on weight."}
+  ]
+}

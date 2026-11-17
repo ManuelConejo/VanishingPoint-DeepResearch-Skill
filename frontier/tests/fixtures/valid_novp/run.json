@@ -1,0 +1,6 @@
+{
+  "steps": [
+    {"step": "intake", "utc": "2026-11-14T08:55:00Z", "duration_s": "unknown", "cost_usd": "unknown"},
+    {"step": "critique", "utc": "2026-11-14T10:30:00Z", "duration_s": "unknown", "cost_usd": "unknown"}
+  ]
+}

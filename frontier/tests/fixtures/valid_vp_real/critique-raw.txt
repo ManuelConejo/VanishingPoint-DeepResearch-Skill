@@ -1,0 +1,7 @@
+{"summary": "T1 holds if thresholds are truly fixed across arms.",
+ "items": [{"test": "T1", "category": "missing_control", "severity": "major", "text": "Thresholds may differ between arms of the same trial."}],
+ "trap_verdicts": {"T1": {
+   "proxy_vs_target": {"verdict": "addressed", "why": "Counts are not presented as donor exposure."},
+   "variants": {"verdict": "addressed", "why": "One contrast fixed in advance."},
+   "positive_control": {"verdict": "addressed", "why": "The haemoglobin rise must be recovered first."},
+   "data_split": {"verdict": "addressed", "why": "The crossover trial only sets the noise."}}}}

@@ -1,0 +1,48 @@
+{
+  "tests": [
+    {
+      "id": "T1",
+      "title": "Re-analysis of transfusion counts by volume with the unit threshold held fixed",
+      "competing_hypotheses": ["H2", "R1"],
+      "predictions": [
+        {"hypothesis": "H2", "direction": "decrease", "magnitude": "at least 0.5 fewer transfusions per infant", "interval": [-1.5, -0.5], "unit": "transfusions per infant (20 minus 15 mL/kg)"},
+        {"hypothesis": "R1", "direction": "no change", "magnitude": "within 0.2 transfusion per infant", "interval": [-0.2, 0.2], "unit": "transfusions per infant (20 minus 15 mL/kg)"}
+      ],
+      "compatible_with_both": "A difference between -0.5 and -0.2 transfusion per infant.",
+      "unexpected_under_both": "More transfusions with the larger volume.",
+      "decisive_intervention": {"kind": ["randomisation", "negative_control"], "description": "Use only randomised arms at one fixed threshold; negative control: number of blood gas samples, linked to neither hypothesis."},
+      "sensitivity": {
+        "smallest_useful_effect": "0.5 transfusion per infant",
+        "expected_noise": "SD of the count about 0.9 per infant (from the closest trial)",
+        "replications": "the infants of the randomised arms",
+        "simulation_not_applicable": "Counts per infant are small integers with excess zeros; the normal model of sim.py does not fit."
+      },
+      "decision_rule": {
+        "continue_if": "Difference below -0.5 with its 95% CI below 0.",
+        "revise_if": "CI below 0 but above -0.5.",
+        "stop_if": "CI inside [-0.2, 0.2].",
+        "indeterminate_if": "Any other outcome.",
+        "fixed_before_observation": true,
+        "fixed_utc": "2025-08-01T10:00:00Z",
+        "equivalence": {"relevant": true, "margin": "0.2 transfusion per infant", "method": "two one-sided tests"}
+      },
+      "feasibility": {"data": "published arm-level counts of the randomised trials", "human_time": "two days", "compute": "minutes", "technical_risk": "arm-level data only; thresholds poorly reported"},
+      "llm_judges_history": false,
+      "l0_leakage_control": {"applicable": false, "why_not": "No language model judges anything in this test."},
+      "traps": {
+        "proxy_vs_target": {"proxy": "number of transfusions per infant", "target": "donor exposure per infant over the stay", "how_kept_apart": "Donor exposure is reported separately when given; no claim beyond counts."},
+        "variants": {"number_tested": 1, "selection_rule_fixed_before": "One volume contrast (20 versus 15 mL/kg), fixed before reading any count."},
+        "positive_control": {"description": "Haemoglobin after transfusion must be higher at 20 mL/kg in the same data.", "distinguishes_bug_from_refutation": "Without that rise the extraction is wrong, and a null count says nothing about H2."},
+        "data_split": {"design_data": "the crossover trial used to set the noise", "confirmation_data": "the parallel-arm randomised trials only", "separation": "The crossover trial is excluded from the confirmation set by identifier."}
+      }
+    }
+  ],
+  "ranking": {
+    "basis": "value of information for the next decision relative to cost",
+    "order": ["T1"],
+    "scenarios": [
+      {"name": "volume matters", "if": "the count falls with the larger volume", "then": "propose the protocol change to the unit", "why": "The lever is in the unit's hands."},
+      {"name": "threshold matters", "if": "counts are equivalent", "then": "drop the volume idea and study thresholds", "why": "The volume would then carry no gain."}
+    ]
+  }
+}

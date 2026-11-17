@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-"""Offline tests of the code ACCESS defects found by the code bench of 2026-10-31 (internal report,
-defects a1-a5), each red on the code before the fix:
+"""Offline regression tests of five code ACCESS defects, each failing on the code before its fix:
   1. github-repo served with plugins/code.md (source `github`): repo-head resolves a named repository to the last commit of its default
      branch before T (same gate as every commit: default branch history, repository created before T); repo-info gives SPDX licence,
      archived and the last commit before T with the licence at it; repo-tree lists the paths at a commit; the gateway help documents them.
@@ -240,7 +239,7 @@ class ProseLines(unittest.TestCase):
 
 
 class MultiRangeReference(unittest.TestCase):
-    def test_path_with_several_ranges_is_one_reference(self):   # rejeu C5: tenacity/__init__.py:418-501,596-665@SHA read as a file "596-665"
+    def test_path_with_several_ranges_is_one_reference(self):   # regression: tenacity/__init__.py:418-501,596-665@SHA was read as a file "596-665"
         o = CR._segment_refs(f'[2] jd/tenacity, repo:o/lib/tenacity/__init__.py:418-501,596-665@{OLD} (iter)', 'w')
         self.assertEqual([(x['path'], x['ranges']) for x in o], [('tenacity/__init__.py', [(418, 501), (596, 665)])])
 

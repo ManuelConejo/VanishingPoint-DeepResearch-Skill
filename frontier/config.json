@@ -1,0 +1,82 @@
+{
+  "vp_dir": null,
+  "search_model": null,
+  "execution_enabled": false,
+  "probe_image": "busybox:latest",
+  "run_timeout_s": 600,
+  "card_max_lines": 80,
+  "rebound_vp_max_calls_per_neighbour": 15,
+  "power_min_threshold": 0.8,
+  "research": {
+    "iterations_min": 2,
+    "iterations_max": 3,
+    "fields_min": 2,
+    "keywords_min": 2,
+    "command": "search-openalex",
+    "plugin_key": "literature_plugin",
+    "max_results": 10
+  },
+  "run_limits": {
+    "memory": "2g",
+    "cpus": "2",
+    "pids_limit": 256,
+    "user": "65534:65534",
+    "output_cap_bytes": 1000000
+  },
+  "critic": {
+    "host_family": null,
+    "families": [],
+    "aliases": {"anthropic": "claude", "codex": "openai", "gpt": "openai", "google": "gemini"}
+  },
+  "budget": {"vp_runs": 3, "critiques": 1, "executions": 1},
+  "second_critiques_max": 1,
+  "rebound_critiques_max": 1,
+  "tree_dir": null,
+  "catalogue": null,
+  "directions_index": null,
+  "context": {
+    "max_files": 200,
+    "max_file_bytes": 1000000,
+    "max_candidates": 60,
+    "max_excerpt_chars": 160
+  },
+  "matter": {
+    "code_plugin": "code",
+    "literature_plugin": "cs-ai",
+    "min_overlap": 2,
+    "max_candidates": 10,
+    "timeout_s": 120
+  },
+  "moment": {
+    "rise": 0.25,
+    "revive_factor": 2.0,
+    "trough_ratio": 0.5,
+    "min_total": 30
+  },
+  "rebound": {
+    "ideas_min": 5,
+    "ideas_max": 10,
+    "after_min": 2,
+    "after_max": 4,
+    "max_per_operator": 2,
+    "max_retained": 2,
+    "duplicate_overlap": 0.6,
+    "prior_art_checks_max": 10,
+    "prior_art_checks_card_max": 14
+  },
+  "history": {
+    "max_files": 5000,
+    "max_file_bytes": 1000000,
+    "max_total_bytes": 50000000,
+    "max_entries_per_file": 40,
+    "max_excerpt_chars": 160,
+    "max_condition_chars": 300,
+    "window_lines": 3,
+    "file_verdict_lines": 80,
+    "title_lines": 5,
+    "max_block_lines": 30,
+    "leak_shingle_words": 5,
+    "ignore_dirs": [".git", ".hg", ".svn", "venv", ".venv", "node_modules", "__pycache__", ".tox", ".mypy_cache", ".pytest_cache", "site-packages"],
+    "extensions": ["md", "txt", "rst", "py", "json", "yaml", "yml"]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "$comment": "run.json: one entry per step of the idea, appended by tools/step.py (and by tools/run_test.py for the execution). Cost and duration are measured when the host gives them, else 'unknown'. tools/check.py reads it for the budget per idea ([BUDGET]) and its form ([RUNLOG]).",
+  "type": "object",
+  "required": ["steps"],
+  "additionalProperties": false,
+  "properties": {
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["step", "utc", "duration_s", "cost_usd"],
+        "additionalProperties": false,
+        "properties": {
+          "step": {"enum": ["setup", "intake", "vp_run", "prior_art", "hypotheses", "tests", "critique", "execution",
+                            "card", "other", "rebound", "rebound_vp_run", "history", "free_draft", "context", "evidence",
+                            "matter", "moment", "critique2", "framing", "research_plan", "named", "rebound_critique"]},
+          "utc": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+          "duration_s": {"type": ["number", "string"]},
+          "cost_usd": {"type": ["number", "string"]},
+          "vp_run": {"type": "string"},
+          "note": {"type": "string"},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "free_draft step: SHA-256 of free_draft.md when it was sealed."}
+        }
+      }
+    }
+  }
+}

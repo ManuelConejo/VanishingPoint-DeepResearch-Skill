@@ -1,0 +1,1 @@
+{"utc": "2026-11-14T13:31:00.000000+00:00", "run": "vp-2026-11-14-vp-rb-n3", "T": "2026-11-14", "call": "search-openalex", "engine": "openalex", "query": "title wording click-through citations mediation", "n": 20, "count": 2, "excluded": 0, "error": null, "ids": ["doi:10.1000/rb.n3.2020", "doi:10.1000/rb.n3.2020.b"]}

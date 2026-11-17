@@ -1,0 +1,1 @@
+{"utc": "2026-11-14T13:31:00.000000+00:00", "run": "vp-2026-11-14-vp-rb-n2", "T": "2026-11-14", "call": "search-openalex", "engine": "openalex", "query": "headline length retrieval news search preprint title", "n": 20, "count": 2, "excluded": 0, "error": null, "ids": ["doi:10.1000/rb.n2.2021", "doi:10.1000/rb.n2.2021.b"]}

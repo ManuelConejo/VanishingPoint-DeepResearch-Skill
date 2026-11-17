@@ -1,0 +1,55 @@
+{
+  "answer": "Partially",
+  "searched": "VP standard run q01 (biology plugin, T 2025-08-05): neonatal, paediatric and adult angles on RBC volume per transfusion; 59 gateway calls.",
+  "closest_work": [
+    {
+      "ref": {
+        "id": "doi:10.1016/j.transci.2023.103839",
+        "run": "q01",
+        "claim": "A3",
+        "says": "transfusions 1.9 versus 2.6"
+      },
+      "title": "Chen 2023, 20 versus 15 ml/kg in preterm infants",
+      "year": "2023",
+      "what_differs": "Single centre and labelled observational; adverse events not the primary outcome."
+    },
+    {
+      "ref": {
+        "id": "doi:10.1080/08998280.2016.11929387",
+        "run": "q01",
+        "claim": "A2"
+      },
+      "title": "Mallett 2016, 20 versus 15 mL/kg crossover in VLBW infants",
+      "year": "2016",
+      "what_differs": "Crossover on 22 infants; haemoglobin only, no count of transfusions."
+    }
+  ],
+  "materials": {
+    "unexplained_anomalies": [],
+    "transferable_methods": [
+      {
+        "text": "Randomised crossover of volumes within the same infants.",
+        "refs": [
+          {
+            "id": "doi:10.1080/08998280.2016.11929387",
+            "run": "q01",
+            "claim": "A2"
+          }
+        ]
+      }
+    ],
+    "contradictory_results": [
+      {
+        "text": "In African children the higher volume arm had the lower mortality, the reverse of the order first written.",
+        "refs": [
+          {
+            "id": "doi:10.1056/nejmoa1900100",
+            "run": "q01",
+            "claim": "A4"
+          }
+        ]
+      }
+    ]
+  },
+  "vp_prior_art_md": "../vp_prior_art/PRIOR-ART.md"
+}
