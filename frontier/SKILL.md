@@ -397,7 +397,7 @@ prefer `tournament_rebound.json` when both exist, and record/repair writes only
 input fingerprint. Legacy journal reads warn on stderr. Configuration reads
 `tournoi` only when `tournament` is absent. Any legacy key emits a deprecation
 warning; when both keys exist, stderr also states that `tournoi` is ignored.
-Update script commands to `tools/tournament.py`; a temporary transition script remains at the old path.
+Update script commands to `tools/tournament.py`; the old script path is removed.
 
 
 **OFF by default.** Use this option only when the user asks for a "tournament",

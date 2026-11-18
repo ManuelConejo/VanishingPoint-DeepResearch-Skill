@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.6.30, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.6.31, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -23,10 +23,8 @@ Status: v0.6.30, research preview. Measured on small private benches (3 to 50 ca
   FOUND, DISTORTED, ABSENT, INVALID, SOURCE-UNAVAILABLE, UNVERIFIED), `studies.csv` and `references.bib` / `.ris`.
 - **It costs**: about 2.1 to 2.6 USD of model usage per academic question on Claude Code (10 questions measured on
   2026-11-08, Sonnet orchestrator and searchers, verification included), about 2 to 4.5 USD per law question, more with
-  the optional full-text verification (one long-legal-text run reached about 10 USD; see the example);
+  the optional full-text verification (one long-legal-text run reached about 10 USD);
   0 USD metered on a Codex subscription.
-- **See a real run**: [`examples/report-cs-ai/`](examples/report-cs-ai/) (question, report, verdicts, cited passages,
-  with its limits).
 - **Use it**: [USAGE.md](USAGE.md) (how to ask, reading the result, plugins, optional modes, keys, costs, troubleshooting).
 
 Rebound is an optional creative aid with no guarantee ([frontier/SKILL.md](frontier/SKILL.md)), used only on explicit request and opened with the disclaimer from `frontier/tools/disclaimer.py`; its proposals and test plans are judged by models, not measured. Cards may include executed test results.
@@ -251,8 +249,7 @@ basis read and the canonical public URL when configured in `tools/config.json`),
 `card.json` (the claims checked, one per `criteria` field, per figure of the summary and per verdict) and `result.json`
 (the studies with six criteria fields, saturation, calls used, verification rule). The code plugin adds `mechanisms.json`
 (ten fields per mechanism: Y side `file:line@SHA`, target seam in X, GO / WATCH / NO-GO, what not to take, licence).
-See `examples/report-cs-ai/` for a real, unedited run and `examples/capsule-template.md` (and its `.json` twin) for
-the shape of a context capsule.
+See `examples/capsule-template.md` (and its `.json` twin) for the shape of a context capsule.
 
 ## Costs measured
 

@@ -200,4 +200,4 @@ incomplete pair is refused; generations are never combined. Old files are
 retained. Configuration reads `possibles` only when `candidate_reading` is
 absent. Any legacy key warns; when both exist, stderr says it is ignored;
 custom reading bounds are preserved. Update old script commands to
-`tools/read_candidates.py`; a temporary transition script remains at the old path.
+`tools/read_candidates.py`; no script is installed at the old path.

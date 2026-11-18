@@ -48,8 +48,7 @@ Code plugin, `$SKILL` is the directory that `claude plugin list` prints for `van
 | `FOLLOWUP-<n>.md` / `.html` / `.pdf`, `followups/<n>/` | follow-up reports asked in the conversation, and their working directories |
 | `retractions.json` | mechanical retraction check of the DOIs (Crossref, Retraction Watch); `unknown` stays `unknown` |
 
-The code plugin adds `capsule.md` (input) and `mechanisms.json`. A real, unedited run is in
-[`examples/report-cs-ai/`](examples/report-cs-ai/).
+The code plugin adds `capsule.md` (input) and `mechanisms.json`.
 
 ## 2. Reading the result
 
@@ -280,7 +279,6 @@ The checks and exports accept a report whose eight titles are all in one languag
 (English, French, Spanish, German); since v0.6.3 the skill writes the report in the language of the question (English titles
 and prose in that language for a language outside the table).
 
-To try them without a run, copy `examples/report-cs-ai/` to a scratch directory and run `finish_run.py <copy> --offline`.
 
 ## 8. Troubleshooting
 
