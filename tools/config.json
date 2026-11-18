@@ -588,7 +588,7 @@
   "log": "progress.log",
   "note": "tools/progress.py --hook, run by Claude Code after each tool call of the orchestrator (PostToolUse hook of the SKILL.md header; never by the model). Measured 29/10: Claude Code 2.1.292 folds tool output (\"Ran 1 shell command\") and shows it only in the detailed transcript (ctrl+o), so a line printed by a tool is not seen unless the model copies it (copied 5 times out of 8 in the two runs of essai-ergo-263); a hook systemMessage is shown by the host itself (\"PostToolUse:Bash says: ...\"), in the default view and in stream-json (system/informational). Hooks do not run for sub-agent tool calls. hook_tools = the tools whose calls carry a run path; steps = the order in which each step is shown once (searches: again on each new searcher file); log = file under state/."
  },
- "possibles": {
+ "candidate_reading": {
   "verdict_regex": "\\b(possible|probable)\\b",
   "read_basis_regex": "(\\|\\s*(basis:?\\s*)?abstract\\s*(\\||$))|(\\bbasis:?\\s*abstract\\b)",
   "pubmed_batch": 200,
@@ -596,8 +596,8 @@
   "max_records": 200,
   "abstract_chars": 2500,
   "title_chars": 200,
-  "journal_pool": "possibles",
-  "note": "tools/read_possibles.py (SKILL.md section 4, before the stop). A candidate line of searches/*.md is one carrying an identifier and a verdict matching verdict_regex; its first identifier counts as already read when the line matches read_basis_regex (basis abstract), and any identifier read by the gateway (`read` in state/journal.jsonl) is already read. At most max_records candidates, in order of first appearance; abstracts by batches of pubmed_batch PMIDs (esummary for the date barrier, then efetch XML) and epmc_batch DOIs (Europe PMC core), then openalex_batch DOIs for those Europe PMC does not index (OpenAlex, abstract from its inverted index, OPENALEX_KEY optional); abstracts cut at abstract_chars and titles at title_chars in state/possibles.md. The batch is journaled under journal_pool (seen, never counted against the searches' cap). These are reading bounds, not measured optima.",
+  "journal_pool": "candidate_reading",
+  "note": "tools/read_candidates.py (SKILL.md section 4, before the stop). A candidate line of searches/*.md is one carrying an identifier and a verdict matching verdict_regex; its first identifier counts as already read when the line matches read_basis_regex (basis abstract), and any identifier read by the gateway (`read` in state/journal.jsonl) is already read. At most max_records candidates, in order of first appearance; abstracts by batches of pubmed_batch PMIDs (esummary for the date barrier, then efetch XML) and epmc_batch DOIs (Europe PMC core), then openalex_batch DOIs for those Europe PMC does not index (OpenAlex, abstract from its inverted index, OPENALEX_KEY optional); abstracts cut at abstract_chars and titles at title_chars in state/candidate_reading.md. The batch is journaled under journal_pool (seen, never counted against the searches' cap). These are reading bounds, not measured optima.",
   "openalex_batch": 50
  },
  "usage": {
@@ -667,5 +667,159 @@
   "client_timeout_s": 960,
   "names_cache_s": 30,
   "note": "Optional key broker (tools/key_broker.py, KEYS.md 'Key broker'): a separate process, under another user, holds every API key and adds it itself to the outgoing request; the run never sees a key. The run uses it when the environment variable named by env holds the socket path: code_sources.key(NAME) then reads no file nor variable of a key and answers a placeholder (VPKB.<NAME>.VPKB) for the keys the broker says it holds, and any request carrying a placeholder goes through the broker. Routes are derived, never listed here: the 'key' blocks of the sources in sources_dir (read as text with ast, never executed: vars, send query:<param> | bearer | header:<name>, hosts) and contradictor.providers of this file (key, https url: POST to its path, GET to check_url or <base>/models). not_secret = names that follow the key rule but are not secrets (no route; the run keeps reading them). piste = also serve the PISTE broker protocol (tools/piste_broker.py, routes of piste_broker) on the same socket: the gateway uses it for Judilibre and Legifrance when VP_PISTE_BROKER is not set. client_headers = headers a client may add (anything else is refused, except the one header carrying a placeholder; never Accept-Encoding: the broker asks for identity and refuses an encoded answer, which it could not mask); forward_headers = upstream answer headers returned (masked like the body); min_key_chars = a held key shorter than this, or not printable ASCII, is never sent (credential_invalid). max_url_chars, max_header_chars = longest URL accepted and header value returned; max_request_bytes = longest request line (a contradictor prompt, base64); max_answer_bytes = longest upstream answer forwarded (CodeClient caps at 5 MB; a keyed OpenAlex or PubMed page is far below); max_concurrent = upstream calls in flight (a client beyond it waits client_read_timeout_s, then 'busy'); client_read_timeout_s = how long the broker waits for a client's request line; upstream_socket_timeout_s = one socket operation upstream; upstream_total_timeout_s = whole upstream call, headers and body (the contradictor's contradictor.timeout_s); client_timeout_s = how long the run waits for the broker; names_cache_s = how long the run keeps the broker's list of key names. Bounds, not measured optima."
+ },
+ "bibliography_links": {
+  "rules": {
+   "doi": {
+    "pattern": "(?P<id>10\\.\\d{4,9}/[A-Za-z0-9._()/+-]+)",
+    "url": "https://doi.org/{id}",
+    "safe": "/()._-",
+    "ambiguous_endings": "-/+",
+    "detachable_punctuation": "."
+   },
+   "pmid": {
+    "pattern": "(?P<id>\\d+)",
+    "url": "https://pubmed.ncbi.nlm.nih.gov/{id}/",
+    "detachable_punctuation": ".,;"
+   },
+   "pmcid": {
+    "pattern": "(?P<id>PMC\\d+)",
+    "url": "https://www.ncbi.nlm.nih.gov/pmc/articles/{id}/",
+    "detachable_punctuation": ".,;"
+   },
+   "arxiv": {
+    "pattern": "(?P<id>(?:(?:07(?:0[4-9]|1[0-2])|(?:0[89]|1[0-4])(?:0[1-9]|1[0-2]))\\.[0-9]{4}|(?:1[5-9]|[2-9][0-9])(?:0[1-9]|1[0-2])\\.[0-9]{5}|[a-z-]+(?:\\.[A-Z]{2})?/[0-9]{7})(?:v[0-9]+)?)",
+    "url": "https://arxiv.org/abs/{id}",
+    "safe": "/",
+    "detachable_punctuation": ".,;"
+   },
+   "openreview": {
+    "pattern": "(?P<id>[\\w-]{6,})",
+    "url": "https://openreview.net/forum?id={id}",
+    "detachable_punctuation": ".,;"
+   },
+   "celex": {
+    "pattern": "(?P<id>[0-9CE]\\d{4}[A-Z]{1,3}\\d{1,5}[0-9A-Z()_.-]*)",
+    "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:{id}",
+    "safe": "()",
+    "detachable_punctuation": ",;"
+   },
+   "hal": {
+    "pattern": "(?P<id>[a-z]+-\\d+(?:v\\d+)?)",
+    "url": "https://hal.science/{id}",
+    "detachable_punctuation": ".,;"
+   },
+   "thesesfr": {
+    "pattern": "(?P<id>\\d{4}[A-Z0-9]{4,12})",
+    "url": "https://theses.fr/{id}",
+    "detachable_punctuation": ".,;"
+   },
+   "nct": {
+    "pattern": "(?P<id>NCT\\d{8})",
+    "url": "https://clinicaltrials.gov/study/{id}",
+    "detachable_punctuation": ".,;"
+   },
+   "dblp": {
+    "pattern": "(?P<id>[\\w-]+(?:/[\\w.:+-]+)+)",
+    "url": "https://dblp.org/rec/{id}",
+    "safe": "/",
+    "detachable_punctuation": ",;"
+   },
+   "econbiz": {
+    "pattern": "(?P<id>\\d+)",
+    "url": "https://www.econbiz.de/Record/{id}",
+    "detachable_punctuation": ".,;"
+   },
+   "osv": {
+    "pattern": "(?P<id>[A-Za-z]+-[\\w.:-]+)",
+    "url": "https://osv.dev/vulnerability/{id}",
+    "detachable_punctuation": ".,;"
+   },
+   "zenodo": {
+    "pattern": "(?P<id>\\d+)",
+    "url": "https://zenodo.org/records/{id}",
+    "detachable_punctuation": ".,;"
+   },
+   "hfmodel": {
+    "pattern": "(?P<id>[\\w.-]+(?:/[\\w.-]+)?)",
+    "url": "https://huggingface.co/{id}",
+    "safe": "/",
+    "detachable_punctuation": ",;"
+   },
+   "hfdataset": {
+    "pattern": "(?P<id>[\\w.-]+(?:/[\\w.-]+)?)",
+    "url": "https://huggingface.co/datasets/{id}",
+    "safe": "/",
+    "detachable_punctuation": ",;"
+   },
+   "rfc": {
+    "pattern": "(?P<id>\\d{1,5})",
+    "url": "https://www.rfc-editor.org/rfc/rfc{id}",
+    "substitutions": {
+     "id": [
+      [
+       "^0+(?=\\d)",
+       ""
+      ]
+     ]
+    },
+    "detachable_punctuation": ".,;"
+   },
+   "pep": {
+    "pattern": "(?P<id>\\d{1,4})",
+    "url": "https://peps.python.org/pep-{id:0>4}/",
+    "detachable_punctuation": ".,;"
+   },
+   "w3c": {
+    "pattern": "(?P<id>[\\w.-]+)",
+    "url": "https://www.w3.org/TR/{id}/",
+    "detachable_punctuation": ".,;"
+   },
+   "acl": {
+    "pattern": "(?P<id>[A-Za-z0-9][\\w.-]+)",
+    "url": "https://aclanthology.org/{id}/",
+    "detachable_punctuation": ".,;"
+   },
+   "pmlr": {
+    "pattern": "(?P<id>v\\d+/[\\w.-]+)",
+    "url": "https://proceedings.mlr.press/{id}.html",
+    "safe": "/",
+    "detachable_punctuation": ".,;"
+   },
+   "cvf": {
+    "pattern": "(?P<id>content[\\w/.-]+_paper)",
+    "url": "https://openaccess.thecvf.com/{id}.html",
+    "safe": "/",
+    "detachable_punctuation": ".,;"
+   },
+   "edgar": {
+    "pattern": "(?P<cik>\\d{1,10})/(?P<accession>\\d{10}-\\d{2}-\\d{6})",
+    "url": "https://www.sec.gov/Archives/edgar/data/{cik}/{compact}/{accession}-index.htm",
+    "fields": {
+     "compact": "accession"
+    },
+    "substitutions": {
+     "cik": [
+      [
+       "^0+(?=\\d)",
+       ""
+      ]
+     ],
+     "compact": [
+      [
+       "-",
+       ""
+      ]
+     ]
+    },
+    "detachable_punctuation": ".,;"
+   },
+   "ghsa": {
+    "pattern": "(?P<id>GHSA(?:-[23456789cfghjmpqrvwx]{4}){3})",
+    "url": "https://github.com/advisories/{id}",
+    "detachable_punctuation": ".,;"
+   }
+  },
+  "note": "Offline canonical public landing pages, not an existence check. Full-match patterns, named captures, optional field copies and substitutions fill URL templates; safe preserves listed URL characters. detachable_punctuation explicitly lists detachable terminal punctuation; absent or empty means no detachment. For DOI, exactly one final period before a space or line end is detached; accepted risk: a DOI truly ending in a period receives a URL without that period. DOI commas and semicolons are refused; ambiguous_endings rejects possible broken fragments. Modern arXiv: valid YYMM from 0704, four serial digits through 1412, five from 1501. No rule means no inferred URL (notably ecli, ja and local code). Only strict unindented single physical bibliography lines are enriched; any adjacent continuation is refused, even after spaces or declared punctuation. Identifier families are lowercase and values ASCII. Broad celex, dblp and Hugging Face rules keep final periods ambiguous. Unknown or ambiguous identifiers produce address not deducible warnings."
  }
 }

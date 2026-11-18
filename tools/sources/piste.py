@@ -362,12 +362,12 @@ def jorf_item(r, B, title=None, tid=None):
 def lf_payload(q, fund, B, n):
     art = LF_ARTICLE.search(q); words = ' '.join((LF_ARTICLE.sub(' ', q) if art else q).replace('"', ' ').split())
     exact = q.strip()[:1] == q.strip()[-1:] == '"' and len(q.strip()) > 2
-    champs = ([{'typeChamp': 'ALL', 'criteres': [{'typeRecherche': 'EXACTE' if exact else 'TOUS_LES_MOTS_DANS_UN_CHAMP', 'valeur': words, 'operateur': 'ET'}], 'operateur': 'ET'}] if words else []) + \
+    fields = ([{'typeChamp': 'ALL', 'criteres': [{'typeRecherche': 'EXACTE' if exact else 'TOUS_LES_MOTS_DANS_UN_CHAMP', 'valeur': words, 'operateur': 'ET'}], 'operateur': 'ET'}] if words else []) + \
              ([{'typeChamp': 'NUM_ARTICLE', 'criteres': [{'typeRecherche': 'EXACTE', 'valeur': re.sub(r'\.\s*', '', art.group(1)), 'operateur': 'ET'}], 'operateur': 'ET'}] if art else [])
     noon = int(dt.datetime(B.eve.year, B.eve.month, B.eve.day, 12, tzinfo=dt.timezone.utc).timestamp() * 1000)   # the eve of T, unambiguous in Paris
     filt = [{'facette': 'DATE_VERSION', 'singleDate': noon}] if fund != 'JORF' else \
            [{'facette': k, 'dates': {'start': str(B.start), 'end': str(B.eve)}} for k in ('DATE_PUBLICATION', 'DATE_SIGNATURE')]
-    return {'fond': fund, 'recherche': {'champs': champs, 'filtres': filt, 'pageNumber': 1, 'pageSize': min(max(n, 10), 100), 'operateur': 'ET',
+    return {'fond': fund, 'recherche': {'champs': fields, 'filtres': filt, 'pageNumber': 1, 'pageSize': min(max(n, 10), 100), 'operateur': 'ET',
                                         'sort': 'PERTINENCE' if fund != 'JORF' else 'PUBLICATION_DATE_DESC', 'typePagination': 'ARTICLE' if fund == 'CODE_DATE' else 'DEFAUT'}}
 
 

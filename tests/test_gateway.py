@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 """Non-retrievability test of gateway.py (19 admissible date-barrier cases from tests/fixtures/bench_cases.json)
-+ arXiv, law engines (eurlex, justice-administrative, hal, theses-fr), plugin `sources` block, undeclared engines, cap. Everything offline (fetch replaced).
++ arXiv, law engines (eurlex, administrative-justice, hal, theses-fr), plugin `sources` block, undeclared engines, cap. Everything offline (fetch replaced).
 Online (--online): the exact title of each review searched on the 4 engines + read of its DOI; the review must stay unfindable.
 Run: python3 -I tests/test_gateway.py
 """
@@ -83,6 +83,69 @@ def fake_fetch(docs, T):
             return json.dumps({'results': ws, 'meta': {'count': len(ws)}}).encode()
         raise AssertionError('unexpected URL ' + url)
     return fetch
+
+
+class LegacyNames(unittest.TestCase):
+    def test_vp_and_frontier_alias_tables_can_share_a_python_process(self):
+        import importlib.util
+        frontier_tools = P.parent / 'frontier' / 'tools'
+        original_path = list(sys.path)
+        try:
+            sys.path.insert(0, str(frontier_tools))
+            spec = importlib.util.spec_from_file_location('round2_matter', frontier_tools / 'matter.py')
+            matter = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(matter)
+            self.assertEqual(matter.common.input_names.FIELD_ALIASES['annee'], 'year')
+            self.assertEqual(gw.input_names.ENGINE_ALIASES, {'justice-administrative': 'administrative-justice'})
+            self.assertNotEqual(pathlib.Path(gw.input_names.__file__), pathlib.Path(matter.common.input_names.__file__))
+        finally:
+            sys.path[:] = original_path
+
+    def test_old_plugin_engine_access_and_command_keep_filters_and_write_new_names(self):
+        import contextlib, io
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            plugin = root / 'old.md'
+            plugin.write_text('```sources\nengines: justice-administrative\naccess: justice-administrative=page\n```\n')
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                parsed = gw.read_plugin(plugin)
+                g = gw.Gateway([plugin], T='2026-01-01', state=root / 'state')
+            self.assertEqual(g.engines, ['administrative-justice'])
+            self.assertEqual(g.not_wired, [])
+            self.assertEqual(parsed['access'], {'administrative-justice': 'page'})
+            self.assertIn('deprecated name, use administrative-justice', err.getvalue())
+            seen = []
+            def fake(q, n, barrier, **opt):
+                seen.append((q, n, str(barrier.T), opt))
+                return [], 0
+            err = io.StringIO()
+            with patch.dict(gw.ENGINES, {'administrative-justice': fake}), contextlib.redirect_stderr(err):
+                out = g.call('search-justice-administrative', 'test', 5, court='TA75', date_from='2020-01-01', date_to='2025-12-31')
+            self.assertEqual(err.getvalue().splitlines(), ['deprecated name, use search-administrative-justice (search-justice-administrative)'])
+            self.assertEqual(out['engine'], 'administrative-justice')
+            self.assertEqual(seen, [('test', 5, '2026-01-01', {'court': 'TA75', 'date_from': '2020-01-01', 'date_to': '2025-12-31'})])
+            last = json.loads((root / 'state' / 'journal.jsonl').read_text().splitlines()[-1])
+            self.assertEqual((last['call'], last['engine']), ('search-administrative-justice', 'administrative-justice'))
+            self.assertNotIn('search-justice-administrative', g.sources()['commands'])
+
+    def test_repeat_normalizes_legacy_journal_commands_and_keeps_filters_and_pool(self):
+        with tempfile.TemporaryDirectory() as td:
+            g = gw.Gateway.__new__(gw.Gateway)
+            g.state, g.run, g.pool, g.cap = pathlib.Path(td), 'old-run', 'search', 2
+            entry = dict(run=g.run, pool=g.pool, call='search-justice-administrative', query='test', n=5,
+                         filters={'court': 'TA75', 'date_from': '2020-01-01'})
+            (g.state / 'journal.jsonl').write_text(json.dumps(entry) + '\n')
+            (g.state / 'counter-old-run.search.txt').write_text('1')
+            self.assertIsNone(g._repeat('search-administrative-justice', 'test', 5, {'court': 'CE', 'date_from': '2020-01-01'}))
+            g.pool = 'other'
+            self.assertIsNone(g._repeat('search-administrative-justice', 'test', 5, entry['filters']))
+            g.pool = 'search'
+            for expected in (1, 1, None):
+                self.assertEqual(g._repeat('search-administrative-justice', 'test', 5, entry['filters']), expected)
+            self.assertEqual((g.state / 'counter-old-run.search.txt').read_text(), '1')
+            self.assertEqual(json.loads((g.state / 'journal.jsonl').read_text()), entry)
 
 
 class Offline(unittest.TestCase):
@@ -236,7 +299,7 @@ class Offline(unittest.TestCase):
         if template.exists(): self.assertTrue(gw.read_plugin(template)['declared'])   # the template has a block, with engines to fill in
 
 
-# ---------------------------------------------------------------- law engines (eurlex, justice-administrative, hal, theses-fr)
+# ---------------------------------------------------------------- law engines (eurlex, administrative-justice, hal, theses-fr)
 
 LT = dt.date(2024, 3, 15); LV, LF = '2024-03-14', '2024-03-16'
 LAW_FORBID_T = 'Forbidden landmark ruling on data retention and privacy'
@@ -411,9 +474,9 @@ class LawEngines(unittest.TestCase):
         g = gw.Gateway([P.parent / 'plugins' / 'law.md'], T=LT, run='t-pe', state=pathlib.Path(self.tmp.name) / 's')
         r = g.search('eurlex', 'data'); self.assertIn('provider_error', r['results']['error']); self.assertIsNone(r['index_total'])
 
-    def test_justice_administrative(self):
+    def test_administrative_justice(self):
         urls = []; gw.fetch = ja_fetch(urls); B = law_barrier()
-        out, tot = gw.search_justice_administrative('"référé-liberté"', 20, B)
+        out, tot = gw.search_administrative_justice('"référé-liberté"', 20, B)
         self.assertEqual([o['id'] for o in out], ['ja:CE/DCE_000000_20240314'])
         o = out[0]
         self.assertIsNone(o['ecli'])                                                   # literal "undefined" removed
@@ -422,13 +485,13 @@ class LawEngines(unittest.TestCase):
         self.assertGreaterEqual(B.excluded, 6)
         self.assertIn(f'/model_searchANDdates/openData/Date_Lecture/"référé-liberté"/{B.start}/{B.eve}/100', urls[0])
         self.assertIn('sorted by date, most recent first', tot)                    # no relevance order (probe 2026-10-28)
-        urls.clear(); out, tot = gw.search_justice_administrative('déréférencement', 20, B, court='CE', date_from='2021-09-30', date_to='2030-01-01')
+        urls.clear(); out, tot = gw.search_administrative_justice('déréférencement', 20, B, court='CE', date_from='2021-09-30', date_to='2030-01-01')
         self.assertIn(f'/model_search_date_juri/openData/Date_Lecture/déréférencement/CE/2021-09-30/{B.eve}/100', urls[0])   # window kept before T
         self.assertIn('court CE', tot); self.assertIn(f'window 2021-09-30 to {B.eve}', tot)
         for bad in ({'court': 'TA'}, {'court': 'CE/../x'}, {'date_from': '30/09/2021'}, {'date_from': '2030-01-01'}):
-            n0 = len(urls); self.assertEqual(gw.search_justice_administrative('x', 5, B, **bad)[0], [], bad); self.assertEqual(len(urls), n0, bad)
+            n0 = len(urls); self.assertEqual(gw.search_administrative_justice('x', 5, B, **bad)[0], [], bad); self.assertEqual(len(urls), n0, bad)
         g = gw.Gateway([P.parent / 'plugins' / 'law.md'], T=LT, run='t-ja', state=pathlib.Path(self.tmp.name) / 's')
-        urls.clear(); r = g.call('search-justice-administrative', 'déréférencement', 5, court='TA75', date_to='2023-12-31')
+        urls.clear(); r = g.call('search-administrative-justice', 'déréférencement', 5, court='TA75', date_to='2023-12-31')
         self.assertEqual(r['filters'], {'court': 'TA75', 'date_to': '2023-12-31'}); self.assertIn('/TA75/', urls[0]); self.assertIn('/2023-12-31/100', urls[0])
         self.assertEqual(json.loads((pathlib.Path(self.tmp.name) / 's' / 'journal.jsonl').read_text().splitlines()[-1])['filters']['court'], 'TA75')
         urls.clear()
@@ -466,7 +529,7 @@ class LawEngines(unittest.TestCase):
 
     def test_law_plugin_wiring(self):
         s = gw.Gateway([P.parent / 'plugins' / 'law.md'], T=LT, run='t-law', state=pathlib.Path(self.tmp.name) / 's').sources()
-        self.assertEqual(s['engines'], ['eurlex', 'europarl', 'hal', 'hudoc', 'hudoc-feed', 'isidore', 'judilibre', 'justice-administrative', 'legifrance', 'openalex', 'theses-fr', 'unpaywall'])
+        self.assertEqual(s['engines'], ['administrative-justice', 'eurlex', 'europarl', 'hal', 'hudoc', 'hudoc-feed', 'isidore', 'judilibre', 'legifrance', 'openalex', 'theses-fr', 'unpaywall'])
         self.assertEqual(s['not_wired'], [])
 
 

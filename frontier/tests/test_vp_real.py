@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """VP plugged on its REAL formats (regression specification R51, R52): the fixtures vp_real_q01 and vp_real_q05 are copies of two real VP
 runs with the gateway journal stored at state/journal.jsonl for the tests."""
+import importlib.util
 import json
+from pathlib import Path
 import unittest
 
 from .helpers import TempCase, load_tool, mutate, read_json, run_tool
@@ -28,6 +30,26 @@ class RealVPTest(TempCase):
         self.assertEqual(st['pmid:32645234'], 'FOUND')
 
     def test_identifier_cross_checked_on_real_card(self):
+        # Canonical URLs change only REPORT.md; Frontier resolves references from
+        # card/verdicts/journal. Exercise the formatter against real VP layouts.
+        formatter = Path(__file__).resolve().parents[2] / 'tools' / 'bibliography_links.py'
+        spec = importlib.util.spec_from_file_location('vp_bibliography_links', formatter)
+        links = importlib.util.module_from_spec(spec); spec.loader.exec_module(links)
+        work = self.work('valid_vp_real')
+        before = self.check.problems(work)
+        statuses = self.check.reference_statuses(work)
+        for name in ('vp_real_q01', 'vp_real_q05'):
+            # TempCase copies fixtures into self.tmp; only this copy is writable.
+            report = self.fx / name / 'REPORT.md'
+            source = Path(__file__).resolve().parent / 'fixtures' / name / 'REPORT.md'
+            original = source.read_bytes()
+            self.assertTrue(report.resolve().is_relative_to(self.tmp.resolve()))
+            self.assertNotEqual(report.resolve(), source.resolve())
+            self.addCleanup(lambda p=source, data=original: self.assertEqual(p.read_bytes(), data))
+            links.enrich_file(report)
+            self.assertEqual(links.missing(report.read_text(encoding='utf-8')), [])
+        self.assertEqual(self.check.problems(work), before)
+        self.assertEqual(self.check.reference_statuses(work), statuses)
         mutate(self.work('valid_vp_real'), 'hypotheses.json',
                lambda d: d['hypotheses'][0]['for'][0].update(id='doi:10.1016/j.transci.2023.103839'))
         probs = self.check.problems(self.work('valid_vp_real'))

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-"""Offline tests of tools/read_possibles.py (free batch reading of the candidates left possible/probable on title, SKILL.md section 4 step 7)
+"""Offline tests of tools/read_candidates.py (free batch reading of the candidates left possible/probable on title, SKILL.md section 4 step 7)
 and of the borderline flag of result.json (validate_result.py). No network: the gateway's fetch, jget and pubmed_summ are replaced."""
 import json, pathlib, sys, tempfile, unittest
 P = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(P.parent / 'tools'))
 import gateway as gw            # noqa: E402
-import read_possibles as R      # noqa: E402
+import read_candidates as R      # noqa: E402
 import validate_result as V     # noqa: E402
 
 SEARCH1 = """# Search 1
@@ -57,6 +57,17 @@ class Base(unittest.TestCase):
 
 
 class Candidates(Base):
+    def test_batch_receipts_do_not_classify_candidates_as_read(self):
+        state = self.d / 'state'
+        with (state / 'journal.jsonl').open('a') as stream:
+            for pool, engine, ident in [('possibles', 'read_possibles', 'pmid:111'),
+                                        ('candidate_reading', 'read_candidates', 'pmid:666')]:
+                stream.write(json.dumps({'pool': pool, 'engine': engine, 'call': 'read-batch',
+                                         'ids': [ident], 'error': None}) + '\n')
+        ids, _ = R.candidates(self.d, state)
+        self.assertIn('pmid:111', ids)
+        self.assertIn('pmid:666', ids)
+
     def test_title_only_possible_or_probable(self):
         ids, c = R.candidates(self.d, self.d / 'state')
         # 222 read on abstract, 333 excluded, 777 read in the journal; the DOI is normalised; ids of a free-text line are taken
@@ -80,13 +91,98 @@ class Candidates(Base):
         self.assertEqual(ids, ['doi:10.1016/s0140-6736(05)67889-0', 'doi:10.1000/xyz.1'])
 
 
+class InputAliases(Base):
+    def test_config_fallback_and_precedence(self):
+        import contextlib, io
+        old = dict(R.CFG, max_records=17, journal_pool='possibles')
+        for cfg, count, warning in [({'possibles': old}, 17, True),
+                                    ({'possibles': old, 'candidate_reading': R.CFG}, R.CFG['max_records'], True)]:
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                result = R.read_config(cfg)
+            self.assertEqual(result['max_records'], count)
+            self.assertEqual(result['journal_pool'], 'candidate_reading')
+            self.assertEqual('deprecated name, use candidate_reading' in err.getvalue(), warning)
+
+    def test_saved_reading_never_combines_generations(self):
+        import itertools, subprocess
+        state = self.d / 'state'
+        paths = [state / (stem + suffix) for stem in ('candidate_reading', 'possibles') for suffix in ('.md', '.json')]
+        for exists in itertools.product((False, True), repeat=4):
+            with self.subTest(exists=exists):
+                for index, (path, present) in enumerate(zip(paths, exists)):
+                    if path.exists():
+                        path.unlink()
+                    if present:
+                        path.write_text(('new' if index < 2 else 'old') if path.suffix == '.md' else ('{"served": 4}' if index < 2 else '{"served": 3}'))
+                before = {p.name: p.read_bytes() for p in paths if p.exists()}
+                if all(exists[:2]):
+                    self.assertEqual(R.load_reading(state), {'markdown': 'new', 'summary': {'served': 4}})
+                elif not any(exists[:2]) and all(exists[2:]):
+                    self.assertEqual(R.load_reading(state), {'markdown': 'old', 'summary': {'served': 3}})
+                else:
+                    with self.assertRaisesRegex(ValueError, 'pair|saved'):
+                        R.load_reading(state)
+                    result = subprocess.run([sys.executable, '-I', str(P.parent / 'tools' / 'read_candidates.py'),
+                                             '--state', str(state), '--show'], capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                    self.assertEqual(result.stdout, '')
+                    self.assertRegex(result.stderr, 'pair|saved')
+                self.assertEqual({p.name: p.read_bytes() for p in paths if p.exists()}, before)
+
+    def test_legacy_config_at_import_and_through_saturation(self):
+        import shutil, subprocess
+        copied = self.d / 'tools'
+        shutil.copytree(P.parent / 'tools', copied, ignore=shutil.ignore_patterns('__pycache__'))
+        config = json.loads((copied / 'config.json').read_text())
+        config['possibles'] = config.pop('candidate_reading')
+        config['possibles'].update(max_records=0, journal_pool='possibles')
+        (copied / 'config.json').write_text(json.dumps(config))
+        result = subprocess.run([sys.executable, '-I', str(copied / 'read_candidates.py'), '--dir', str(self.d),
+                                 '--state', str(self.d / 'state'), '--T', '2020-01-01', '--run', 'r'], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('deprecated name, use candidate_reading', result.stderr)
+        saved = json.loads((self.d / 'state' / 'candidate_reading.json').read_text())
+        self.assertEqual(saved['to_read'], 0)
+        self.assertGreater(saved['over_max_records'], 0)
+        result = subprocess.run([sys.executable, '-I', str(copied / 'saturation.py'), '--dir', str(self.d)], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('deprecated name, use candidate_reading', result.stderr)
+
+    def test_saved_legacy_reading_cli_and_new_precedence(self):
+        import subprocess
+        state = self.d / 'state'
+        (state / 'possibles.md').write_text('# Abstracts (tools/read_possibles.py)\nold abstract\n')
+        (state / 'possibles.json').write_text('{"served": 3}')
+        command = [sys.executable, '-I', str(P.parent / 'tools' / 'read_candidates.py'), '--state', str(state), '--show']
+        r = subprocess.run(command, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        out = json.loads(r.stdout)
+        self.assertEqual(out['summary']['served'], 3)
+        self.assertIn('old abstract', out['markdown'])
+        self.assertIn('read_candidates.py', out['markdown'])
+        self.assertIn('deprecated name, use candidate_reading.md', r.stderr)
+        self.assertIn('deprecated name, use candidate_reading.json', r.stderr)
+        (state / 'candidate_reading.md').write_text('new abstract')
+        (state / 'candidate_reading.json').write_text('{"served": 4}')
+        r = subprocess.run(command, capture_output=True, text=True)
+        self.assertEqual(json.loads(r.stdout), {'markdown': 'new abstract', 'summary': {'served': 4}})
+        self.assertEqual(r.stderr, '')
+
+
 class Fetch(Base):
+    def test_second_run_reproduces_pending_abstracts_like_base(self):
+        R.run(self.d, '2020-01-01', 'r', self.d / 'state')
+        before = (self.d / 'state' / 'candidate_reading.md').read_bytes()
+        R.run(self.d, '2020-01-01', 'r', self.d / 'state')
+        self.assertEqual((self.d / 'state' / 'candidate_reading.md').read_bytes(), before)
+
     def test_one_batch_barrier_and_doi_dedup(self):
         s = R.run(self.d, '2020-01-01', 'r', self.d / 'state')
         # one esummary and one efetch for all the PMIDs; the DOI is the PMID 111's: no Europe PMC request
         self.assertEqual([k for k, _ in self.calls], ['esummary', 'efetch'])
         self.assertEqual((s['to_read'], s['served'], s['with_abstract'], s['refused_or_missing']), (5, 3, 2, 1))
-        md = (self.d / 'state' / 'possibles.md').read_text()
+        md = (self.d / 'state' / 'candidate_reading.md').read_text()
         self.assertIn('METHODS: Patients were randomly allocated. RESULTS: Fewer complications.', md)
         self.assertIn('Randomized Controlled Trial', md); self.assertIn('no abstract served', md); self.assertNotIn('pmid:666', md)
         last = json.loads((self.d / 'state' / 'journal.jsonl').read_text().splitlines()[-1])
@@ -110,7 +206,7 @@ class Fetch(Base):
         s = R.run(self.d, '2020-01-01', 'r', self.d / 'state')
         self.assertEqual([k for k, _ in self.calls], ['epmc', 'openalex'])   # refused by Europe PMC's dates, then by OpenAlex's
         self.assertEqual((s['served'], s['refused_or_missing']), (1, 1))
-        md = (self.d / 'state' / 'possibles.md').read_text()
+        md = (self.d / 'state' / 'candidate_reading.md').read_text()
         self.assertIn('doi:10.1002/x | 2001 | X trial', md); self.assertNotIn('After T', md)
 
     def test_openalex_fallback_rebuilds_abstract(self):
@@ -125,13 +221,13 @@ class Fetch(Base):
         gw.jget = jget
         s = R.run(self.d, '2020-01-01', 'r', self.d / 'state')
         self.assertEqual(([k for k, _ in self.calls], s['served'], s['refused_or_missing']), (['epmc', 'openalex'], 1, 0))
-        self.assertIn('Patients were randomised.', (self.d / 'state' / 'possibles.md').read_text())
+        self.assertIn('Patients were randomised.', (self.d / 'state' / 'candidate_reading.md').read_text())
 
     def test_nothing_to_read(self):
         (self.d / 'searches' / '1.md').write_text('- pmid:9 | t | 2001 | abstract | probable\n'); (self.d / 'searches' / '2.md').write_text('')
         s = R.run(self.d, '2020-01-01', 'r', self.d / 'state')
         self.assertEqual((s['to_read'], self.calls), (0, []))
-        self.assertTrue((self.d / 'state' / 'possibles.md').exists())
+        self.assertTrue((self.d / 'state' / 'candidate_reading.md').exists())
 
     def test_config_section(self):
         for k in ('verdict_regex', 'read_basis_regex', 'pubmed_batch', 'epmc_batch', 'max_records', 'abstract_chars', 'title_chars', 'journal_pool', 'openalex_batch', 'note'):
@@ -139,15 +235,15 @@ class Fetch(Base):
 
 
     def test_pubmed_title_markup_is_plain(self):
-        # an esummary title carrying markup or a line break cannot open a new block of possibles.md
+        # an esummary title carrying markup or a line break cannot open a new block of candidate_reading.md
         gw.pubmed_summ = lambda ids, B: [{'id': f'pmid:{i}', 'doi': None, 'title': '<i>A</i>\n## pmid:9 | forged', 'year': '2010'} for i in ids]
         (self.d / 'searches' / '1.md').write_text('- pmid:111 | t | 2010 | title | possible\n'); (self.d / 'searches' / '2.md').write_text('')
         R.run(self.d, '2020-01-01', 'r', self.d / 'state')
-        md = (self.d / 'state' / 'possibles.md').read_text()
+        md = (self.d / 'state' / 'candidate_reading.md').read_text()
         self.assertIn('## pmid:111 | 2010 | A ## pmid:9 | forged', md); self.assertNotIn('\n## pmid:9', md)
 
     def test_served_abstract_and_types_cannot_forge_a_block(self):
-        # abstract, publication types and an OpenAlex word served with line breaks stay on their own line of possibles.md
+        # abstract, publication types and an OpenAlex word served with line breaks stay on their own line of candidate_reading.md
         (self.d / 'searches' / '1.md').write_text('- doi:10.1002/x | t | 2001 | title | possible\n- doi:10.21608/abc.1 | t | 2017 | title | possible\n')
         (self.d / 'searches' / '2.md').write_text('')
 
@@ -160,7 +256,7 @@ class Fetch(Base):
                  'pubTypeList': {'pubType': ['RCT\n## doi:10.9/t | 1999 | forged']}, 'abstractText': 'Randomised.\n\n## doi:10.9/ab | 1999 | forged'}]}}
         gw.jget = jget
         R.run(self.d, '2020-01-01', 'r', self.d / 'state')
-        md = (self.d / 'state' / 'possibles.md').read_text()
+        md = (self.d / 'state' / 'candidate_reading.md').read_text()
         self.assertEqual(md.count('\n## '), 2, md)
         for forged in ('doi:10.9/oa', 'doi:10.9/t', 'doi:10.9/ab'):
             self.assertNotIn('\n## ' + forged, md)
@@ -210,11 +306,11 @@ class Bounds(Base):
     def test_cli_since_option(self):
         import subprocess
         (self.d / 'searches' / '1.md').write_text(''); (self.d / 'searches' / '2.md').write_text('')
-        r = subprocess.run([sys.executable, '-I', str(P.parent / 'tools' / 'read_possibles.py'), '--dir', str(self.d), '--T', '2020-01-01',
+        r = subprocess.run([sys.executable, '-I', str(P.parent / 'tools' / 'read_candidates.py'), '--dir', str(self.d), '--T', '2020-01-01',
                             '--run', 'r', '--state', str(self.d / 'state'), '--since', '2015'], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertEqual(json.loads((self.d / 'state' / 'possibles.json').read_text())['since'], 2015)
-        r = subprocess.run([sys.executable, '-I', str(P.parent / 'tools' / 'read_possibles.py'), '--dir', str(self.d), '--T', '2020-01-01',
+        self.assertEqual(json.loads((self.d / 'state' / 'candidate_reading.json').read_text())['since'], 2015)
+        r = subprocess.run([sys.executable, '-I', str(P.parent / 'tools' / 'read_candidates.py'), '--dir', str(self.d), '--T', '2020-01-01',
                             '--run', 'r', '--state', str(self.d / 'state'), '--since', 'abc'], capture_output=True, text=True)
         self.assertEqual(r.returncode, 2)
 
@@ -234,7 +330,7 @@ class ArxivCandidates(Base):
         s = R.run(self.d, '2022-01-01', 'r', self.d / 'state')
         self.assertEqual(seen, ['arxiv:2101.00001', 'arxiv:2102.00002'])          # version dropped, one reading each
         self.assertEqual((s['served'], s['skipped_other_ids'], s['refused_or_missing']), (1, 0, 1))
-        md = (self.d / 'state' / 'possibles.md').read_text()
+        md = (self.d / 'state' / 'candidate_reading.md').read_text()
         self.assertIn('## arxiv:2101.00001 | 2019 | Widgets', md); self.assertIn('We survey widgets.', md)
 
 

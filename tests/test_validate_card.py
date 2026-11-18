@@ -91,13 +91,13 @@ class Test(unittest.TestCase):
         full = 'repo:o/lib/src/a.py@' + 'c' * 40
         c = json.loads(json.dumps(CARD)); c['sources'] = {'S1': {'code': full, 'title': 'A'}}
         with tempfile.TemporaryDirectory() as t:
-            d = folder(t, **{'card.json': c}); self.assertEqual(V.problems(d), []); self.assertEqual(V.warnings(d), [])
+            d = folder(t, **{'card.json': c}); self.assertEqual(V.problems(d), []); self.assertEqual([w for w in V.warnings(d) if not w.startswith('11 REPORT.md:')], [])
         c['sources'] = {'S1': {'code': 'src/a.py@0123abc', 'title': 'A'}, 'S2': {'code': 'local:x.py@' + 'd' * 40}}
         c['claims'][1]['source'] = {'key': 'S2'}
         with tempfile.TemporaryDirectory() as t:
             d = folder(t, **{'card.json': c, 'verdicts.json': {'claims': [{'id': 'A1', 'status': 'FOUND'}, {'id': 'A2', 'status': 'FOUND'}]}})
             self.assertEqual([p for p in V.problems(d) if p.startswith(('1 ', '2 '))], [])
-            w = V.warnings(d)
+            w = [w for w in V.warnings(d) if not w.startswith('11 REPORT.md:')]
             self.assertEqual(len(w), 2, w); self.assertTrue(all(x.startswith('card.json source S1.code: ') for x in w), w)
             import subprocess
             r = subprocess.run([sys.executable, '-I', str(P.parent / 'tools' / 'validate_card.py'), str(d)], capture_output=True, text=True, timeout=120)

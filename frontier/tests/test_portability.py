@@ -21,7 +21,7 @@ NETWORK = {'socket', 'urllib', 'http', 'ftplib', 'smtplib', 'requests', 'ssl', '
 # V4: these two modules are local tools, subject to the same stdlib/network checks.
 LOCAL = {'schema_lite', 'check', 'common', 'sim', 'setup', 'rebound', 'hybrid', 'matter', 'gwclient', 'catalogue', 'context',
          'card', 'guards', 'r3check', 'v2check', 'v3check', 'v4check', 'overlap', 'framing', 'research', 'named',
-         'disclaimer', 'tournoi'}
+         'disclaimer', 'tournament', 'input_names'}
 
 
 def tool_files():

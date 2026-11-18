@@ -30,6 +30,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from validate_result import problems as pb_result, warnings as warn_result, code_warnings
 import sources as _reg   # noqa: E402  (source registry)
 import report_lang as RL   # noqa: E402  (titles of the eight sections, one version per language)
+import bibliography_links as BL
 import cross_source as CS   # noqa: E402  (check 14)
 import study_family as SF   # noqa: E402  (check 14: versions of one study count as one source)
 
@@ -166,6 +167,10 @@ def warnings(folder):
                 out += [f'card.json claim {a.get("id")}.source.code: {w}' for w in code_warnings(s['code'])]
     r = load(d / 'result.json') if (d / 'result.json').exists() else None
     if isinstance(r, dict): out += ['result.json ' + w for w in warn_result(r)]
+    report = d / 'REPORT.md'
+    if report.is_file():
+        text = report.read_text(encoding='utf-8', errors='replace')
+        out += BL.warnings(text)
     return out
 
 

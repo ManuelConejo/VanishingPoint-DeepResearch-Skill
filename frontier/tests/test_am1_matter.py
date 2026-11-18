@@ -234,7 +234,7 @@ class MaterialCheckTest(MatterBase):
         self.fill_main()
         self.mut(VP, 'material.json', lambda d: d['items'].append(
             {"for": "main", "kind": "benchmark", "name": "SomeBench", "url": "https://example.org/b", "licence": "unknown",
-             "last_activity": None, "last_activity_basis": "unknown", "via": "host", "note": "found by the host search tool"}))
+             "last_activity": None, "last_activity_basis": "unknown", "via": "host", "relevance": "found by the host search tool"}))
         self.assertNoCode('[MAT-')
         w = self.check.warnings(self.work())
         self.assertTrue(any('not verified' in x and 'SomeBench' in x for x in w), w)
@@ -244,19 +244,19 @@ class MaterialCheckTest(MatterBase):
 
 
 class OptionalSourcesTest(MatterBase):
-    HEAD = 'question\tnote\tid\tannee\ttitre\tmethode\tcapacite\tentree_sortie\tresultat\tverif\tampleur\tcode\n'
+    HEAD = 'question\trelevance\tid\tyear\ttitle\tmethod\tcapability\tinput_output\tresult\tverification\tscale\tcode\n'
 
     def catalogue(self):
         p = self.tmp / 'catalogue.tsv'
         p.write_text(self.HEAD +
-                     'U1\t3\tW11\t2024\tTitle length and retrieval ranking of citations\tTitleRank\tpredict citations from title retrieval\tpreprints to rank\tgain 3%\tok\tfort\thttps://github.com/acme/titlerank\n'
-                     'U1\t2\tW12\t2023\tLoss functions for protein folding\tFoldLoss\tfold proteins\tsequences to structure\tgain\tok\tfaible\t\n',
+                     'U1\t3\tW11\t2024\tTitle length and retrieval ranking of citations\tTitleRank\tpredict citations from title retrieval\tpreprints to rank\tgain 3%\tok\thigh\thttps://github.com/acme/titlerank\n'
+                     'U1\t2\tW12\t2023\tLoss functions for protein folding\tFoldLoss\tfold proteins\tsequences to structure\tgain\tok\tlow\t\n',
                      encoding='utf-8')
         return p
 
     def directions(self):
         p = self.tmp / 'directions.tsv'
-        p.write_text('sujet\tannee\tdirection\tliste\tsource\n'
+        p.write_text('subject\tyear\tdirection\tlist\tsource\n'
                      'title length retrieval\t2018\trevisit title length effect on retrieval ranking\tA\tnote-1\n'
                      'title length retrieval\t2019\tunrelated direction about title length retrieval\tB\tnote-2\n', encoding='utf-8')
         return p
@@ -280,7 +280,7 @@ class OptionalSourcesTest(MatterBase):
         self.assertEqual([m['id'] for m in o['catalogue']['matches']], ['W11'])
         self.assertEqual(o['directions']['status'], 'used')
         self.assertEqual(len(o['directions']['matches']), 1)
-        self.assertEqual(o['directions']['matches'][0]['liste'], 'A')
+        self.assertEqual(o['directions']['matches'][0]['list'], 'A')
         self.assertNoCode('[MAT-CATALOGUE]')
 
     def test_am68_forged_match_refused(self):
@@ -307,7 +307,7 @@ class OptionalSourcesTest(MatterBase):
         self.assertEqual([r['id'] for r in rows], ['W11', 'W12'])
         m = load_tool('matter')
         d = m.read_directions(self.directions())
-        self.assertEqual([x['annee'] for x in d], ['2018'])
+        self.assertEqual([x['year'] for x in d], ['2018'])
 
 
 class MomentTest(MatterBase):

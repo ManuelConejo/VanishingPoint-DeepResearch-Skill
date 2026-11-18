@@ -40,7 +40,7 @@ LESSONS = (
     '- The workshop review proposed Soft-Fold as packing option #1 before finding softfold already tried and CLASS\xc9.\n'  # 5
     '- Sketches are not evidence: every cited inspection result comes from results/.\n'  # 6
 )
-SYNTHESE = (
+FOLD_SUMMARY = (
     '# FOLD summary (synthetic)\n'  # 1
     '\n'  # 2
     'Soft-Fold was tried twice for painted wooden tile packing.\n'  # 3
@@ -69,7 +69,7 @@ EN_SUMMARY = (
 GOOD_FILES = {
     'results/test_softfold.md': RESULTS,
     'LESSONS.md': LESSONS,
-    'research/fold/FOLD_PACKING_SUMMARY.md': SYNTHESE,
+    'research/fold/FOLD_PACKING_SUMMARY.md': FOLD_SUMMARY,
     'scripts/prepare_cradle.py': TRAIN,
     'notes/en_summary.txt': EN_SUMMARY,
 }

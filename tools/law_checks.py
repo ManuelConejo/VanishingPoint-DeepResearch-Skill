@@ -26,6 +26,8 @@ import argparse, datetime as dt, json, pathlib, re, sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE)); import sources as _reg   # noqa: E402,E702  (source registry: law identifier kinds)
+import input_aliases as input_names
+
 RESULTS = ('unsupported', 'needs_confirmation', 'supported')                     # strictest first
 RANK = {r: i for i, r in enumerate(RESULTS)}
 STATUS_RANK = {'FOUND': 0, 'UNVERIFIED': 1, 'SOURCE-UNAVAILABLE': 1, 'DISTORTED': 2, 'ABSENT': 3, 'INVALID': 3}
@@ -303,7 +305,7 @@ def coverage_of(anchors, claim):
     cs += [day(next((v for k, v in JA_COVERAGE.items() if str(val(a['rec'], 'court') or '').startswith(k)), None)) for a in anchors if (a['ident'] or '').startswith('ja:')]
     cs = [c for c in cs if c]
     if cs: return max(cs)
-    return day(JA_COVERAGE['TA']) if claim.get('engine') == 'justice-administrative' else None   # court unknown: latest opening
+    return day(JA_COVERAGE['TA']) if input_names.engine_name(claim.get('engine')) == 'administrative-justice' else None   # court unknown: latest opening
 
 
 def r_coverage(claim, anchors):

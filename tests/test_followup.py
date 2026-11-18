@@ -70,7 +70,10 @@ class T(unittest.TestCase):
         st = {s['step']: s['status'] for s in r['steps']}; self.assertEqual(st['followup_deliver'], 'ok', r['steps'][-1]); self.assertNotIn('summary', st)
         self.assertFalse((c / 'SUMMARY.md').exists())
         with contextlib.redirect_stdout(io.StringIO()): r = F.finish(c, offline=True, summary=True)          # optional step 8 (--summary)
-        self.assertEqual((self.p / 'FOLLOWUP-1.md').read_text(), child_report(1)); self.assertTrue((self.p / 'FOLLOWUP-1.html').is_file())
+        # Closure adds the canonical URL; keep the legacy input and its period.
+        expected = child_report(1).replace('pmid:42161415. Basis:',
+                                           'pmid:42161415. <https://pubmed.ncbi.nlm.nih.gov/42161415/> Basis:')
+        self.assertEqual((self.p / 'FOLLOWUP-1.md').read_text(), expected); self.assertTrue((self.p / 'FOLLOWUP-1.html').is_file())
         summ = (c / 'SUMMARY.md').read_text(); self.assertIn('**Complément 1 — Réponse**', summ); self.assertIn(str((self.p / 'FOLLOWUP-1.html').resolve()), summ)
         self.assertEqual(tree_hash(self.p, ('followups', 'FOLLOWUP-')), before)
         self.assertEqual(V.problems(self.p) + V.end_problems(self.p), [])

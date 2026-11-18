@@ -30,6 +30,17 @@ class ContentTest(CardBase):
         for iid in ('N1', 'N2', 'N3', 'N4', 'N5'):
             self.assertTrue(re.search(r'(?m)^- %s ' % iid, t), iid)
 
+    def test_debates_offer_is_one_final_visible_line(self):
+        notice = 'Ranking of the neighbouring ideas by debates is available on request (tournament).'
+        for name in (VP, NOVP):
+            with self.subTest(name=name):
+                text = self.text(name)
+                self.assertEqual(text.splitlines().count(notice), 1)
+                visible = [line for line in text.splitlines() if line.strip() and not line.startswith('<!--')]
+                self.assertEqual(visible[-1], notice)
+                self.assertLessEqual(len(text.splitlines()), MAX_LINES)
+                self.assertNotIn(notice, (self.work(name) / 'IDEA-REPORT.md').read_text())
+
     def test_operator_and_label(self):
         t = self.text()
         n4 = self.lines_with(t, '- N4 ')[0]
@@ -145,6 +156,7 @@ class LimitsTest(CardBase):
         t = self.text(VP, self.skill_copy(prior_art_checks_max=5))
         self.assertLessEqual(len(t.splitlines()), MAX_LINES)
         self.assertIn('## Neighbouring ideas', t)
+        self.assertIn('Ranking of the neighbouring ideas by debates is available on request (tournament).', t.splitlines())
         for k in range(1, 11):
             self.assertTrue(re.search(r'(?m)^- N%d ' % k, t), k)
 

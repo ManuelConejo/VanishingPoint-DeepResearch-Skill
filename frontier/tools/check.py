@@ -173,13 +173,13 @@ import setup  # noqa: E402
 import sim  # noqa: E402
 import v2check  # noqa: E402
 import v4check  # noqa: E402
-import tournoi  # noqa: E402
+import tournament  # noqa: E402
 
 FRONTIER = Path(__file__).resolve().parent.parent
 NEW_FILES = ['draft_claims.json', 'evidence_table.json', 'material.json', 'moment.json']   # optional (AM1 round)
 NEW_INPUTS = ['free_draft.md', 'draft_claims.json', 'evidence_table.json', 'material.json', 'moment.json',
               'context_candidates.json', 'decisive_claims.json', 'framing.json', 'research_plan.json', 'named_elements.json',
-              'test_revision.json', 'overlap_ledger.json', 'tournoi_rebound.json']  # count in the card fingerprint when present
+              'test_revision.json', 'overlap_ledger.json', tournament.LEGACY_JOURNAL, tournament.JOURNAL]  # count in the card fingerprint when present
 REPORT = 'IDEA-REPORT.md'
 DRAFT_MIN_CHARS = 200
 SCHEMAS = FRONTIER / 'schemas'
@@ -263,6 +263,8 @@ def load(work):
             continue
         try:
             data[name] = read_json(p)
+            if name == 'material.json':
+                data[name] = matter.normalize_material(data[name])
         except (ValueError, UnicodeDecodeError) as e:
             probs.append('[JSON] %s: %s' % (name, e))
             continue
@@ -1308,6 +1310,8 @@ def card_text_problems(work, card_text, mode=None):
             if card_text.count(mark) > src.count(mark):
                 P.append('[CARD-TRUNC] %s: the card holds %r that its input files do not: a text was cut (the R3 card shortens '
                          'only by whole sentences, and points to %s)' % (CARD, mark, REPORT))
+    if any(line.startswith('Tournament [TOURNOI]:') for line in lines):
+        P.append('[CARD-STALE] %s: obsolete [TOURNOI] output mark: run tools/card.py again' % CARD)
     m = CARD_FP.search(card_text)
     if not m or m.group(1) != inputs_fingerprint(work):
         P.append('[CARD-STALE] %s: the card does not match the current files (an entry was added or a file changed '
@@ -2582,9 +2586,9 @@ def check_material(work, data, P, W):
                 if isinstance(m, dict) and m.get('id') not in known:
                     P.append('[MAT-CATALOGUE] material.json: match %r is not a row of the catalogue %s' % (m.get('id'), path))
         else:
-            known = {(r.get('direction'), r.get('annee')) for r in matter.read_directions(path)}
+            known = {(r.get('direction'), r.get('year')) for r in matter.read_directions(path)}
             for m in o.get('matches') or []:
-                if isinstance(m, dict) and (m.get('direction'), str(m.get('annee'))) not in {(a, str(b)) for a, b in known}:
+                if isinstance(m, dict) and (m.get('direction'), str(m.get('year'))) not in {(a, str(b)) for a, b in known}:
                     P.append('[MAT-CATALOGUE] material.json: direction %r is not a list-A row of the index %s' % (m.get('direction'), path))
 
 
@@ -2702,7 +2706,7 @@ def run_all(work, with_card=True):
     import v3check
     v3check.run(work, data, P, W)
     v4check.run(work, data, P, W)
-    W.extend(tournoi.check_marks(work))
+    W.extend(tournament.check_marks(work))
     if with_card:
         check_card(work, mode, P)
         check_report(work, P)

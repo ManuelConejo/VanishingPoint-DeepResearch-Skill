@@ -14,7 +14,7 @@ Command line:
   opens the pool `verifier` (`counter-<run>.verifier.txt`, cap: config verifier.call_cap), so verification never competes with the searches.
   commands: sources | search-<engine> "<query>" | read <id> | citing <id> | references <id> | related <id> (OpenAlex related works, same barrier)
   general engines: pubmed, europepmc, crossref, openalex, arxiv   (id: pmid:NNN | doi:10.x | arxiv:2501.01234)
-  law engines (plugins/law.md): eurlex, justice-administrative [--court CE|TA75|CAA69] [--from YYYY-MM-DD] [--to YYYY-MM-DD], hal, theses-fr,
+  law engines (plugins/law.md): eurlex, administrative-justice [--court CE|TA75|CAA69] [--from YYYY-MM-DD] [--to YYYY-MM-DD], hal, theses-fr,
   hudoc, hudoc-feed (search only), europarl, isidore (id: hudoc:<itemid> | europarl:<document id> | isidore:<Isidore URI> | ecli:ECLI:CE:ECHR:...)
     (id: celex:32016R0679 | ecli:ECLI:EU:... | ecli:ECLI:FR:... | ja:<court>/<file> | hal:hal-0123 | thesesfr:<nnt>)
   code engines (code_sources.py; served only when a plugin declares them): search-code "<pattern>" [--language L] [--repo owner/repo] [--path P] |
@@ -160,6 +160,9 @@ def plugin_path(path):
                          f"{SKILL_DIR}); give plugins/<name>.md or <name>, shipped: {', '.join(shipped)}")
 
 
+import input_aliases as input_names
+
+
 def read_plugin(path):
     """Reads the ```sources block of a plugin (key: value lines). Without block: no engine declared (reported)."""
     path = plugin_path(path)
@@ -171,13 +174,20 @@ def read_plugin(path):
             line = line.split('#', 1)[0].strip()
             if ':' in line:
                 k, v = line.split(':', 1); decl[k.strip().lower()] = v.strip()
-    engines = [x.lower() for x in re.split(r'[,\s]+', decl.get('engines', '')) if x]
+    engines = [input_names.engine_name(x.lower()) for x in re.split(r'[,\s]+', decl.get('engines', '')) if x]
+    access = {}
+    for entry in re.split(r'[,\s]+', decl.get('access', '')):
+        if '=' in entry:
+            name, mode = entry.split('=', 1)
+            current = input_names.engine_name(name.lower())
+            if current not in access or name.lower() == current:
+                access[current] = mode
     code = [x for x in engines if x in CODE_ENGINES.values()]                 # declared code engines, listed apart (code_engines)
     rest = [x for x in engines if x not in code]
     code += [e for x in engines for e in _reg.ENABLED_BY.get(x, ()) if e not in code]   # a declared source that enables a code engine (github -> github-repo)
     keys = [x for x in re.split(r'[,\s]+', decl.get('keys', '')) if x]
     return {'file': str(path), 'name': pathlib.Path(path).stem, 'declared': bool(m), 'engines': rest, 'code_engines': code,
-            'since': decl.get('since') or None, 'cap': int(decl['cap']) if decl.get('cap', '').isdigit() else None, 'keys': keys}
+            'since': decl.get('since') or None, 'cap': int(decl['cap']) if decl.get('cap', '').isdigit() else None, 'keys': keys, 'access': access}
 
 
 def budget_cap(state=None):
@@ -247,8 +257,10 @@ class Gateway:
         for line in j.read_text(errors='replace').splitlines():
             try: x = json.loads(line)
             except ValueError: continue
-            if x.get('run') == self.run and x.get('pool') == self.pool and not x.get('error') and [x.get('call'), x.get('query'), x.get('n'), x.get('filters') or {}] == key:
-                seen = True; break
+            if x.get('run') == self.run and x.get('pool') == self.pool and not x.get('error'):
+                previous = input_names.command_name(x.get('call'))
+                if [previous, x.get('query'), x.get('n'), x.get('filters') or {}] == key:
+                    seen = True; break
         if not seen: return None
         with open(self.state / (f'counter-{self.run}.repeat.txt' if not self.pool else f'counter-{self.run}.{self.pool}.repeat.txt'), 'a+') as f:
             fcntl.flock(f, fcntl.LOCK_EX); f.seek(0); r = int(f.read() or 0)
@@ -258,7 +270,8 @@ class Gateway:
         return int(c.read_text() or 0) if c.exists() else 0
 
     def call(self, cmd, arg, n=20, **opt):
-        """One counted and journaled command. opt: language, repo (search-code); court, date_from, date_to (search-justice-administrative)."""
+        """One counted and journaled command. opt: language, repo (search-code); court, date_from, date_to (search-administrative-justice)."""
+        cmd = input_names.command_name(cmd)
         if cmd == 'sources': return self.sources()
         n = max(1, min(int(n), 100 if cmd in ('citing', 'references', 'related') else 50))
         if cmd in CODE_ENGINES and CODE_ENGINES[cmd] not in self.code_engines:
@@ -389,8 +402,8 @@ def main():
     ap.add_argument('--type', dest='issue_type', default=None, help='search-issues: issue or pr')
     ap.add_argument('--issue-state', dest='issue_state', default=None, help='search-issues: open, closed or merged (state at T; --state names the state dir; also typed state:<value> in the query)')
     ap.add_argument('--use', default=None, help='licence-compat: link, copy or modify (all three when absent)')
-    ap.add_argument('--court', default=None, help='search-justice-administrative: exact court code (CE, TA75, CAA69)')
-    ap.add_argument('--from', dest='date_from', default=None); ap.add_argument('--to', dest='date_to', default=None, help='search-justice-administrative: decision-date window YYYY-MM-DD')
+    ap.add_argument('--court', default=None, help='search-administrative-justice: exact court code (CE, TA75, CAA69)')
+    ap.add_argument('--from', dest='date_from', default=None); ap.add_argument('--to', dest='date_to', default=None, help='search-administrative-justice: decision-date window YYYY-MM-DD')
     ap.add_argument('--chamber', default=None, help='search-judilibre: chamber key (civ1, soc, cr...); --court cc|ca|tj|tcom'); ap.add_argument('--fund', default=None, help='search-legifrance: code|loda|jorf')
     ap.add_argument('--generated', default=None, help='search-lacuna: direction|hypothesis -> research directions or generated hypotheses instead of papers (leads, never evidence; undated: post-T leak risk)')
     a = ap.parse_args()

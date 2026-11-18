@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """French administrative courts open data (opendata.justice-administrative.fr, JSON back end of the public engine, level 2 `page`):
-search-justice-administrative [--court] [--from] [--to], read ja:<court>/<file>; FR ECLI read helper."""
+search-administrative-justice [--court] [--from] [--to], read ja:<court>/<file>; FR ECLI read helper."""
 import datetime as dt
 import re
 import urllib.error, urllib.parse, urllib.request
@@ -36,7 +36,7 @@ def _ja_hits(r): return ((r.get('decisions') or {}).get('body') or {}).get('hits
 JA_COURT = r'CE|CAA\d{2}|TA\d{2,3}'   # exact court code (probe 2026-10-28: "TA" or "CAA" alone match nothing)
 
 
-def search_justice_administrative(q, n, B, court=None, date_from=None, date_to=None):
+def search_administrative_justice(q, n, B, court=None, date_from=None, date_to=None):
     """Administrative courts open data (level 2 `page`): JSON back end of the public engine, decision date bounded on the provider side
     (model_searchANDdates, Date_Lecture range ending on the eve of T); several words = OR, exact phrase in quotes, numbers work.
     The provider has no relevance order (no score; probe 2026-10-28): results come sorted by date, most recent first. To narrow:
@@ -86,8 +86,8 @@ def read_ja_ident(ident, B): return read_ja(value(ident), B)
 
 
 SOURCE = {
-    'name': 'justice-administrative', 'order': 60,
-    'engines': {'justice-administrative': {'search': search_justice_administrative, 'options': ('court', 'date_from', 'date_to')}},
+    'name': 'administrative-justice', 'order': 60,
+    'engines': {'administrative-justice': {'search': search_administrative_justice, 'options': ('court', 'date_from', 'date_to')}},
     'ids': [{'prefix': 'ja', 'form': r'[A-Z]{2,3}\d{0,3}/[A-Z]{2,5}_[A-Za-z0-9]+_\d{8}', 'law_form': r'[A-Z]{2,3}\d{0,3}/[A-Z]{2,5}_[A-Za-z0-9]+_\d{8}', 'export': 'case', 'export_rank': 50}],
     'read': read_ja_ident, 'citing': LAW_NO_CHAIN, 'references': LAW_NO_CHAIN, 'related': RELATED_ONLY,
     'plugins': ('law',), 'access': 'page',

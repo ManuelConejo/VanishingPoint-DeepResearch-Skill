@@ -12,18 +12,17 @@ HOST language model, in an answers file next to each batch. Nothing the model wr
 score: they come from the batch and from the grid.
 
 File format: the 12 columns of the reference methods table, tab-separated, one header line:
-  question note id annee titre methode capacite entree_sortie resultat verif ampleur code
+  question relevance id year title method capability input_output result verification scale code
 followed by 7 columns of the implementability score (grid fixed on 2026-11-12):
-  score donnees transposable autre_usage forme verifiable effort
-  score = max(donnees, transposable) x 2 + forme + verifiable + autre_usage - (0 faible, 1 moyen, 2 fort); maximum 14.
-  donnees 0-3 (3 = every input is in public sources, 0 = a central input is absent without substitute), transposable 0-3,
-  autre_usage 0-2, forme 0-3 (3 = code, 2 = pseudo-code or formula, 1 = described principle, 0 = vague), verifiable 0-3,
-  effort faible | moyen | fort (heavy training, GPU, infrastructure; model calls are no obstacle). A work is EXCLUDED (not
-  written) only when donnees = 0 and transposable <= 1. forme is MECHANICAL: 3 when "code" is a repository URL (github.com,
+  score data_availability transferability other_uses form_score verifiability effort
+  score = max(data_availability, transferability) x 2 + form_score + verifiability + other_uses - (0 low, 1 medium, 2 high); maximum 14.
+  data_availability 0-3 (3 = every input is in public sources, 0 = a central input is absent without substitute), transferability 0-3,
+  other_uses 0-2, form_score 0-3 (3 = code, 2 = pseudo-code or formula, 1 = described principle, 0 = vague), verifiability 0-3,
+  effort low | medium | high (heavy training, GPU, infrastructure; model calls are no obstacle). A work is EXCLUDED (not
+  written) only when data_availability = 0 and transferability <= 1. form_score is MECHANICAL: 3 when "code" is a repository URL (github.com,
   gitlab.com, huggingface.co, zenodo.org, codeberg.org, bitbucket.org), else from the "form" word (pseudocode, formula,
-  principle, vague). "note" is the host's 0-3 relevance of the work to the question (as in the reference table).
-  Decision to review: the date of the last update lives in <catalogue>.meta.json, not in the table, so the table stays
-  byte-compatible with the reference format.
+  principle, vague). "relevance" is the host's 0-3 relevance of the work to the question (as in the reference methods table).
+  Decision to review: the date of the last update lives in <catalogue>.meta.json, not in the table, so the table keeps its English column format.
 
 Subcommands:
   create --domain D --out DIR --vp VPDIR [--query Q]... [--T YYYY-MM-DD] [--per-batch 10] [--n 50] [--question Q1]
@@ -41,13 +40,13 @@ Subcommands:
         "updated" moves to T. Refused while batches are pending.
   check --catalogue FILE
         Format and score: the header, one row length, unique identifiers, every grid value in its range, the score recomputed
-        from the grid, no excluded work written. Accepts the reference 12-column table. Exit 1 on a problem.
+        from the grid, no excluded work written. Accepts the 12-column English table. Exit 1 on a problem.
   status --catalogue FILE
         Prints the meta file.
 Exit codes: 0 done, 1 refused or problem found, 2 usage error or VP not found.
 
 Usage: catalogue.py create|ingest|update|check|status ...
-Import: score(...), excluded(donnees, transposable), forme_from(code, form), read_rows(path)
+Import: score(...), excluded(data_availability, transferability), form_score_from(code, form), read_rows(path)
 """
 import argparse
 import datetime
@@ -62,16 +61,14 @@ import common  # noqa: E402
 import gwclient  # noqa: E402
 
 RUN = 'frontier-catalogue'
-COLS12 = ['question', 'note', 'id', 'annee', 'titre', 'methode', 'capacite', 'entree_sortie', 'resultat', 'verif', 'ampleur',
-          'code']
-EXTRA = ['score', 'donnees', 'transposable', 'autre_usage', 'forme', 'verifiable', 'effort']
-EFFORT = {'faible': 0, 'low': 0, 'moyen': 1, 'medium': 1, 'fort': 2, 'high': 2}
-EFFORT_FR = {'faible': 'faible', 'low': 'faible', 'moyen': 'moyen', 'medium': 'moyen', 'fort': 'fort', 'high': 'fort'}
+COLS12 = common.input_names.COLS12
+EXTRA = common.input_names.EXTRA
+EFFORT = {'low': 0, 'medium': 1, 'high': 2}
 FORMS = {'code': None, 'pseudocode': 2, 'formula': 2, 'principle': 1, 'vague': 0}
 REPO_HOSTS = ('github.com', 'gitlab.com', 'huggingface.co', 'zenodo.org', 'codeberg.org', 'bitbucket.org')
-TEXT_FIELDS = ['methode', 'capacite', 'entree_sortie', 'resultat', 'verif', 'ampleur']
-ANSWER_KEYS = set(['id', 'note', 'code', 'donnees', 'transposable', 'autre_usage', 'form', 'verifiable', 'effort'] + TEXT_FIELDS)
-FROM_BATCH = ('titre', 'annee', 'title', 'year', 'question', 'score', 'forme')
+TEXT_FIELDS = ['method', 'capability', 'input_output', 'result', 'verification', 'scale']
+ANSWER_KEYS = set(['id', 'relevance', 'code', 'data_availability', 'transferability', 'other_uses', 'form', 'verifiability', 'effort'] + TEXT_FIELDS)
+FROM_BATCH = ('title', 'year', 'question', 'score', 'form_score')
 
 
 def _int_in(v, lo, hi, name):
@@ -80,24 +77,25 @@ def _int_in(v, lo, hi, name):
     return v
 
 
-def score(donnees, transposable, autre_usage, forme, verifiable, effort):
+def score(data_availability, transferability, other_uses, form_score, verifiability, effort):
     """The implementability score of the grid (maximum 14)."""
-    d = _int_in(donnees, 0, 3, 'donnees')
-    t = _int_in(transposable, 0, 3, 'transposable')
-    u = _int_in(autre_usage, 0, 2, 'autre_usage')
-    f = _int_in(forme, 0, 3, 'forme')
-    v = _int_in(verifiable, 0, 3, 'verifiable')
+    d = _int_in(data_availability, 0, 3, 'data_availability')
+    t = _int_in(transferability, 0, 3, 'transferability')
+    u = _int_in(other_uses, 0, 2, 'other_uses')
+    f = _int_in(form_score, 0, 3, 'form_score')
+    v = _int_in(verifiability, 0, 3, 'verifiability')
+    effort = common.input_names.effort_name(effort)
     if effort not in EFFORT:
-        raise ValueError('effort must be faible, moyen or fort (found %r)' % (effort,))
+        raise ValueError('effort must be low, medium or high (found %r)' % (effort,))
     return max(d, t) * 2 + f + v + u - EFFORT[effort]
 
 
-def excluded(donnees, transposable):
-    return donnees == 0 and transposable <= 1
+def excluded(data_availability, transferability):
+    return data_availability == 0 and transferability <= 1
 
 
-def forme_from(code, form):
-    """forme (0-3), mechanically: 3 for a repository URL in `code`, else from the form word."""
+def form_score_from(code, form):
+    """form_score (0-3), mechanically: 3 for a repository URL in `code`, else from the form word."""
     if form not in FORMS:
         raise ValueError('form must be one of %s (found %r)' % (', '.join(sorted(FORMS)), form))
     m = re.match(r'^https?://([^/\s]+)/', str(code or '').strip())
@@ -108,8 +106,40 @@ def forme_from(code, form):
     return FORMS[form]
 
 
+def read_table(path):
+    lines = [line for line in Path(path).read_text(encoding='utf-8', errors='replace').replace('\r\n', '\n').split('\n')
+             if line.strip() and not line.startswith('#')]
+    if not lines:
+        raise ValueError('unrecognized catalogue header: empty file')
+    head = common.input_names.catalogue_header(lines[0].split('\t'))
+    rows = []
+    for line in lines[1:]:
+        cells = line.split('\t')
+        cells += [''] * (len(head) - len(cells))
+        rows.append(common.input_names.normalize_fields(dict(zip(head, cells[:len(head)]))))
+    return head, rows
+
+
 def read_rows(path):
     return common.read_tsv(path)
+
+
+def table_body(path, columns, rows):
+    """Preserve comments and English files; translate complete legacy tables on successful writes."""
+    body = Path(path).read_text(encoding='utf-8')
+    lines = [line for line in body.split('\n') if line.strip() and not line.startswith('#')]
+    old_header = lines[0].split('\t') != columns
+    old_effort = ('effort' in columns and any(
+        len(line.split('\t')) > columns.index('effort') and
+        line.split('\t')[columns.index('effort')] in common.input_names.EFFORT_ALIASES for line in lines[1:]))
+    if old_header or old_effort:
+        # Replace only table lines, preserving every comment and blank in place.
+        converted = iter(['\t'.join(columns)] + ['\t'.join(row.get(k, '') for k in columns) for row in rows])
+        body = '\n'.join(line if not line.strip() or line.startswith('#') else next(converted)
+                          for line in body.split('\n'))
+    if body and not body.endswith('\n'):
+        body += '\n'
+    return body
 
 
 # ---------------------------------------------------------------- files
@@ -164,10 +194,10 @@ def gather(vp, T, domain, queries, n, state, work=None, capped=None):
 
 
 INSTRUCTIONS = ('Write the answers file next to this batch (same name with .answers.json): a JSON list with one record per '
-                'work: id (as in the batch), note 0-3 (relevance to the question), methode, capacite, entree_sortie, resultat, '
-                'verif, ampleur (short texts, no tab or newline, read from the abstract or the paper), code (a repository URL or '
-                'empty), form (code | pseudocode | formula | principle | vague), donnees 0-3, transposable 0-3, autre_usage 0-2, '
-                'verifiable 0-3, effort (faible | moyen | fort). Never write the title, the year or the score.')
+                'work: id (as in the batch), relevance 0-3 (relevance to the question), method, capability, input_output, result, '
+                'verification, scale (short texts, no tab or newline, read from the abstract or the paper), code (a repository URL or '
+                'empty), form (code | pseudocode | formula | principle | vague), data_availability 0-3, transferability 0-3, other_uses 0-2, '
+                'verifiability 0-3, effort (low | medium | high). Never write the title, the year or the score.')
 
 
 def write_batches(out_dir, works, per_batch, start, domain, question):
@@ -231,6 +261,7 @@ def validate_answers(answers, batch, known_ids):
         if not isinstance(rec, dict):
             errs.append('%s: must be an object' % tag)
             continue
+        rec = common.input_names.normalize_fields(rec)
         wid = rec.get('id')
         tag = 'answer %s' % wid
         if wid not in by_id:
@@ -254,9 +285,9 @@ def validate_answers(answers, batch, known_ids):
             elif re.search(r'[\t\r\n]', v):
                 errs.append('%s: %s holds a tab or a newline' % (tag, k))
         try:
-            _int_in(rec.get('note'), 0, 3, 'note')
-            forme = forme_from(rec.get('code'), rec.get('form'))
-            score(rec.get('donnees'), rec.get('transposable'), rec.get('autre_usage'), forme, rec.get('verifiable'),
+            _int_in(rec.get('relevance'), 0, 3, 'relevance')
+            form_score = form_score_from(rec.get('code'), rec.get('form'))
+            score(rec.get('data_availability'), rec.get('transferability'), rec.get('other_uses'), form_score, rec.get('verifiability'),
                   rec.get('effort'))
         except ValueError as e:
             errs.append('%s: %s' % (tag, e))
@@ -279,8 +310,16 @@ def cmd_ingest(a):
     if not ap.is_file():
         print('catalogue.py: no answers file %s (the host writes it)' % ap, file=sys.stderr)
         return 1
+    # Reject unrecognized layouts before any write, including metadata.
+    try:
+        columns, existing = read_table(tsv)
+    except ValueError as e:
+        print('catalogue.py: refused, nothing written: %s' % e, file=sys.stderr)
+        return 1
     answers = common.read_json(ap)
-    known = {r.get('id') for r in read_rows(tsv)}
+    if isinstance(answers, list):
+        answers = [common.input_names.normalize_fields(r) if isinstance(r, dict) else r for r in answers]
+    known = {r.get('id') for r in existing}
     errs = validate_answers(answers, batch, known)
     if errs:
         print('catalogue.py: refused, nothing written:')
@@ -291,22 +330,21 @@ def cmd_ingest(a):
     lines, excl, last = [], 0, meta.get('last_work_date')
     for rec in answers:
         w = by_id[rec['id']]
-        forme = forme_from(rec.get('code'), rec.get('form'))
-        if excluded(rec['donnees'], rec['transposable']):
+        form_score = form_score_from(rec.get('code'), rec.get('form'))
+        if excluded(rec['data_availability'], rec['transferability']):
             excl += 1
             continue
-        s = score(rec['donnees'], rec['transposable'], rec['autre_usage'], forme, rec['verifiable'], rec['effort'])
-        cells = [meta.get('question', 'Q1'), str(rec['note']), w['id'], str(w['year'] or ''), w['title']] + \
-                [rec[k] for k in TEXT_FIELDS[:3]] + [rec['resultat'], rec['verif'], rec['ampleur'], rec.get('code') or ''] + \
-                [str(s), str(rec['donnees']), str(rec['transposable']), str(rec['autre_usage']), str(forme),
-                 str(rec['verifiable']), EFFORT_FR[rec['effort']]]
-        lines.append('\t'.join(c.replace('\t', ' ') for c in cells))
+        s = score(rec['data_availability'], rec['transferability'], rec['other_uses'], form_score, rec['verifiability'], rec['effort'])
+        cells = [meta.get('question', 'Q1'), str(rec['relevance']), w['id'], str(w['year'] or ''), w['title']] + \
+                [rec[k] for k in TEXT_FIELDS[:3]] + [rec['result'], rec['verification'], rec['scale'], rec.get('code') or ''] + \
+                [str(s), str(rec['data_availability']), str(rec['transferability']), str(rec['other_uses']), str(form_score),
+                 str(rec['verifiability']), rec['effort']]
+        lines.append('\t'.join(c.replace('\t', ' ') for c in cells[:len(columns)]))
         d = work_date(w)
         if d and (last is None or d > last):
             last = d
-    body = tsv.read_text(encoding='utf-8')
-    if body and not body.endswith('\n'):
-        body += '\n'
+    # A legacy table is rewritten as a whole: English header and effort values.
+    body = table_body(tsv, columns, existing)
     tsv.write_text(body + ''.join(l + '\n' for l in lines), encoding='utf-8')
     meta['rows'] = meta.get('rows', 0) + len(lines)
     meta['excluded'] = meta.get('excluded', 0) + excl
@@ -335,6 +373,8 @@ def cmd_update(a):
         return 1
     vp = find_vp_or_fail(a.vp)
     T = a.T or today()
+    # Update reads identifiers and writes metadata/batches only. Ingest converts
+    # the complete table when appending; optional source layouts stay readable.
     known = {r.get('id') for r in read_rows(tsv)}
     since = meta.get('updated')
     capped = []
@@ -371,14 +411,11 @@ def check_file(path):
              if l.strip() and not l.startswith('#')]
     if not lines:
         return ['empty file']
-    head = lines[0].split('\t')
-    if head[:12] != COLS12:
-        problems.append('line 1: the first 12 columns must be %s' % ' '.join(COLS12))
-        return problems
+    try:
+        head = common.input_names.catalogue_header(lines[0].split('\t'))
+    except ValueError as e:
+        return [str(e)]
     has_extra = len(head) > 12
-    if has_extra and head[12:] != EXTRA:
-        problems.append('line 1: the columns after the 12 first must be %s' % ' '.join(EXTRA))
-        return problems
     seen = set()
     for n, l in enumerate(lines[1:], 2):
         c = l.split('\t')
@@ -389,11 +426,11 @@ def check_file(path):
         if row['id'] in seen:
             problems.append('line %d: duplicate id %s' % (n, row['id']))
         seen.add(row['id'])
-        if row['annee'] and not re.fullmatch(r'\d{4}', row['annee']):
-            problems.append('line %d: annee %r is not a year' % (n, row['annee']))
+        if row['year'] and not re.fullmatch(r'\d{4}', row['year']):
+            problems.append('line %d: year %r is not a year' % (n, row['year']))
         if has_extra:
             try:
-                d, t, u, f, v = (int(row[k]) for k in ('donnees', 'transposable', 'autre_usage', 'forme', 'verifiable'))
+                d, t, u, f, v = (int(row[k]) for k in ('data_availability', 'transferability', 'other_uses', 'form_score', 'verifiability'))
                 got = int(row['score'])
                 want = score(d, t, u, f, v, row['effort'])
             except ValueError as e:
@@ -402,7 +439,7 @@ def check_file(path):
             if got != want:
                 problems.append('line %d: score %d but the grid gives %d (the score is computed, never written by hand)' % (n, got, want))
             if excluded(d, t):
-                problems.append('line %d: an excluded work (donnees 0 and transposable <= 1) must not be written' % n)
+                problems.append('line %d: an excluded work (data_availability 0 and transferability <= 1) must not be written' % n)
     return problems
 
 

@@ -57,8 +57,8 @@ def journal(d):
 
 def plugins_of(d, scope):
     names = sorted(p.stem for p in (P.parent / 'plugins').glob('*.md') if not p.stem.startswith('_'))
-    fin = _json(d / 'state' / 'finish_run.json') or {}
-    if fin.get('plugins'): return [pathlib.Path(x).stem for x in fin['plugins']]
+    finished = _json(d / 'state' / 'finish_run.json') or {}
+    if finished.get('plugins'): return [pathlib.Path(x).stem for x in finished['plugins']]
     head = '\n'.join(scope.splitlines()[:15])
     return [n for n in names if re.search(r'(?<![\w-])' + re.escape(n) + r'(?![\w-])', head)]
 
@@ -116,10 +116,10 @@ def state(folder):
         if unhandled: missing.append('ABSENT/INVALID to remove: ' + ', '.join(map(str, unhandled)))
         if s['in_progress']: missing.append('REPORT.md: the verification block still says "in progress"')
     else:
-        fin = _json(d / 'state' / 'finish_run.json')
-        pb = VC.end_problems(d) if (d / 'state' / 'journal.jsonl').exists() else ([] if isinstance(fin, dict) else ['state/finish_run.json (tools/finish_run.py not run)'])
-        fin = fin if isinstance(fin, dict) else {}
-        if pb or fin.get('validation_passed') is False:
+        finished = _json(d / 'state' / 'finish_run.json')
+        pb = VC.end_problems(d) if (d / 'state' / 'journal.jsonl').exists() else ([] if isinstance(finished, dict) else ['state/finish_run.json (tools/finish_run.py not run)'])
+        finished = finished if isinstance(finished, dict) else {}
+        if pb or finished.get('validation_passed') is False:
             step = 'deliver'; missing += pb or ['validation failed at the last finish_run.py']
         else: step = 'done'
     if incomplete: missing.append('searches without any gateway receipt (relaunch under a new number): ' + ', '.join(incomplete))

@@ -171,3 +171,19 @@ critique budget. A recorded critique without this journal entry blocks
 [BUDGET], like other missing step receipts. See SKILL.md point 8.4 for receipt formats and evidence scope.
 This step is part of the rebound, not a separate option; the optional debates
 tournament is unchanged.
+
+## English data names
+
+Optional rebound debates use `tools/tournament.py`, `schemas/tournament.json`,
+`tournament_rebound.json`, the `tournament` configuration block and `[TOURNAMENT]`
+marks. Existing user-run `tournoi_rebound.json` journals are readable; the English
+journal takes precedence and all new writes use it. Both files enter the card's
+input fingerprint.
+
+The optional catalogue uses the columns `question relevance id year title method
+capability input_output result verification scale code`, followed by `score
+data_availability transferability other_uses form_score verifiability effort`.
+Effort is `low`, `medium` or `high`. Batch answers use `form` for the form word;
+`form_score` is computed by the tool. The optional directions index uses
+`direction year list subject source`. Existing `material.json` direction matches
+with French field names are read and rewritten using the English names.

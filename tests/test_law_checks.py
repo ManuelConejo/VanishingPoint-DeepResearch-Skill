@@ -245,9 +245,9 @@ def case_context_origins(M):
         eq(M.check_run(d)['fetch']['mode'], 'off (T unknown: --T or state/journal.jsonl)', 'no T: no gateway')
         eq(M.check_run(d, as_of='2018-06-01', order='eu')[('as_of_origin')], '--as-of', 'flag')
         (d / 'state').mkdir(); (d / 'state' / 'journal.jsonl').write_text(json.dumps({'T': '2019-06-01', 'call': 'read'}) + '\n')
-        eq((M.check_run(d, fetch=False)['as_of'], M.check_run(d, fetch=False)['as_of_origin']), ('2019-06-01', 'T (journal or --T)'), 'journal T')
+        eq((M.check_run(d, fetch=False, gateway=FakeGateway({}))['as_of'], M.check_run(d, fetch=False, gateway=FakeGateway({}))['as_of_origin']), ('2019-06-01', 'T (journal or --T)'), 'journal T')
         (d / 'scope.md').write_text('# Scope\nT = 2026-10-28. Question date: 2026-10-28. Legal order: EU (with FR-ADM for Conseil d\'Etat). Plugin: law.\n')   # run of 2026-10-28
-        eq((M.check_run(d, fetch=False)['as_of_origin'], M.check_run(d, fetch=False)['order']), ('scope.md', 'EU'), 'scope.md labels inside a line')
+        eq((M.check_run(d, fetch=False, gateway=FakeGateway({}))['as_of_origin'], M.check_run(d, fetch=False, gateway=FakeGateway({}))['order']), ('scope.md', 'EU'), 'scope.md labels inside a line')
         (d / 'card.json').write_text(json.dumps({'card_id': 'c', 'question': 'q', 'as_of': '2017-01-01', 'order': 'FR', 'sources': {}, 'claims': []}))
         eq((M.check_run(d, as_of='2018-06-01')['as_of'], M.check_run(d)['order']), ('2017-01-01', 'FR'), 'card first')
 
@@ -382,6 +382,19 @@ class Mutants(unittest.TestCase):
         if os.environ.get('VP_MUTANTS_VERBOSE'):
             for n, b in rows: print(f'KILLED {n:34} by {b[0]}')
             print(f'{len(rows)}/{len(rows)} killed; control survived')
+
+
+class ExistingEngineName(unittest.TestCase):
+    def test_saved_claims_accept_both_engine_names(self):
+        for engine in ('justice-administrative', 'administrative-justice'):
+            self.assertEqual(L.coverage_of([], {'engine': engine}), L.day(L.JA_COVERAGE['TA']))
+
+
+class MalformedEngineName(unittest.TestCase):
+    def test_unhashable_engine_keeps_the_base_no_coverage_result(self):
+        for engine in ([], {}, ['justice-administrative'], {'name': 'justice-administrative'}, None, 3):
+            with self.subTest(engine=engine):
+                self.assertIsNone(L.coverage_of([], {'engine': engine}))
 
 
 class CommandLine(unittest.TestCase):

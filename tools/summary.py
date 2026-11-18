@@ -91,8 +91,8 @@ def duration(d):
             first = next((json.loads(l) for l in _text(d / 'state' / 'journal.jsonl').splitlines() if l.strip()), {})
             start = _utc(first.get('utc'))
         except ValueError: start = None
-    fin = _json(d / 'state' / 'finish_run.json') or {}
-    end = _utc(fin.get('finished_utc') or fin.get('started_utc'))
+    finished = _json(d / 'state' / 'finish_run.json') or {}
+    end = _utc(finished.get('finished_utc') or finished.get('started_utc'))
     if not end:
         lines = [l for l in _text(d / 'state' / 'journal.jsonl').splitlines() if l.strip()]
         try: end = _utc(json.loads(lines[-1]).get('utc')) if lines else None

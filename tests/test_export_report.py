@@ -114,6 +114,7 @@ class Export(unittest.TestCase):
         for n in (1, 2, 3, 4): self.assertIn(f'<p id="ref-{n}"><span class="n">[{n}]</span>', h)
         self.assertIn('<a href="#cite-1-1" title="back to citation">', h)
         self.assertIn('<a href="https://doi.org/10.1000/abc.123">doi:10.1000/abc.123</a>. Basis', h)
+        self.assertNotIn('href="https://doi.org/10.1000/abc.123."', h)
         self.assertIn('<a href="https://pubmed.ncbi.nlm.nih.gov/123456/">pmid:123456</a>', h)
         self.assertIn('<a href="https://arxiv.org/abs/2001.01234">arxiv:2001.01234</a>', h)
         self.assertIn('<code>[1]</code> / A1', h)                                   # code span untouched

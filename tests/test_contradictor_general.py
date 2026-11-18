@@ -129,7 +129,7 @@ class General(unittest.TestCase):
         gives the path of the CLI and keeps the profile's arguments."""
         os.environ.pop('VP_MODEL_COMMAND_OPENAI')
         bin_ = self.d / 'bin'; bin_.mkdir(); (bin_ / 'python3').symlink_to(sys.executable)   # PATH without codex (the fake needs python3)
-        env = dict(os.environ, PATH=str(bin_))
+        env = dict(os.environ, PATH=str(bin_), VP_MODEL_BIN_OPENAI=str(self.d / 'no-such-codex'))
         s = self.tool('--families', 'openai', rc=3, env=env)
         self.assertEqual(s['status'], 'unavailable'); self.assertTrue(s['families']['openai'].startswith('command_missing: '), s)
         self.assertIn('Contradictor: not run', s['note']); self.assertIn('unavailable', self.stderr)

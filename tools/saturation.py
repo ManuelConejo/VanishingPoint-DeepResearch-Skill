@@ -5,7 +5,7 @@
 The rule is the one of SKILL.md: continue, except when two consecutive waves, each with at least the minimum number of calls fixed at
 framing, brought no new eligible document, or at the ceiling. What the orchestrator used to count by hand is read from the files:
   - eligible documents: identifiers (pmid:, doi:, arxiv:) on a candidate line of searches/*.md whose verdict matches
-    possibles.verdict_regex (possible / probable), the same reading as tools/read_possibles.py;
+    candidate_reading.verdict_regex (possible / probable), the same reading as tools/read_candidates.py;
   - calls of a wave: lines of <state>/journal.jsonl of the searches' pool (no `pool` field) journaled since the previous closure,
     repeats left out (`repeat: true`: served from the cache and not counted by the gateway, so the ceiling is the gateway's).
 --close-wave closes the current wave: the searches/*.md files not yet assigned and the calls journaled since the previous closure are
@@ -22,7 +22,7 @@ closure. Exit 0; 2 bad arguments (no searches/ directory, --min-calls missing at
 import argparse, datetime as dt, json, pathlib, re, sys
 P = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(P))
-from read_possibles import ID_RE, norm, CFG   # noqa: E402  (identifier reading and verdict regex shared with read_possibles.py)
+from read_candidates import ID_RE, norm, CFG   # noqa: E402  (identifier reading and verdict regex shared with read_candidates.py)
 
 
 def search_files(d):
@@ -42,7 +42,7 @@ def eligible(files):
 
 
 def search_calls(state):
-    """Gateway calls of the searches' pool journaled in <state>/journal.jsonl (verifier, possibles and other pools left out; repeats left
+    """Gateway calls of the searches' pool journaled in <state>/journal.jsonl (verifier, candidate_reading and other pools left out; repeats left
     out, as the gateway's counter does)."""
     j, n = pathlib.Path(state) / 'journal.jsonl', 0
     if not j.exists(): return 0

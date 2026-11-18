@@ -193,7 +193,7 @@ Optional, **VP only** (without VP the step is skipped and the report says so). F
 - `python3 -I <SKILL_DIR>/tools/matter.py none <dir> --for N1 --kind code` records "not found" with the queries searched (refused when nothing was searched); "not found" is never a proof of absence.
 Every idea (the main one and each neighbouring one) needs an item or a recorded "not found" search ([MAT-COVER]); an item is checked against its saved answer ([MAT-ENVELOPE]) and dated at most T ([DATE]); an item found by your own search tool instead (`"via": "host"`) is accepted and shown as **not verified**. The `material.json` is `schemas/material.json`.
 
-**Optional local sources (never required).** Two files of the researcher's own may enrich the step: a **catalogue of methods** (the format of the reference methods table, with the implementability score; see step 9) and an index of **research directions** (a TSV with a `direction` column and, if it has a `liste` column, only list A is read: old ideas of the same subject that may be revived, operator `revived_old_idea` of step 8). Their paths come from `config.json` (`catalogue`, `directions_index`) or from the environment variables `FRONTIER_CATALOGUE` and `FRONTIER_DIRECTIONS_INDEX`. `python3 -I <SKILL_DIR>/tools/matter.py optional <dir> --for main` records, in `optional_sources`, each source as `used` (the rows whose words share at least two 5-letter stems with the idea; a match is rechecked in the file, [MAT-CATALOGUE]) or **skipped** with the reason (not configured, not readable), and the report says so. Nothing is ever required of them: a card with neither passes.
+**Optional local sources (never required).** Two files of the researcher's own may enrich the step: a **catalogue of methods** (the format of the reference methods table, with the implementability score; see step 9) and an index of **research directions** (a TSV with a `direction` column and, if it has a `list` column, only list A is read: old ideas of the same subject that may be revived, operator `revived_old_idea` of step 8). Their paths come from `config.json` (`catalogue`, `directions_index`) or from the environment variables `FRONTIER_CATALOGUE` and `FRONTIER_DIRECTIONS_INDEX`. `python3 -I <SKILL_DIR>/tools/matter.py optional <dir> --for main` records, in `optional_sources`, each source as `used` (the rows whose words share at least two 5-letter stems with the idea; a match is rechecked in the file, [MAT-CATALOGUE]) or **skipped** with the reason (not configured, not readable), and the report says so. Nothing is ever required of them: a card with neither passes.
 
 **Moment of the subject (`moment.json`).** `python3 -I <SKILL_DIR>/tools/matter.py moment <dir> --query "<words of the idea>" --years 5` asks the gateway for the publication total before T-5 years ... T (one call per date, the answer's `index_total`), computes the periods between the totals and reads them as **rising**, **saturating**, **revived** (a trough then a recovery) or **unclear**, by a fixed rule whose thresholds are in `config.json` `moment`. `tools/check.py` recomputes the periods and the reading from the saved answers ([MOMENT-READING], [MOMENT-SERIES], [MOMENT-ENVELOPE]); the card carries the "Moment" line. The counts describe the index, not the truth. Record the step with `tools/step.py <dir> --step matter` (and `--step moment`).
 
@@ -387,7 +387,18 @@ Write `<dir>/rebound.json` (`schemas/rebound.json`; header `"stage": "8"`, `gene
 
 Run `pack` again for the current hash, save `{input_sha256, repairs: [{id, operator, goal, statement, rationale, critique_items: [1, 3]}, ...]}` and run `python3 -I <SKILL_DIR>/tools/rebound.py repair <dir> --repair <file>`. Cite only that idea's objections (1, 2) or proposed change (3), with a rationale; every idea appears once, including unchanged ones. The length bound is rounded down. Both `record` and `repair` refuse once a ranking or selection exists. Each repair receipt gets its UTC `date` from the tool; `check.py` blocks critique or repair dates after `ranking.ranked_utc` (or selection) as [REB-REPAIR]. A recorded batch without its `rebound_critique` step blocks as [BUDGET], like other missing step receipts. Older files without critiques remain valid with only the non-blocking [REB-CRITIQUE] mark for this step. `rebound.json` retains original statements, identity snapshots, original prior-art checks, critiques and author repair receipts; repeat recording is refused, nothing overwritten silently. The tools check declared identity, lengths and critique links, not semantic fidelity: the host reviews that the repaired prose keeps the goal and uses only its own critique. Prior-art status never improves through repair. Changed statements conservatively say **prior art checked on the original statement**, including any added named element. Missing critiques give a visible non-blocking **[REB-CRITIQUE]** mark; repairs without critique, beyond the limit or changing identity are refused as **[REB-REPAIR]**. Card and report show repaired statements and counts by route within the existing card limit. This step concerns step-8 `rebound.json`; the optional debates tournament (8-ter) stays unchanged.
 
-## 8-ter. Optional debates on rebound ideas (`tournoi_rebound.json`)
+When no debates tournament has been requested (no tournament journal), the rebound card ends with exactly one visible line: "Ranking of the neighbouring ideas by debates is available on request (tournament)." Omit it once the tournament has been requested, including after debates have been recorded. This line stays within the card length limit; the hidden input fingerprint follows it.
+
+## 8-ter. Optional debates on rebound ideas (`tournament_rebound.json`)
+
+Existing user runs may still contain `tournoi_rebound.json`: readers accept it,
+prefer `tournament_rebound.json` when both exist, and record/repair writes only
+`tournament_rebound.json`, preserving the old file. Both files enter the card's
+input fingerprint. Legacy journal reads warn on stderr. Configuration reads
+`tournoi` only when `tournament` is absent. Any legacy key emits a deprecation
+warning; when both keys exist, stderr also states that `tournoi` is ignored.
+Update script commands to `tools/tournament.py`; a temporary transition script remains at the old path.
+
 
 **OFF by default.** Use this option only when the user asks for a "tournament",
 "debate the ideas", or "compare the ideas by debates". A request for a rebound
@@ -401,7 +412,7 @@ The result is an **aggregate of LLM judgments, not a measurement**, never a
 novelty score. It never changes the test ranking in `tests.json`, never rejects
 a lead, and never replaces the researcher's choice. Elo arithmetic, pairing,
 the debate budget and criteria are uncalibrated design choices. The optional
-`tournoi` configuration contains `max_debates` (default 6), `top_count` (1),
+`tournament` configuration contains `max_debates` (default 6), `top_count` (1),
 `initial_rating` (1000), `k_factor` (32), `rating_scale` (400), `rating_base` (10),
 `debate_max_words` (180) and `criteria` (coherence, testability, distinctiveness,
 limits). The tool snapshots these settings into its journal. These ratings are
@@ -412,20 +423,20 @@ kept only in that separate journal and report, never in the rebound ideas.
    Links must exist, test IDs must be unique, and each linked test must compare
    a linked hypothesis.
    Initialize once with final existing candidate IDs:
-   `python3 -I <SKILL_DIR>/tools/tournoi.py init <dir> --scope <scope-file> --ids N1 N2`.
+   `python3 -I <SKILL_DIR>/tools/tournament.py init <dir> --scope <scope-file> --ids N1 N2`.
    The optional `--source rebound.json` is accepted; no other source is supported.
    There is **no restart**; an existing journal is never overwritten by init.
    Init captures `source_digests` and `original_statements` for every candidate.
    Both snapshots are required in every accepted journal. Journals missing either
    are refused, never silently upgraded; their standings are unavailable on the
    card and in the report.
-2. Run `python3 -I <SKILL_DIR>/tools/tournoi.py next <dir>`, then
-   `python3 -I <SKILL_DIR>/tools/tournoi.py pack <dir>`. Send only the printed
+2. Run `python3 -I <SKILL_DIR>/tools/tournament.py next <dir>`, then
+   `python3 -I <SKILL_DIR>/tools/tournament.py pack <dir>`. Send only the printed
    public JSON packet to a critic, never directory access or source files.
    It whitelists candidate summaries, linked hypotheses, test predictions and
    decision rules, without private metadata or standings. Project archives,
    history, context excerpts and private paths are refused. An overlap with the
-   author's free draft alone produces a non-blocking `[TOURNOI]` mark; archives
+   author's free draft alone produces a non-blocking `[TOURNAMENT]` mark; archives
    retain precedence. This guard is lexical and limited to known passages and
    paths; it does not detect every paraphrase or prove confidentiality.
 3. Use a different configured model family when available. **Without another
@@ -441,7 +452,7 @@ kept only in that separate journal and report, never in the rebound ideas.
    contain `value`, `status: "estimate"` and nonempty `assumptions`; a model
    cannot provide measurements. Missing proposed changes or proposal links and
    unknown proposal links are marked, without rejecting a lead. Save with
-   `python3 -I <SKILL_DIR>/tools/tournoi.py record <dir> --debate <debate-file>`.
+   `python3 -I <SKILL_DIR>/tools/tournament.py record <dir> --debate <debate-file>`.
    A missing or stale packet hash is refused, never replaced. Repeat until the
    fixed budget is exhausted, or stop earlier and disclose provisional standings.
    Unplayed pairs precede rematches; closer ratings and then IDs break ties.
@@ -453,7 +464,7 @@ kept only in that separate journal and report, never in the rebound ideas.
    `statement` in its existing `rebound.json` record, keeping its ID and all other
    fields. Write a repair JSON with `id`, exact `before` and `after` statements,
    `reason`, and `match_numbers` (one-based recorded debates involving that ID).
-   Record it with `python3 -I <SKILL_DIR>/tools/tournoi.py repair <dir> --repair <repair-file>`.
+   Record it with `python3 -I <SKILL_DIR>/tools/tournament.py repair <dir> --repair <repair-file>`.
    The journal preserves both wordings, the reason and debate links as a repair;
    it never resets matches or creates a candidate. The first repair closes
    further comparisons; other candidates may still receive a recorded repair.
@@ -461,7 +472,7 @@ kept only in that separate journal and report, never in the rebound ideas.
    repaired versions improved. An unrecorded source change disables comparisons.
    Broader changes require ordinary research and renewed evidence checks outside
    this fixed tournament; never delete the journal to reset the standings.
-5. `python3 -I <SKILL_DIR>/tools/tournoi.py show <dir>` replays standings and
+5. `python3 -I <SKILL_DIR>/tools/tournament.py show <dir>` replays standings and
    marks. All journal writers lock before reading and hold the lock through the
    atomic replacement; source inputs are rechecked before commit. Keep source
    files stable during a command: external editors do not share this lock.
@@ -480,11 +491,11 @@ When a test has come out (the `decision_log.jsonl` has an "after" entry for it, 
 
 Not part of a normal run: an **optional** tool that creates and keeps up to date, for ONE domain, the catalogue of methods that step 1-bis may read (`config.json` `catalogue`, or `FRONTIER_CATALOGUE`). It needs VP's gateway (no key required) and nothing else: no local copy of a bibliographic index, it runs on a laptop. The host language model writes the short record of each method; the tool prepares the batches and checks the format and the score.
 - `python3 -I <SKILL_DIR>/tools/catalogue.py create --domain "<domain>" --out <catalogue dir> --vp <VP> [--query "<words>"]...` searches `<domain> <query>` through the gateway and writes `catalogue.tsv` (header only), `catalogue.meta.json` and `batches/batch-NNN.json` (works with identifier, title, year, abstract, and the fields to fill);
-- you write, for each batch, `batches/batch-NNN.answers.json`: one record per work (`id`, `note`, `methode`, `capacite`, `entree_sortie`, `resultat`, `verif`, `ampleur`, `code`, `form`, `donnees`, `transposable`, `autre_usage`, `verifiable`, `effort`), read from the abstract or the paper; never the title, the year or the score;
-- `python3 -I <SKILL_DIR>/tools/catalogue.py ingest --catalogue <catalogue dir>/catalogue.tsv --batch <batch file>` validates every record first (one error and nothing is written), then appends the rows with the **mechanical** implementability score: `max(donnees, transposable) x 2 + forme + verifiable + autre_usage - effort penalty` (0, 1 or 2), at most 14, `forme` being 3 when `code` is a repository URL, a work with `donnees` 0 and `transposable` 0 or 1 being excluded and only counted;
+- you write, for each batch, `batches/batch-NNN.answers.json`: one record per work (`id`, `relevance`, `method`, `capability`, `input_output`, `result`, `verification`, `scale`, `code`, `form`, `data_availability`, `transferability`, `other_uses`, `verifiability`, `effort`), read from the abstract or the paper; never the title, the year or the score;
+- `python3 -I <SKILL_DIR>/tools/catalogue.py ingest --catalogue <catalogue dir>/catalogue.tsv --batch <batch file>` validates every record first (one error and nothing is written), then appends the rows with the **mechanical** implementability score: `max(data_availability, transferability) x 2 + form_score + verifiability + other_uses - effort penalty` (0, 1 or 2), at most 14, `form_score` being 3 when `code` is a repository URL, a work with `data_availability` 0 and `transferability` 0 or 1 being excluded and only counted;
 - `python3 -I <SKILL_DIR>/tools/catalogue.py update --catalogue <catalogue dir>/catalogue.tsv --vp <VP>` is **incremental**: the same queries again, keeping only the works dated after the `updated` date of the catalogue and not yet in it (a work with a year only counts as 31 December of that year); `updated` moves only when every pending batch is absorbed;
 - `python3 -I <SKILL_DIR>/tools/catalogue.py check --catalogue <catalogue dir>/catalogue.tsv` checks the header, the rows and recomputes every score.
-The file has the 12 columns of the reference methods table (`question note id annee titre methode capacite entree_sortie resultat verif ampleur code`) then `score donnees transposable autre_usage forme verifiable effort`, so Frontier reads a small catalogue made here or a large one made by another pipeline in the same way. The date of the last update is in `catalogue.meta.json`.
+The file has the 12 columns of the reference methods table (`question relevance id year title method capability input_output result verification scale code`) then `score data_availability transferability other_uses form_score verifiability effort`, so Frontier reads a small catalogue made here or a large one made by another pipeline in the same way. The date of the last update is in `catalogue.meta.json`.
 
 ## Pilot tools (validation, never in a normal run)
 
@@ -513,3 +524,20 @@ For the V1 pilot of the design (section 6.4): `python3 -I <SKILL_DIR>/tools/expo
 - No ranking of neighbouring ideas by a model score in the ordinary rebound; no numeric novelty score or figure of efficacy anywhere. Only an explicitly requested step-8 debates tournament adds separate advisory standings (8-ter), without changing tests, selection or prior-art verdicts. No neighbouring idea without a named operator, a cited material and a prior-art check made before any ranking; no "Not found" presented as "new"; no idea dropped in silence (duplicates are grouped and shown); no choice of the researcher made for them (at most 2 ideas retained, by the user only).
 - No test or neighbouring idea that repeats a trial the user's own archives already closed, unless the written reopening condition is cited and met; no archive content in any request, search or network command; no folder read that the user did not name; no "nothing found" presented as "never tried".
 - No change to VP: its modes and tools are used as its `SKILL.md` describes them.
+
+The catalogue and directions index expose English column names. Complete or
+partial external tables remain readable with either old or current names (never
+a mixed header), in any column order and with extra columns. Present columns
+are used and absent ones ignored, as before; short rows are padded and overlong
+rows truncated. Old names emit deprecation warnings on stderr. Directions use `direction`,
+`year`, `list`, `subject`, `source`; only list A is used when a list column exists.
+Existing `material.json` matches use the same input aliases and are saved with
+English keys. Catalogue answers may use old field names; an explicit current
+key wins. Effort values `faible`, `moyen`, `fort` are read as `low`, `medium`,
+`high` without changing their penalties. Free text (including `scale`) stays
+verbatim. `ingest` and `check` refuse unknown or mixed catalogue headers. A
+successful `ingest` rewrites a legacy table entirely in English, preserving its
+12- or 19-column layout, comment positions, blank lines and free text. `ingest`
+retains the original padding/truncation of existing rows; `check` reports
+inconsistent row widths. `update` reads identifiers without rewriting the table. The input `form` word and computed
+`form_score` column are distinct.

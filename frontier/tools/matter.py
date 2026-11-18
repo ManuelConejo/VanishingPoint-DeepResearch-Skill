@@ -24,7 +24,7 @@ Subcommands (DIR = the Frontier working directory; --vp DIR = the VP directory w
   optional DIR [--for ID]
         The OPTIONAL local sources: the catalogue of methods (tools/catalogue.py format; config.json "catalogue" or
         FRONTIER_CATALOGUE) and the "directions" index (config.json "directions_index" or FRONTIER_DIRECTIONS_INDEX; TSV with
-        a "direction" column and, when it has a "liste" column, only list A). Absent or unreadable: "skipped" with the
+        a "direction" column and, when it has a "list" column, only list A). Absent or unreadable: "skipped" with the
         reason, which the report says. Present: the rows whose words (5-letter stems) share at least matter.min_overlap with
         the idea. Never required.
   moment DIR --query Q [--years 5] [--engine openalex]
@@ -169,8 +169,8 @@ def read_catalogue(path):
 
 def read_directions(path):
     rows = common.read_tsv(path)
-    if rows and 'liste' in rows[0]:
-        rows = [r for r in rows if (r.get('liste') or '').strip().upper() == 'A']
+    if rows and 'list' in rows[0]:
+        rows = [r for r in rows if (r.get('list') or '').strip().upper() == 'A']
     return rows
 
 
@@ -193,20 +193,20 @@ def optional_entry(kind, conf, words, tgt, min_overlap, previous):
     found = []
     if kind == 'catalogue':
         for r in common.read_tsv(p):
-            ov = _overlap(words, ' '.join(r.get(k, '') for k in ('titre', 'methode', 'capacite', 'entree_sortie')))
+            ov = _overlap(words, ' '.join(r.get(k, '') for k in ('title', 'method', 'capability', 'input_output')))
             if ov >= min_overlap:
                 found.append((ov, r))
         found.sort(key=lambda x: (-x[0], -int(x[1].get('score') or 0) if str(x[1].get('score') or '').isdigit() else 0, x[1].get('id', '')))
-        new = [{'for': tgt, 'id': r.get('id'), 'title': r.get('titre'), 'method': r.get('methode'), 'score': r.get('score') or None,
+        new = [{'for': tgt, 'id': r.get('id'), 'title': r.get('title'), 'method': r.get('method'), 'score': r.get('score') or None,
                 'code': r.get('code') or None} for _, r in found[:5]]
     else:
         for r in read_directions(p):
-            ov = _overlap(words, '%s %s' % (r.get('sujet', ''), r.get('direction', '')))
+            ov = _overlap(words, '%s %s' % (r.get('subject', ''), r.get('direction', '')))
             if ov >= min_overlap:
                 found.append((ov, r))
-        found.sort(key=lambda x: (-x[0], x[1].get('annee', ''), x[1].get('direction', '')))
-        new = [{'for': tgt, 'direction': r.get('direction'), 'annee': r.get('annee'), 'liste': r.get('liste'),
-                'sujet': r.get('sujet'), 'source': r.get('source')} for _, r in found[:5]]
+        found.sort(key=lambda x: (-x[0], x[1].get('year', ''), x[1].get('direction', '')))
+        new = [{'for': tgt, 'direction': r.get('direction'), 'year': r.get('year'), 'list': r.get('list'),
+                'subject': r.get('subject'), 'source': r.get('source')} for _, r in found[:5]]
     return {'status': 'used', 'path': str(p.resolve()), 'matches': keep + new}
 
 
@@ -217,10 +217,25 @@ def utc_now():
     return datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
+def normalize_material(mat):
+    """Read old user-run direction matches; only English names leave this boundary."""
+    if not isinstance(mat, dict):
+        return mat
+    optional = mat.get('optional_sources')
+    for kind in ('directions', 'catalogue'):
+        entry = optional.get(kind) if isinstance(optional, dict) else None
+        matches = entry.get('matches') if isinstance(entry, dict) else None
+        if isinstance(matches, list):
+            for i, row in enumerate(matches):
+                if isinstance(row, dict):
+                    matches[i] = common.input_names.normalize_fields(row)
+    return mat
+
+
 def load_material(work):
     p = Path(work) / 'material.json'
     if p.exists():
-        return common.read_json(p)
+        return normalize_material(common.read_json(p))
     return {'version': 1, 'generated_utc': utc_now(), 'items': [], 'searched': [], 'optional_sources': {}}
 
 
@@ -248,6 +263,7 @@ def ensure_optional(work, mat, tgt='main', refresh=False):
 
 
 def save_material(work, mat):
+    mat = normalize_material(mat)
     mat['generated_utc'] = utc_now()
     common.write_json(Path(work) / 'material.json', mat)
 

@@ -67,7 +67,7 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True  # no __pycache__ written in the skill directory
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import tournoi  # noqa: E402
+import tournament  # noqa: E402
 import guards  # noqa: E402
 import common  # noqa: E402
 import schema_lite  # noqa: E402
@@ -532,7 +532,7 @@ def check_data(data, cfg):
                 problems.append(tag + 'repair date must be a real UTC date (YYYY-MM-DDTHH:MM:SSZ)')
             if errors or repair.get('statement') != statement:
                 problems.append(tag + 'repair receipt must match current statement')
-            if repair.get('critique_sha256') != tournoi.source_digest(c):
+            if repair.get('critique_sha256') != tournament.source_digest(c):
                 problems.append(tag + 'repair must refer to its own recorded critique')
             refs = repair.get('critique_items')
             if not valid_refs(refs) or not nonblank(repair.get('rationale')):
@@ -547,7 +547,7 @@ def valid_refs(refs):
 def input_digest(work, data):
     # Bind the exact local source and privacy inventory, but export only the hash.
     intake = common.read_json(Path(work) / 'intake.json')
-    return tournoi.source_digest(dict(rebound=data, intake=intake, secrets=guards.local_secrets(work),
+    return tournament.source_digest(dict(rebound=data, intake=intake, secrets=guards.local_secrets(work),
                                      critic=common.config()['critic']))
 
 
@@ -579,7 +579,7 @@ def packet(work, data):
     if gate:
         raise ValueError('; '.join(gate))
     out = dict(ideas=ideas, criteria=list(CRITERIA), policy=POLICY)
-    tournoi.guard_packet(work, out)
+    tournament.guard_packet(work, out)
     out['input_sha256'] = input_digest(work, data)
     return out
 
@@ -594,7 +594,7 @@ def by_id(rows, ideas, label):
 
 
 def execute(a, read_rebound):
-    """Called with tournoi.journal_lock held, including the initial read."""
+    """Called with tournament.journal_lock held, including the initial read."""
     work = Path(a.dir)
     path, data = read_rebound(work, SOURCE)
     if a.cmd in ('record', 'repair') and any(k in data for k in ('ranking', 'selection')):
@@ -645,7 +645,7 @@ def execute(a, read_rebound):
             i['statement'] = statement
             i['statement_changed'] = statement != i['original_statement']
             i['repair'] = dict(statement=statement, rationale=row['rationale'], critique_items=row['critique_items'],
-                               critique_sha256=tournoi.source_digest(i['critique']), date=utc_now())
+                               critique_sha256=tournament.source_digest(i['critique']), date=utc_now())
     errors = schema_lite.validate(data, common.read_json(common.FRONTIER / 'schemas' / SOURCE))
     issues, _ = check_data(data, cfg)
     if errors or issues:
@@ -1001,14 +1001,14 @@ def main(argv=None):
         return 2
     try:
         if a.cmd in ('pack', 'record', 'repair'):
-            with tournoi.journal_lock(a.dir):
+            with tournament.journal_lock(a.dir):
                 return execute(a, read_rebound)
         command = {'groups': cmd_groups, 'quotas': cmd_quotas, 'tree': cmd_tree, 'select': cmd_select,
                    'link': cmd_link, 'repeat': cmd_repeat}[a.cmd]
         writing = (a.cmd in ('select', 'link') or (a.cmd == 'groups' and a.write)
                    or (a.cmd == 'tree' and a.register))
         if writing:
-            with tournoi.journal_lock(a.dir):
+            with tournament.journal_lock(a.dir):
                 return command(a)
         return command(a)
     except (Usage, OSError, ValueError, TypeError, KeyError, AttributeError) as e:

@@ -28,9 +28,13 @@ import hashlib
 import json
 import os
 import re
+import sys
 import tempfile
 import unicodedata
 from pathlib import Path
+
+# Loaded by all local table readers, including check.py.
+import input_names
 
 FRONTIER = Path(__file__).resolve().parent.parent
 SIM_KEYS = ('design', 'n', 'sd', 'base', 'alpha', 'reps', 'seed', 'threshold', 'rule')
@@ -96,6 +100,14 @@ def config():
         cfg = {}
     if not isinstance(cfg, dict):
         cfg = {}
+    for old, new in input_names.CONFIG_ALIASES.items():
+        if old in cfg:
+            input_names.deprecated(old, new)
+            if new not in cfg:
+                cfg[new] = cfg[old]
+            else:
+                print('configuration: %s ignored because %s is present' % (old, new), file=sys.stderr)
+            del cfg[old]
     cfg.setdefault('rebound_vp_max_calls_per_neighbour', 15)
     cfg.setdefault('power_min_threshold', 0.8)
     critic = dict(cfg.get('critic') or {})
@@ -179,17 +191,20 @@ def find_test(tests_json, test_id):
 
 def read_tsv(path):
     """Rows (dicts keyed by the header line) of a tab-separated file; empty lines and lines starting with # are skipped,
-    a short row is padded. The catalogue of methods and the directions index are read with it."""
+    a short row is padded and an overlong row truncated, as in the original reader.
+    Source columns may be partial, reordered or extended; only mixed old/current
+    field names are refused. Full catalogue validation belongs to ingest/check."""
     lines = Path(path).read_text(encoding='utf-8', errors='replace').replace('\r\n', '\n').split('\n')
     lines = [l for l in lines if l.strip() and not l.startswith('#')]
     if not lines:
         return []
     head = [h.strip() for h in lines[0].split('\t')]
+    head = input_names.read_header(head)
     rows = []
     for l in lines[1:]:
         cells = l.split('\t')
         cells += [''] * (len(head) - len(cells))
-        rows.append(dict(zip(head, cells[:len(head)])))
+        rows.append(input_names.normalize_fields(dict(zip(head, cells[:len(head)]))))
     return rows
 
 

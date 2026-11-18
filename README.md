@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.6.28, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.6.29, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -247,7 +247,7 @@ Recommended use:
 `REPORT.md` has exactly eight sections: Executive Summary (200-400 words), Introduction, Main Analysis (4 to 8 findings,
 each argued in four steps: what the sources establish, what contradicts it, consequence, verdict), Synthesis & Insights,
 Limitations & Caveats, Recommendations, Bibliography (numbered `[n]`, one line per document with its identifier and the
-basis read), Methodology Appendix (process, "Source coverage" block, verification statuses, cost, mode). The annex gives
+basis read and the canonical public URL when configured in `tools/config.json`), Methodology Appendix (process, "Source coverage" block, verification statuses, cost, mode). The annex gives
 `card.json` (the claims checked, one per `criteria` field, per figure of the summary and per verdict) and `result.json`
 (the studies with six criteria fields, saturation, calls used, verification rule). The code plugin adds `mechanisms.json`
 (ten fields per mechanism: Y side `file:line@SHA`, target seam in X, GO / WATCH / NO-GO, what not to take, licence).
@@ -368,7 +368,7 @@ The gateway reads, in the Sources section, a fenced block:
 
 ````
 ```sources
-engines: openalex, crossref, arxiv     # wired engines: pubmed, europepmc, crossref, openalex, arxiv, clinicaltrials, biorxiv, medrxiv, dblp, econbiz, dbnomics, fred (FRED_API_KEY), edgar (VP_CONTACT e-mail), opencitations, unpaywall (VP_CONTACT e-mail), datacite ; law: eurlex, justice-administrative, hal, theses-fr, hudoc, hudoc-feed, europarl, isidore, judilibre, legifrance (PISTE pair) ; ai: openreview, zenodo, hal-info, hf-models, hf-datasets, standards, proceedings, lacuna (optional index lane, ML/AI only; generated leads only with --generated, never citable) ; web archive: wayback (Internet Archive, last capture of a page URL before T; id wayback:<url>) ; code, versions, paper-code, provenance, osv, ecosyste.ms, github-advisory
+engines: openalex, crossref, arxiv     # wired engines: pubmed, europepmc, crossref, openalex, arxiv, clinicaltrials, biorxiv, medrxiv, dblp, econbiz, dbnomics, fred (FRED_API_KEY), edgar (VP_CONTACT e-mail), opencitations, unpaywall (VP_CONTACT e-mail), datacite ; law: eurlex, administrative-justice, hal, theses-fr, hudoc, hudoc-feed, europarl, isidore, judilibre, legifrance (PISTE pair) ; ai: openreview, zenodo, hal-info, hf-models, hf-datasets, standards, proceedings, lacuna (optional index lane, ML/AI only; generated leads only with --generated, never citable) ; web archive: wayback (Internet Archive, last capture of a page URL before T; id wayback:<url>) ; code, versions, paper-code, provenance, osv, ecosyste.ms, github-advisory
 since: 2015                            # optional lower bound (year)
 cap: 60                                # optional safety cap on calls
 keys: OPENALEX_KEY                     # optional keys, resolved as in KEYS.md, never required
@@ -415,6 +415,13 @@ tools/evidence_bank.py, contradictions.py   command-line tools, not used by the 
 tools/config.json   caps, models, host command profiles             tests/  examples/  KEYS.md  ACCESS-POLICY.md  CONTRIBUTING.md  CHANGELOG.md  USAGE.md  LICENSE  NOTICE
 .claude-plugin/     plugin.json + marketplace.json: the repository as a Claude Code plugin (the skill directory needs neither)
 ```
+
+Batch candidate reading uses `tools/read_candidates.py`, the `candidate_reading`
+configuration block, and `state/candidate_reading.md` / `state/candidate_reading.json`.
+Existing `read` journal receipts still deduplicate candidates, including
+receipts using the former pool and engine names; `read-batch` receipts alone do not. The administrative
+courts engine is `administrative-justice` (`search-administrative-justice`); the
+upstream service domain and request fields keep their required spelling.
 
 ## Attribution
 

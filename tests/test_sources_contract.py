@@ -5,7 +5,7 @@ declaration complete and valid, names / engines / commands / prefixes unique, pl
 hosts declared, every readable prefix routed by gateway.read, the template valid, a source whose key is missing makes 0 request to the
 key's hosts (and a `skipped` engine 0 request at all, with a skipped receipt), a fake key never appears in an answer, the journal, the
 receipts or the state, and is sent only to the declared hosts in the declared way. User sources: opt-in, announced, duplicates refused."""
-import importlib, json, os, pathlib, re, subprocess, sys, tempfile, time, types, unittest, urllib.parse, urllib.request
+import importlib, io, json, os, pathlib, re, subprocess, sys, tempfile, time, types, unittest, urllib.parse, urllib.request
 P = pathlib.Path(__file__).resolve().parent
 TOOLS = P.parent / 'tools'
 sys.path.insert(0, str(TOOLS)); import gateway as gw, code_sources as sc, sources as reg   # noqa: E702
@@ -28,8 +28,8 @@ def plugin_access():
 
 
 class Answer:
-    def __init__(self, status, body): self.status, self.body = status, body
-    def read(self, n=-1): return self.body
+    def __init__(self, status, body): self.status, self.body = status, io.BytesIO(body)
+    def read(self, n=-1): return self.body.read(n)
     def __enter__(self): return self
     def __exit__(self, *a): return False
 
@@ -76,6 +76,12 @@ class Contract(unittest.TestCase):
         self.tmp.cleanup()
 
     # ---------------------------------------------------------------- declarations
+    def test_transport_answer_has_finite_body(self):
+        response = Answer(200, b'{}')
+        self.assertEqual(response.read(1), b'{')
+        self.assertEqual(response.read(), b'}')
+        self.assertEqual(response.read(), b'')
+
     def test_declarations_complete(self):
         self.assertTrue(reg.SOURCES and reg.DEFAULT and reg.DEFAULT['name'] == 'doi')
         for s in reg.SOURCES:

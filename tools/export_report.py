@@ -20,17 +20,14 @@ Usage: export_report.py RUN_DIR [--pdf] [--out DIR] [--prisma] [--followups]    
 Import: render(md, meta, extra=[(id, title, html)]) -> str; meta(dir) -> [(k, v)]; extras(dir, prisma, followups) -> [(id, title, html)]."""
 import argparse, datetime as dt, html, importlib, importlib.util, json, os, pathlib, re, shutil, subprocess, sys, tempfile
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import bibliography_links as BL
 import report_lang as RL   # noqa: E402  (titles of the eight sections in every language of the table)
 
 TIMEOUT = 180  # seconds per converter attempt
 PAGE_BREAK = {'Bibliography', 'Methodology Appendix'}  # level-2 sections that start a new printed page (canonical titles, any language: report_lang)
 FINDING_SLUG = re.compile(r'(?:' + '|'.join(map(re.escape, RL.finding_words())) + r') (\d+)\b')
 SAFE_URL = re.compile(r'^(https?://|mailto:)[^\s]+$|^#[\w.:-]+$', re.I)
-IDLINK = {'doi': 'https://doi.org/{}', 'pmid': 'https://pubmed.ncbi.nlm.nih.gov/{}/', 'arxiv': 'https://arxiv.org/abs/{}',
-          'pmcid': 'https://www.ncbi.nlm.nih.gov/pmc/articles/{}/'}
-ID_RE = re.compile(r'\b(doi|pmid|arxiv|pmcid):\s?(10\.\d{4,9}/[^\s<>]+|PMC\d+|\d{4}\.\d{4,5}(?:v\d+)?|[a-z-]+(?:\.[A-Z]{2})?/\d{7}|\d+)', re.I)
 URL_RE = re.compile(r'https?://(?:(?!&quot;|&lt;|&gt;|&#x27;)[^\s])+')
-TRAIL = '.,;:!?)]\''
 CITE_RE = re.compile(r'\[(\d{1,3}(?:\s*[,;]\s*\d{1,3})*)\](?!\()')
 BIB_LINE = re.compile(r'^\s*\[(\d{1,3})\]\s*(.*)$')
 
@@ -104,7 +101,8 @@ footer{margin-top:3rem;font-size:.78rem;color:#77777f;border-top:1px solid #e3e3
 class Inline:
     """Inline renderer; escapes first, then builds every tag through a placeholder so that no later rule rewrites an attribute."""
     def __init__(self, refs):
-        self.refs, self.cites, self.store = refs, {}, []   # refs: bibliography numbers; cites: n -> [anchor ids]
+        self.refs, self.cites, self.store = refs, {}, []
+        self.ident_links = []   # refs: bibliography numbers; cites: n -> [anchor ids]
 
     def stash(self, s):
         self.store.append(s); return f'\x00{len(self.store) - 1}\x00'
@@ -126,7 +124,8 @@ class Inline:
         return self.stash(''.join(out))
 
     def __call__(self, text, cite=True):
-        text = text.replace('\x00', '')
+        text = text.replace('\x00', '\ufffd')
+        text = re.sub(r'\x02LINK([0-9]+)\x02', lambda m: self.stash(self.ident_links[int(m[1])]), text)
         codes = []
         def code(m): codes.append(m.group(2)); return f'\x01{len(codes) - 1}\x01'
         text = re.sub(r'(`+)(.+?)\1', code, text)  # code spans: content kept verbatim (escaped below)
@@ -135,12 +134,8 @@ class Inline:
         t = re.sub(r'!\[([^\]]*)\]\((?:[^()\s]|\([^()\s]*\))*(?:\s+&quot;[^)]*&quot;)?\)', lambda m: m.group(1), t)  # image: alt text only, never fetched
         t = re.sub(r'\[([^\]\n]+)\]\(((?:[^()\s]|\([^()\s]*\))+)(?:\s+&quot;[^)]*&quot;)?\)', lambda m: self.link(m.group(2), m.group(1)), t)
         t = re.sub(r'&lt;((?:https?://|mailto:)[^\s&]+)&gt;', lambda m: self.link(m.group(1), m.group(1)), t)
-        def ident(m):
-            v = m.group(2).rstrip(TRAIL); rest = m.group(2)[len(v):]
-            return self.link(IDLINK[m.group(1).lower()].format(html.unescape(v)), f'{m.group(1)}:{v}') + rest
-        t = ID_RE.sub(ident, t)
         def url(m):
-            u = m.group(0); v = u.rstrip(TRAIL); return self.link(v, v) + u[len(v):]
+            u = m.group(0); v = BL._trim(u).rstrip(":!?\'"); return self.link(v, v) + u[len(v):]
         t = URL_RE.sub(url, t)
         if cite: t = CITE_RE.sub(self.cite, t)
         t = re.sub(r'\*\*(?=\S)(.+?)(?<=\S)\*\*', r'<strong>\1</strong>', t)
@@ -178,7 +173,7 @@ def cells(row):
 SEP = re.compile(r'^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$')
 LIST = re.compile(r'^(\s*)([-*+]|\d{1,3}[.)])\s+(.*)$')
 HR = re.compile(r'^\s{0,3}([-*_])(\s*\1){2,}\s*$')
-HEAD = re.compile(r'^(#{1,6})\s+(.*?)\s*#*\s*$')
+HEAD = re.compile(r'^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$')
 
 
 def blocks(lines, inl, ctx):
@@ -195,7 +190,7 @@ def blocks(lines, inl, ctx):
             lvl, raw = len(m.group(1)), m.group(2); i += 1
             if lvl == 2 and RL.canonical(raw) == 'Bibliography' and ctx.get('bib') is not None:   # bibliography: rendered last (back-links)
                 body = []
-                while i < n and not re.match(r'^#{1,2}\s', lines[i]): body.append(lines[i]); i += 1
+                while i < n and not re.match(r'^ {0,3}#{1,2}\s', lines[i]): body.append(lines[i]); i += 1
                 hid = slug(raw, ctx['used']); ctx['toc'].append((2, hid, inl(raw, cite=False)))
                 out.append(f'<h2 id="{hid}" class="pb">{inl(raw, cite=False)}</h2>'); out.append(ctx['bib']); ctx['bib_lines'] = body; continue
             if lvl == 1 and not ctx.get('h1_done'):
@@ -280,7 +275,7 @@ def bibliography(lines, inl, cited=None):
     entries, cur = [], None
     for l in lines:
         if (m := BIB_LINE.match(l)): cur = [int(m.group(1)), m.group(2).strip()]; entries.append(cur)
-        elif l.strip() and cur: cur[1] += ' ' + l.strip()
+        elif l.strip() and cur: cur[1] += '\n' + l
         elif l.strip(): entries.append([None, l.strip()])
     out = []
     for num, text in entries:
@@ -300,13 +295,18 @@ def bibliography(lines, inl, cited=None):
 def render(md, meta=(), title_fallback='Report', passages=None, extra=()):
     """REPORT.md text + [(label, value)] (+ tools/passages.py build() output) (+ optional appendices [(id, title, html)], placed after the
     report and listed in the contents) -> complete HTML page (str)."""
-    md = md.replace('\r\n', '\n').replace('\r', '\n').replace('\x00', '')
+    md = md.replace('\x02', '\ufffd')
+    decisions = list(BL.entry_decisions(md))
+    inl = Inline({n for _, n, _, _ in decisions})
+    lines = BL.physical_lines(md)
+    for index, _, line, matches in decisions:
+        for start, end, _, url in reversed(matches or []):
+            if url:
+                inl.ident_links.append(f'<a href="{html.escape(url, quote=True)}">{html.escape(line[start:end], quote=True)}</a>')
+                line = line[:start] + f'\x02LINK{len(inl.ident_links) - 1}\x02' + line[end:]
+        lines[index] = line
+    md = ''.join(lines).replace('\r\n', '\n').replace('\x00', '\ufffd')
     lines = md.split('\n')
-    refs, inbib = set(), False
-    for l in lines:
-        if re.match(r'^##\s', l): inbib = RL.canonical(l.strip()[2:].strip()) == 'Bibliography'
-        elif inbib and (m := BIB_LINE.match(l)): refs.add(int(m.group(1)))
-    inl = Inline(refs)
     h1 = next((HEAD.match(l).group(2) for l in lines if HEAD.match(l) and len(HEAD.match(l).group(1)) == 1), None)
     ctx = {'used': {'contents'}, 'toc': [], 'after_h1': '\x02HEADER\x02', 'bib': '\x02BIB\x02'}
     body = blocks(lines, inl, ctx)
@@ -357,7 +357,7 @@ def meta(folder):
     card, run, res = (x if isinstance(x, dict) else {} for x in (card, run, res))
     try: scope = (d / 'scope.md').read_text(encoding='utf-8')[:3000]
     except Exception: scope = ''
-    try: report = (d / 'REPORT.md').read_text(encoding='utf-8')
+    try: report = (d / 'REPORT.md').read_text(encoding='utf-8', errors='replace')
     except Exception: report = ''
     sc = lambda rx: (m.group(1).strip().rstrip('.') if (m := re.search(rx, scope, re.M)) else '')
     out = []
@@ -544,7 +544,7 @@ def main(argv=None):
     if not src.is_file(): print(f'no REPORT.md in {d}', file=sys.stderr); return 2
     out = pathlib.Path(a.out) if a.out else d; out.mkdir(parents=True, exist_ok=True)
     page = out / 'REPORT.html'
-    page.write_text(render(src.read_text(encoding='utf-8', errors='replace'), meta(d), passages=cited_passages(d), extra=extras(d, a.prisma, a.followups)), encoding='utf-8')
+    page.write_text(render(src.read_bytes().decode('utf-8', errors='replace'), meta(d), passages=cited_passages(d), extra=extras(d, a.prisma, a.followups)), encoding='utf-8')
     print(f'{page.resolve()}')
     if a.pdf:
         pdf = out / 'REPORT.pdf'

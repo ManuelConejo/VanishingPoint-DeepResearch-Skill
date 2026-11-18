@@ -9,7 +9,7 @@ definition time (no `from __future__ import annotations`)."""
 import ast, io, pathlib, sys, tokenize, unittest
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SKIP = {'.git', '__pycache__', '.pytest_cache'}
-NEW_ATTRS = {('itertools', 'pairwise'), ('itertools', 'batched'), ('hashlib', 'file_digest'), ('datetime', 'UTC'), ('dt', 'UTC')}
+NEW_ATTRS = {('itertools', 'pairwise'), ('itertools', 'batched'), ('hashlib', 'file_digest'), ('datetime', 'UTC'), ('dt', 'UTC'), ('re', '_parser')}
 
 
 def sources():
@@ -54,6 +54,8 @@ def runtime_issues(tree):
             out.append((n.lineno, 'zip(strict=) is 3.10+'))
         elif isinstance(n, ast.Attribute) and (modname(n.value), n.attr) in NEW_ATTRS:
             out.append((n.lineno, f'{modname(n.value)}.{n.attr} is 3.10+'))
+        elif isinstance(n, ast.Import) and any(a.name == 're._parser' for a in n.names):
+            out.append((n.lineno, 'import re._parser is 3.11+'))
         elif isinstance(n, ast.ImportFrom) and any((n.module, a.name) in NEW_ATTRS for a in n.names):
             out.append((n.lineno, f'from {n.module} import ... is 3.10+'))
         elif isinstance(n, (ast.Import, ast.ImportFrom)) and id(n) not in guarded and (
@@ -87,6 +89,8 @@ class T(unittest.TestCase):
             self.assertTrue(pep701_issues("x = f'{chr(10)!r}{\"\\n\".join(a)}'\n"))
         self.assertEqual(pep701_issues('x = f"{\', \'.join(a)}"\n'), [])
         self.assertTrue(runtime_issues(ast.parse('zip(a, b, strict=True)')))
+        for src in ('from re import _parser', 'import re\nre._parser', 'import re._parser'):
+            self.assertTrue(runtime_issues(ast.parse(src)))
         self.assertTrue(runtime_issues(ast.parse('import datetime as dt\ndt.datetime.now(dt.UTC)')))
         self.assertTrue(runtime_issues(ast.parse('__import__("datetime").datetime.now(__import__("datetime").UTC)')))
         self.assertTrue(runtime_issues(ast.parse('import tomllib')))

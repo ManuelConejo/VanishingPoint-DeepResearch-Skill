@@ -6,9 +6,9 @@ from .am1_common import AM, load_tool, read_json, run_tool, write_json
 from .helpers import FIXTURES
 
 LAB = FIXTURES / 'catalogue' / 'lab_extract.tsv'
-COLS12 = ['question', 'note', 'id', 'annee', 'titre', 'methode', 'capacite', 'entree_sortie', 'resultat', 'verif',
-          'ampleur', 'code']
-EXTRA = ['score', 'donnees', 'transposable', 'autre_usage', 'forme', 'verifiable', 'effort']
+COLS12 = ['question', 'relevance', 'id', 'year', 'title', 'method', 'capability', 'input_output', 'result', 'verification',
+          'scale', 'code']
+EXTRA = ['score', 'data_availability', 'transferability', 'other_uses', 'form_score', 'verifiability', 'effort']
 
 
 def works(*rows):
@@ -24,10 +24,10 @@ W = [('openalex:W1', 'Synthetic felt sleeve thickness comparison', 2024, '2024-0
 
 
 def answer(wid, **over):
-    a = {"id": wid, "note": 3, "methode": "Method of " + wid, "capacite": "protect wooden tiles using felt sleeves",
-         "entree_sortie": "tile dimensions to sleeve sizes", "resultat": "gain of 3 percent", "verif": "ok", "ampleur": "fort",
-         "code": "https://github.com/acme/" + wid.split(':')[1].lower(), "donnees": 3, "transposable": 3,
-         "autre_usage": 1, "form": "code", "verifiable": 3, "effort": "faible"}
+    a = {"id": wid, "relevance": 3, "method": "Method of " + wid, "capability": "protect wooden tiles using felt sleeves",
+         "input_output": "tile dimensions to sleeve sizes", "result": "gain of 3 percent", "verification": "ok", "scale": "fort",
+         "code": "https://github.com/acme/" + wid.split(':')[1].lower(), "data_availability": 3, "transferability": 3,
+         "other_uses": 1, "form": "code", "verifiability": 3, "effort": "low"}
     a.update(over)
     return a
 
@@ -46,7 +46,7 @@ class ScoreTest(AM):
 
     def test_am80_english_effort_and_bounds(self):
         self.assertEqual(self.cat.score(3, 0, 2, 3, 3, 'low'), 14)
-        for bad in ((4, 0, 0, 0, 0, 'faible'), (0, 0, 3, 0, 0, 'faible'), (0, 0, 0, 4, 0, 'faible'),
+        for bad in ((4, 0, 0, 0, 0, 'low'), (0, 0, 3, 0, 0, 'low'), (0, 0, 0, 4, 0, 'low'),
                     (0, 0, 0, 0, 0, 'huge')):
             with self.assertRaises(ValueError):
                 self.cat.score(*bad)
@@ -58,8 +58,8 @@ class ScoreTest(AM):
         self.assertFalse(e(0, 2))
         self.assertFalse(e(1, 0))
 
-    def test_am81_forme_is_mechanical(self):
-        f = self.cat.forme_from
+    def test_am81_form_score_is_mechanical(self):
+        f = self.cat.form_score_from
         self.assertEqual(f('https://github.com/acme/x', 'vague'), 3)
         self.assertEqual(f('https://huggingface.co/acme/x', 'principle'), 3)
         self.assertEqual(f('', 'pseudocode'), 2)
@@ -73,7 +73,7 @@ class ScoreTest(AM):
     def test_am87_lab_file_is_read(self):
         rows = self.cat.read_rows(LAB)
         self.assertEqual([r['id'] for r in rows], ['W4416453785', 'W4403795293'])
-        self.assertEqual(rows[0]['methode'], 'SWE-Dev')
+        self.assertEqual(rows[0]['method'], 'SWE-Dev')
         self.assertNotIn('score', rows[0])
 
 
@@ -124,22 +124,23 @@ class CatalogueFlowTest(AM):
 
     def test_am82_no_local_copy_of_openalex(self):
         src = (load_tool('catalogue').__file__)
-        text = open(src, encoding='utf-8').read()
+        from pathlib import Path
+        text = Path(src).read_text(encoding='utf-8')
         for bad in ('urllib', 'socket', 'requests', 'snapshot', 'api.openalex.org'):
             self.assertNotIn(bad, text)
 
     def test_am83_ingest_writes_rows_with_score(self):
         self.create()
-        self.write_answers(1, answer('openalex:W1'), answer('openalex:W2', donnees=0, transposable=1))
+        self.write_answers(1, answer('openalex:W1'), answer('openalex:W2', data_availability=0, transferability=1))
         r = self.ingest(1)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         lines = self.tsv.read_text(encoding='utf-8').splitlines()
         self.assertEqual(len(lines), 2)                      # header + W1; W2 is excluded by the grid
         row = dict(zip(COLS12 + EXTRA, lines[1].split('\t')))
-        self.assertEqual((row['id'], row['annee'], row['titre'], row['question']),
+        self.assertEqual((row['id'], row['year'], row['title'], row['question']),
                          ('openalex:W1', '2024', 'Synthetic felt sleeve thickness comparison', 'Q1'))
         self.assertEqual(row['score'], '13')
-        self.assertEqual(row['forme'], '3')
+        self.assertEqual(row['form_score'], '3')
         meta = read_json(self.meta)
         self.assertEqual((meta['rows'], meta['excluded']), (1, 1))
         self.assertEqual(self.cat.read_rows(self.tsv)[0]['score'], '13')
@@ -150,11 +151,11 @@ class CatalogueFlowTest(AM):
         cases = [
             answer('openalex:W9'),                                   # not in the batch
             answer('openalex:W1', effort='huge'),                    # not in the enumeration
-            answer('openalex:W1', methode='has a\ttab'),             # TSV-unsafe
-            answer('openalex:W1', capacite='has a\nnewline'),
-            answer('openalex:W1', donnees=7),
+            answer('openalex:W1', method='has a\ttab'),             # TSV-unsafe
+            answer('openalex:W1', capability='has a\nnewline'),
+            answer('openalex:W1', data_availability=7),
             answer('openalex:W1', form='weird', code=''),
-            answer('openalex:W1', titre='typed by hand'),            # title comes from the batch, never typed
+            answer('openalex:W1', title='typed by hand'),            # title comes from the batch, never typed
         ]
         for bad in cases:
             self.write_answers(1, answer('openalex:W2'), bad)

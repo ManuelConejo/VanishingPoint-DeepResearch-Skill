@@ -114,9 +114,9 @@ def read_run(d):
         ids = ids_in(line) | ({norm_id(k, cs[k]) for k in PREFIXES if cs.get(k)} - {None})
         hids, hyear, hdate = header_of(d, key); ids |= hids
         st = next((by_id[i] for i in ids if i in by_id), {})
-        years = re.findall(r'\b(19\d\d|20\d\d)\b', ID_RE.sub(' ', line))
+        years = re.findall(r'\b(19\d\d|20\d\d)\b', ID_RE.sub(' ', re.sub(r'https?://[^\s<>`]+', ' ', line)))
         year = hyear or str(st.get('year') or '')[:4] or (years[-1] if years else None)
-        title = cs.get('title') or st.get('title') or re.sub(r'\s+', ' ', ID_RE.sub('', line)).strip()[:160]
+        title = cs.get('title') or st.get('title') or re.sub(r'\s+', ' ', ID_RE.sub('', re.sub(r'https?://[^\s<>`]+', ' ', line))).strip()[:160]
         flags = sorted({m.lower() for m in FLAG.findall(line + ' ' + json.dumps(st, ensure_ascii=False))})
         sources[key] = {'n': int(n), 'ids': sorted(ids), 'title': title, 'year': year, 'date': hdate, 'line': line.strip(), 'flags': flags,
                         'tkey': title_key(title, year)}

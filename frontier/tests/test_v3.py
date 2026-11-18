@@ -428,6 +428,11 @@ class V3Integration(V2):
         card = load_tool('card')
         text, report = card.render(self.w), card.render(self.w, full=True)
         self.assertLessEqual(len(text.splitlines()), 80)
+        notice = 'Ranking of the neighbouring ideas by debates is available on request (tournament).'
+        self.assertEqual(text.splitlines().count(notice), 1)
+        visible = [line for line in text.splitlines() if line.strip() and not line.startswith('<!--')]
+        self.assertEqual(visible[-1], notice)
+        self.assertNotIn(notice, report)
         for quote in quotes:
             self.assertIn(quote, text)
         for name in ('CradleBench', 'SleevePlanner'):

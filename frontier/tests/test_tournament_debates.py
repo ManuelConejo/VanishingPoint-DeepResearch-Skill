@@ -14,14 +14,14 @@ from unittest import mock
 
 from .helpers import (FRONTIER, TempCase, copy_skill, load_tool, mutate, read_json,
                       run_tool, set_config, write_json)
-from .test_tournoi import debate, scope, settings
+from .test_tournament import debate, scope, settings
 from .test_v2_rebound import plan_of
 from .v2_common import V2
 
 
 def locked_recorder(skill, work, debate_path, attempting, read_event, result):
     """Signal the actual flock call and first journal read in a fresh process."""
-    tool = load_tool('tournoi')
+    tool = load_tool('tournament')
     real_flock, real_read = tool.fcntl.flock, tool.common.read_json
 
     def flock(fd, operation):
@@ -29,7 +29,7 @@ def locked_recorder(skill, work, debate_path, attempting, read_event, result):
         return real_flock(fd, operation)
 
     def read(path):
-        if Path(path).name == 'tournoi_rebound.json':
+        if Path(path).name == 'tournament_rebound.json':
             read_event.set()
         return real_read(path)
 
@@ -45,15 +45,15 @@ class DebatesOracle(TempCase):
         super().setUp()
         self.skill = copy_skill(self.tmp, 'skill')
         set_config(self.skill, lambda c: c.update(
-            tournoi=settings(max_debates=4),
+            tournament=settings(max_debates=4),
             critic=dict(c['critic'], host_family='author-family', families=[])))
         self.w = self.work('valid_novp_rebound')
-        self.journal = self.w / 'tournoi_rebound.json'
+        self.journal = self.w / 'tournament_rebound.json'
         self.scope_path = self.w / 'scope.json'
         write_json(self.scope_path, scope())
 
     def cli(self, command, *args):
-        return run_tool('tournoi', command, self.w.relative_to(self.tmp), *args,
+        return run_tool('tournament', command, self.w.relative_to(self.tmp), *args,
                         cwd=self.tmp, tools_dir=self.skill / 'tools')
 
     def init(self, ids=('N1', 'N2')):
@@ -100,6 +100,48 @@ class DebatesOracle(TempCase):
 
     def repair(self, path):
         return self.cli('repair', '--repair', path.relative_to(self.tmp))
+
+    def test_legacy_config_reaches_init_with_custom_settings(self):
+        def old_config(cfg):
+            cfg['tournoi'] = cfg.pop('tournament')
+            cfg['tournoi']['k_factor'] = 12
+        set_config(self.skill, old_config)
+        result = self.init()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('deprecated name, use tournament', result.stderr)
+        self.assertEqual(read_json(self.journal)['config']['k_factor'], 12)
+
+    def test_legacy_journal_reads_and_migrates_on_next_record(self):
+        self.start()
+        legacy = self.w / 'tournoi_rebound.json'
+        self.journal.rename(legacy)
+        before = legacy.read_bytes()
+        shown = self.cli('show')
+        self.assertIn('ratings', json.loads(shown.stdout))
+        self.assertIn('deprecated name, use tournament_rebound.json', shown.stderr)
+        self.assertNotEqual(self.init().returncode, 0)
+        check = load_tool('check')
+        fingerprint = check.inputs_fingerprint(self.w)
+        self.assertEqual(self.record().returncode, 0)
+        self.assertEqual(legacy.read_bytes(), before)
+        self.assertEqual(len(read_json(self.journal)['matches']), 1)
+        self.assertNotEqual(check.inputs_fingerprint(self.w), fingerprint)
+        self.assertIn('[TOURNAMENT]', load_tool('tournament').summary(self.w))
+
+    def test_legacy_journal_bytes_are_in_card_fingerprint(self):
+        self.start()
+        legacy = self.w / 'tournoi_rebound.json'
+        self.journal.rename(legacy)
+        check = load_tool('check')
+        before = check.inputs_fingerprint(self.w)
+        legacy.write_text(legacy.read_text() + '\n', encoding='utf-8')
+        self.assertNotEqual(check.inputs_fingerprint(self.w), before)
+
+    def test_new_journal_is_authoritative_when_both_exist(self):
+        self.start()
+        (self.w / 'tournoi_rebound.json').write_text('broken legacy copy', encoding='utf-8')
+        self.assertEqual(self.cli('show').returncode, 0)
+        self.assertEqual(self.record().returncode, 0)
 
     def test_round_trip_preserves_sources_and_cannot_overwrite_init(self):
         names = ('rebound.json', 'hypotheses.json', 'tests.json', 'decision_log.jsonl')
@@ -149,7 +191,7 @@ class DebatesOracle(TempCase):
         unlinked['competing_hypotheses'] = ['V1']
         # The formerly accepted order put the valid duplicate last in the
         # lookup, then projected both records into the public packet.
-        tool = load_tool('tournoi')
+        tool = load_tool('tournament')
         for records in ([unlinked, linked], [linked, unlinked]):
             data['tests'] = records
             write_json(self.w / 'tests.json', data)
@@ -179,7 +221,7 @@ class DebatesOracle(TempCase):
         after = 'Clarify the original statement after the first debate.'
         before = self.edit_statement(after)
         repair_path = self.repair_file(before, after)
-        tool = load_tool('tournoi')
+        tool = load_tool('tournament')
         for missing in (('source_digests',), ('original_statements',),
                         ('source_digests', 'original_statements')):
             incomplete = copy.deepcopy(state)
@@ -270,7 +312,7 @@ class DebatesOracle(TempCase):
         for key in ('predictions', 'decision_rule', 'decisive_intervention'):
             self.assertIn(key, packet['tests'][0])
         self.assertEqual(packet['pair'], ['N1', 'N2'])
-        tool = load_tool('tournoi')
+        tool = load_tool('tournament')
         claimed = packet.pop('input_sha256')
         self.assertEqual(claimed, tool.source_digest(packet))
 
@@ -280,7 +322,7 @@ class DebatesOracle(TempCase):
         self.edit_statement('Investigate whether ' + phrase + ' after randomisation.')
         self.start()
         packet = self.packet()
-        self.assertIn('[TOURNOI]', ' '.join(packet['marks']))
+        self.assertIn('[TOURNAMENT]', ' '.join(packet['marks']))
         self.assertIn('free draft', ' '.join(packet['marks']))
         p = self.record(packet)
         self.assertEqual(p.returncode, 0, p.stderr)
@@ -373,7 +415,7 @@ class DebatesOracle(TempCase):
         self.assertEqual(self.record().returncode, 0)
         original = self.journal.read_bytes()
         self.edit_statement('Clarify the original statement with a blinded control.')
-        tool = load_tool('tournoi')
+        tool = load_tool('tournament')
         p = self.cli('show')
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         shown = json.loads(p.stdout)
@@ -387,7 +429,7 @@ class DebatesOracle(TempCase):
         p = run_tool('card', self.w, tools_dir=self.skill / 'tools')
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         card = (self.w / 'IDEA-CARD.md').read_text()
-        rendered['card'] = '\n'.join(line for line in card.splitlines() if '[TOURNOI]' in line)
+        rendered['card'] = '\n'.join(line for line in card.splitlines() if '[TOURNAMENT]' in line)
         rendered['report'] = (self.w / 'IDEA-REPORT.md').read_text().split(
             '## Rebound ideas tournament', 1)[1]
         with self.subTest(surface='inspect state'):
@@ -424,7 +466,7 @@ class DebatesOracle(TempCase):
         self.assertIsNone(json.loads(self.cli('next').stdout)['pair'])
         self.assertNotEqual(self.cli('pack').returncode, 0)
         self.assertIn('original statements', self.cli('show').stdout)
-        self.assertIn(after, '\n'.join(load_tool('tournoi').report_lines(self.w)))
+        self.assertIn(after, '\n'.join(load_tool('tournament').report_lines(self.w)))
 
     def test_repair_requires_actual_before_after_and_relevant_recorded_debate(self):
         self.start()
@@ -441,7 +483,7 @@ class DebatesOracle(TempCase):
                 self.assertEqual(self.journal.read_bytes(), original)
 
     def test_all_journal_writers_hold_lock_before_read_and_through_write(self):
-        tool = load_tool('tournoi')
+        tool = load_tool('tournament')
         depth = [0]
         real_read, real_write = tool.common.read_json, tool.common.write_json
 
@@ -478,7 +520,7 @@ class DebatesOracle(TempCase):
             self.assertEqual(tool.main(['repair', str(self.w), '--repair', str(path)]), 0)
 
     def test_init_rechecks_sources_before_commit(self):
-        tool = load_tool('tournoi')
+        tool = load_tool('tournament')
         original_validate = tool.validate_state
 
         def validate(state):
@@ -496,7 +538,7 @@ class DebatesOracle(TempCase):
     def test_record_reaches_flock_and_waits_before_reading_journal(self):
         self.start()
         path = self.save_debate()
-        tool = load_tool('tournoi')
+        tool = load_tool('tournament')
         ctx = multiprocessing.get_context('spawn')
         attempting, read_event, result = ctx.Event(), ctx.Event(), ctx.Queue()
         recorder = ctx.Process(target=locked_recorder, args=(str(self.skill), str(self.w),
@@ -546,7 +588,7 @@ class DebatesOracle(TempCase):
                  ('critic', 'other-family', ['other-family'], None, 'author-family'))
         for route, judge, families, attribution, host in cases:
             with self.subTest(route=route, judge=judge, families=families, host=host):
-                for filename in ('tournoi_rebound.json', 'IDEA-CARD.md', 'IDEA-REPORT.md'):
+                for filename in ('tournament_rebound.json', 'IDEA-CARD.md', 'IDEA-REPORT.md'):
                     (self.w / filename).unlink(missing_ok=True)
                 set_config(self.skill, lambda c: c['critic'].update(
                     host_family=host, families=families, aliases={'author-alias': 'author-family'}))
@@ -607,7 +649,7 @@ class DebatesOracle(TempCase):
         self.journal.write_text('{')
         p = run_tool('check', self.w)
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-        self.assertIn('mark: [TOURNOI]', p.stdout)
+        self.assertIn('mark: [TOURNAMENT]', p.stdout)
         p = run_tool('card', self.w)
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         self.assertIn('unavailable', (self.w / 'IDEA-CARD.md').read_text())
@@ -618,7 +660,7 @@ class DebatesOracle(TempCase):
         p = run_tool('card', self.w)
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         card = (self.w / 'IDEA-CARD.md').read_text()
-        lines = [line for line in card.splitlines() if '[TOURNOI]' in line]
+        lines = [line for line in card.splitlines() if '[TOURNAMENT]' in line]
         self.assertGreaterEqual(len(lines), 1)
         self.assertLessEqual(len(lines), 2)
         self.assertLessEqual(len(card.splitlines()), 80)
@@ -632,6 +674,27 @@ class DebatesOracle(TempCase):
         write_json(self.journal, state)
         self.assertIn('[CARD-STALE]', run_tool('check', self.w).stdout)
 
+    def test_legacy_card_mark_requires_regeneration_even_with_current_fingerprint(self):
+        self.start()
+        self.assertEqual(self.record().returncode, 0)
+        tool = load_tool('card')
+        text = tool.render(self.w)
+        self.assertIn('[TOURNAMENT]', text)
+        self.assertFalse(tool.check.card_text_problems(self.w, text))
+        old = text.replace('[TOURNAMENT]', '[TOURNOI]')
+        self.assertTrue(any('[CARD-STALE]' in problem for problem in tool.check.card_text_problems(self.w, old)))
+
+    def test_no_debates_offer_after_opt_in_or_recorded_debates(self):
+        self.start()
+        for recorded in (False, True):
+            if recorded:
+                self.assertEqual(self.record().returncode, 0)
+            p = run_tool('card', self.w)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            text = (self.w / 'IDEA-CARD.md').read_text()
+            self.assertNotIn('is available on request (tournament).', text)
+            self.assertLessEqual(len(text.splitlines()), 80)
+
     def test_documented_opt_in_and_final_statements(self):
         text = (FRONTIER / 'SKILL.md').read_text()
         for phrase in ('OFF', 'debate the ideas', 'compare the ideas by debates',
@@ -641,6 +704,20 @@ class DebatesOracle(TempCase):
 
 
 class DebatesV2Card(V2):
+    def test_v2_offer_is_one_final_visible_line_within_limit(self):
+        w = self.to_v2('valid_vp_rebound')
+        for name in ('rebound.json', 'rebound_after.json'):
+            mutate(w, name, lambda d: [i.update(search_plan=plan_of(i['id'], i['prior_art']['queries']))
+                                       for i in d['ideas']])
+        p = run_tool('card', w)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        text = (w / 'IDEA-CARD.md').read_text()
+        notice = 'Ranking of the neighbouring ideas by debates is available on request (tournament).'
+        self.assertEqual(text.splitlines().count(notice), 1)
+        visible = [line for line in text.splitlines() if line.strip() and not line.startswith('<!--')]
+        self.assertEqual(visible[-1], notice)
+        self.assertLessEqual(len(text.splitlines()), 80)
+
     def test_v2_card_moves_all_tournament_marks_to_report(self):
         w = self.to_v2('valid_vp_rebound')
         for name in ('rebound.json', 'rebound_after.json'):
@@ -653,11 +730,11 @@ class DebatesV2Card(V2):
         for route, judge, attribution in (('author', 'unknown', 'author comparisons'),
                                            ('critic', 'anthropic', 'same-family comparisons')):
             with self.subTest(route=route, judge=judge):
-                (w / 'tournoi_rebound.json').unlink(missing_ok=True)
-                p = run_tool('tournoi', 'init', w, '--scope', scope_path,
+                (w / 'tournament_rebound.json').unlink(missing_ok=True)
+                p = run_tool('tournament', 'init', w, '--scope', scope_path,
                              '--ids', 'N1', 'N2', tools_dir=skill / 'tools')
                 self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-                p = run_tool('tournoi', 'pack', w, tools_dir=skill / 'tools')
+                p = run_tool('tournament', 'pack', w, tools_dir=skill / 'tools')
                 self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
                 packet = json.loads(p.stdout)
                 match = debate(*packet['pair'])
@@ -665,16 +742,16 @@ class DebatesV2Card(V2):
                 match['input_sha256'] = packet['input_sha256']
                 debate_path = w / 'debate.json'
                 write_json(debate_path, match)
-                p = run_tool('tournoi', 'record', w, '--debate', debate_path,
+                p = run_tool('tournament', 'record', w, '--debate', debate_path,
                              tools_dir=skill / 'tools')
                 self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-                state = read_json(w / 'tournoi_rebound.json')
+                state = read_json(w / 'tournament_rebound.json')
                 self.assertEqual(set(state['original_statements']), {'N1', 'N2'})
                 self.assertEqual({d['id'] for d in state['source_digests']}, {'N1', 'N2'})
                 p = run_tool('card', w, tools_dir=skill / 'tools')
                 self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
                 card = (w / 'IDEA-CARD.md').read_text()
-                lines = [line for line in card.splitlines() if '[TOURNOI]' in line]
+                lines = [line for line in card.splitlines() if '[TOURNAMENT]' in line]
                 self.assertEqual(len(lines), 1)
                 self.assertLessEqual(len(card.splitlines()), 80)
                 self.assertIn('debates: 1', lines[0])
@@ -686,3 +763,4 @@ class DebatesV2Card(V2):
                 self.assertNotIn('independent critic used', card + report)
                 p = run_tool('check', w, tools_dir=skill / 'tools')
                 self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Debates-only arithmetic oracles adapted from reference test_tournoi.py.
+"""Debates-only arithmetic oracles adapted from the reference tournament tests.
 Expected Elo values and presentation orders are hand computed, not tool output.
 Written and run before the tournament implementation.
 """
@@ -32,7 +32,7 @@ def debate(a='A', b='B', result='a'):
                                 proposed_change='Add a blinded positive control.'))
 
 
-class TournoiOracle(unittest.TestCase):
+class TournamentOracle(unittest.TestCase):
 
     def test_balanced_positions_and_fixed_budget(self):
         s = self.state(max_debates=4)
@@ -84,7 +84,7 @@ class TournoiOracle(unittest.TestCase):
 
     def test_schema_and_code_agree_on_open_numeric_boundaries(self):
         validator = load_tool('schema_lite').validate
-        schema = read_json(FRONTIER / 'schemas' / 'tournoi.json')
+        schema = read_json(FRONTIER / 'schemas' / 'tournament.json')
         for key, bad, good in [('rating_scale', 0, 1e-300),
                                ('rating_base', 1, math.nextafter(1, 2))]:
             state = self.state()
@@ -126,7 +126,7 @@ class TournoiOracle(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.t = load_tool('tournoi')
+        cls.t = load_tool('tournament')
 
     def state(self, ids=('A', 'B'), **cfg):
         state = self.t.create('rebound.json', list(ids), settings(**cfg), scope())
@@ -138,7 +138,7 @@ class TournoiOracle(unittest.TestCase):
 
     def test_schema_and_validation_require_both_snapshots(self):
         validator = load_tool('schema_lite').validate
-        schema = read_json(FRONTIER / 'schemas' / 'tournoi.json')
+        schema = read_json(FRONTIER / 'schemas' / 'tournament.json')
         for key in ('source_digests', 'original_statements'):
             state = self.t.record(self.state(), debate())
             del state[key]
@@ -289,7 +289,7 @@ class TournoiOracle(unittest.TestCase):
 
     def test_schema_accepts_and_catches_invalid_result(self):
         validator = load_tool('schema_lite')
-        schema = read_json(FRONTIER / 'schemas' / 'tournoi.json')
+        schema = read_json(FRONTIER / 'schemas' / 'tournament.json')
         s = self.t.record(self.state(), debate())
         self.assertEqual(validator.validate(s, schema), [])
         s['matches'][0]['result'] = 'guess'

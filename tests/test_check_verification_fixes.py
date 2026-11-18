@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
 """Offline tests of the fixes to tools/check_code_refs.py and tools/check_code_facts.py found by the pass over 44 real code-plugin reports
 (2026-11-01): a bibliography year read as a cited line, lines of ANOTHER file attached to the only reference of an entry, a failure without a
 typed `why`, a directory cited as a file, an unreadable file counted as failed, a "GitHub reports NOASSERTION" note read as the asserted
 licence, an `owner/name` plainly named in the subject of a fact but unknown to the sources (no_target). Minimal fixtures, no network.
-Run: python3 -I tests/test_check_verif_fixes.py   (unittest; pytest-compatible)."""
+Run: python3 -I tests/test_check_verification_fixes.py   (unittest; pytest-compatible)."""
 import datetime, json, os, pathlib, subprocess, sys, tempfile, unittest
 P = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(P.parent / 'tools'))
@@ -121,6 +122,31 @@ class Refs(unittest.TestCase):
         self.assertEqual((r['status'], r['why']), ('failed', 'file_absent'), 'the tree answers: nothing under that path')
         r = CR.check([g], gh=Fake(tree_error='rate_limited'))['refs'][0]
         self.assertEqual((r['status'], r['why']), ('unchecked', 'rate_limited'), 'file or directory undecided: never failed')
+
+    def test_local_directory_and_unreadable_file_offline(self):
+        """Exercise the actual local reader with recorded git-show bytes, without launching Git."""
+        from unittest.mock import patch
+        x = self.d / 'x'
+        (x / '.git').mkdir(parents=True)
+        f = self.d / 'm.json'
+        f.write_text(json.dumps([{'a': f'local:pkg@{SHA}', 'b': f'local:bin.dat@{SHA}',
+                                 'c': f'local:nothing.py@{SHA}', 'd': f'local:pkg/m.py:9@{SHA}'}]))
+        def show(gd, *args):
+            self.assertEqual(gd, x / '.git')
+            if args[0] == '-s':
+                return 0, (SHA + '\t2026-01-01T00:00:00Z\n').encode()
+            payload = {'pkg': ('tree ' + SHA + ':pkg\n\nm.py\n').encode(),
+                       'bin.dat': b'\0\1\2', 'pkg/m.py': b'a\n'}
+            path = args[0].split(':', 1)[1]
+            return (0, payload[path]) if path in payload else (128, b'')
+        with patch.object(CR.cf, 'git_show', side_effect=show) as transport:
+            rep = CR.check([f], x_repos=[str(x)], gh=None)
+        self.assertGreater(transport.call_count, 0)
+        by = {r['path']: r for r in rep['refs']}
+        self.assertEqual((by['pkg']['status'], by['pkg']['checks']['file']['status']), ('directory', 'directory'))
+        self.assertEqual((by['bin.dat']['status'], by['bin.dat']['why']), ('unchecked', 'file_unreadable'))
+        self.assertEqual((by['nothing.py']['status'], by['nothing.py']['why']), ('failed', 'file_absent'))
+        self.assertEqual((by['pkg/m.py']['status'], by['pkg/m.py']['why']), ('failed', 'lines_out_of_bounds'))
 
     def test_local_directory_and_unreadable_file(self):
         x = self.d / 'x'; (x / 'pkg').mkdir(parents=True)

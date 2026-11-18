@@ -53,11 +53,13 @@ import v2check  # noqa: E402
 import v3check  # noqa: E402
 import v4check  # noqa: E402
 import overlap  # noqa: E402
-import tournoi  # noqa: E402
+import matter
+import tournament  # noqa: E402
 import rebound  # noqa: E402
 
 MAX_LINES = check.CARD_MAX_LINES
 SAME_FAMILY = 'Critique: same family (no independent critic available)'
+DEBATES_OFFER = 'Ranking of the neighbouring ideas by debates is available on request (tournament).'
 BANNER_KEPT = 'REOPENS A TRIAL CLASSED BY YOUR PROJECT'
 BANNER_NET = 'POSSIBLE OVERLAP WITH A TRIAL CLASSED BY YOUR PROJECT'
 _FULL = False        # True while the complete IDEA-REPORT.md is rendered: nothing is clipped, no list is cut
@@ -509,7 +511,7 @@ def extras(work, intake, refs):
             for n_ in ev.get('no_evidence') or []:
                 L.append('- %s: no measured effect found; searched: %s (never a proof of absence)' % (n_.get('lead'), clip(n_.get('searched'), 300)))
             out['evidence'] = L
-    mat = _opt(work, 'material.json')
+    mat = matter.normalize_material(_opt(work, 'material.json'))
     if isinstance(mat, dict):
         out['matter'] = matter_lines(work, mat)
     mo = _opt(work, 'moment.json')
@@ -706,7 +708,7 @@ def next_step_lines(tj, reco):
 
 def framing_lines(work):
     f = load(work, 'framing.json') or {}
-    ap, fin = f.get('approval') or {}, f.get('final') or f.get('proposal') or {}
+    ap, final = f.get('approval') or {}, f.get('final') or f.get('proposal') or {}
     st = ap.get('status')
     if st == 'approved':
         head = 'Framing: approved by the user'
@@ -718,10 +720,10 @@ def framing_lines(work):
         head = 'Framing: ASSUMED (%s)' % reason.strip().rstrip('.')
     arch = (f.get('archives') or {}).get('note')
     return ['## Framing', head,
-            'Objective: %s' % whole(fin.get('objective'), 200),
-            'Success criterion: %s' % whole(fin.get('success_criterion'), 200),
-            'Constraints: %s' % '; '.join(whole(c, 100) for c in fin.get('constraints') or []),
-            'Would be refuted by: %s' % '; '.join(whole(c, 100) for c in fin.get('refuted_by') or []),
+            'Objective: %s' % whole(final.get('objective'), 200),
+            'Success criterion: %s' % whole(final.get('success_criterion'), 200),
+            'Constraints: %s' % '; '.join(whole(c, 100) for c in final.get('constraints') or []),
+            'Would be refuted by: %s' % '; '.join(whole(c, 100) for c in final.get('refuted_by') or []),
             'Project archives: %s' % arch]
 
 
@@ -908,6 +910,14 @@ def render(work, full=False):
                     if index and lines[index - 1] == '## Idea':
                         line = 'Idea: ' + line
                     out.append(line)
+                if len(out) > cap and DEBATES_OFFER in out:
+                    # On a full page the offer needs its own line. Inline the
+                    # supporting Result heading, keeping its complete text.
+                    for index, line in enumerate(out[:-1]):
+                        if line == '## Result':
+                            out[index + 1] = 'Result: ' + out[index + 1]
+                            del out[index]
+                            break
                 text = '\n'.join(out) + '\n'
             if len(text.splitlines()) <= cap:
                 break
@@ -927,7 +937,7 @@ def compact_v2(text):
     protected = re.compile(r'^(?:#|\*\*Recommendation|First step:|Inputs:|Cost:|Stop rule:|'
                            r'Free draft|Free phase|Free verification|Scenario:|- If |'
                            r'Pitfalls present:|Prospective |'
-                           r'Test revision:|Overlap ledger:|Tournament \[TOURNOI\]:|'
+                           r'Test revision:|Overlap ledger:|Tournament \[TOURNAMENT\]:|Ranking of the neighbouring ideas by debates |'
                            r'- (?:N\d+|B\d+|Draft |Decisive evidence|Closest tool/platform:)|<!--)')
     def flush():
         if pending:
@@ -997,8 +1007,8 @@ def _render(work, full):
         L += next_step_lines(tj, reco) + [''] + framing_lines(work) + ['']
     elif _R3:
         L += tomorrow_lines(tj, reco) + ['']
-    if not _FULL and tournoi.present(work):
-        L.append(tournoi.summary(work))
+    if not _FULL and tournament.present(work):
+        L.append(tournament.summary(work))
     L.append('## Idea')
     L.append(clip(intake['idea'], 400))
     gain = intake['justifying_gain']
@@ -1182,7 +1192,7 @@ def _render(work, full):
         marks = [w[len('mark: '):] for w in warnings if w.startswith('mark: ')]
     if not _FULL:
         # The tournament occupies one summary line; all its marks go to the report.
-        marks = [m for m in marks if not m.startswith(('[TOURNOI]', '[REB-CRITIQUE]'))]
+        marks = [m for m in marks if not m.startswith(('[TOURNAMENT]', '[REB-CRITIQUE]'))]
     inline = [m for m in marks if (not visible and m.startswith(compact_codes)) or
               (not _V2 and m.startswith(('[CRITIQUE]', '[RECO-OPEN]', '[DRAFT-REUSE?]')))]
     if inline:
@@ -1211,18 +1221,22 @@ def _render(work, full):
     if len(entries) > 4 and not (_FULL or _R3):
         L.append('- (+%d earlier entries in decision_log.jsonl)' % (len(entries) - 4))
     L.append('')
-    # one line for the fingerprint, one blank after the section; the report takes every line it needs
+    offer = (not _FULL and any((work / name).is_file() for name in ('rebound.json', 'rebound_after.json'))
+             and not tournament.present(work))
+    # The offer replaces the final section separator, within the existing budget.
     sect = neighbour_lines(work, refs, UNLIMITED if (_FULL or _R3) else MAX_LINES - len(L) - 2)
     if sect:
-        L += sect + ['']
+        L += sect + ([] if offer else [''])
     if _FULL:
         data, _ = check.load(work)
         L += v3check.budget_lines(work, data)
         L += [''] + v4check.revision_report(work, data)
         L += [''] + overlap.report_lines(overlap.derive(work, data))
         L += [''] + rebound.report_lines(work)
-        if tournoi.present(work):
-            L += [''] + tournoi.report_lines(work)
+        if tournament.present(work):
+            L += [''] + tournament.report_lines(work)
+    if offer:
+        L.append(DEBATES_OFFER)
     L.append('<!-- frontier inputs sha256:%s -->' % check.inputs_fingerprint(work))
     return '\n'.join(L) + '\n'
 

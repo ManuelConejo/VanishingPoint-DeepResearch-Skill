@@ -43,6 +43,7 @@ sys.path.insert(0, str(P))
 import gateway as gw   # noqa: E402  (fetch, _mailto: the gateway's polite HTTP pattern)
 import validate_card as vc   # noqa: E402  (fingerprints of the end-step inputs, check 13)
 import check_keys as ck   # noqa: E402  (contradictors(): the families configured)
+import bibliography_links as BL
 import report_lang as rl   # noqa: E402  (of_run, msg: the language of the offer line)
 
 STATE_OF = {'retraction': 'retracted', 'partial_retraction': 'retracted', 'withdrawal': 'retracted', 'removal': 'retracted',
@@ -269,6 +270,7 @@ def finish(d, T=None, plugins=(), offline=False, rw_csv=None, prisma=False, foll
     if prior_art:                                                 # the answer is written before the fingerprints: it is an input of check 13
         c0, o = _run(['prior_art.py', d]); pre.append({'step': 'prior_art', 'status': 'ok' if c0 == 0 else 'problems', 'detail': o})
         files.extend(_paths(o))
+    if not prior_art: BL.enrich_file(d / 'REPORT.md')  # canonical URLs before checks, exports and receipt
     inputs = vc.fingerprints(d)                                   # before any step: a file changed later makes this receipt stale (check 13)
     receipt.parent.mkdir(parents=True, exist_ok=True)
     receipt.write_text(json.dumps({'started_utc': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'), 'inputs': inputs, 'T': T,

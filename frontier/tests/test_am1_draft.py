@@ -6,7 +6,7 @@ from .am1_common import (AM, DRAFT, GOOD_REF, NOVP, Q_SLEEVE, Q_PADDING, Q_SMITH
                          run_tool, sha, write_json)
 
 
-def reprise(work, text, fname='prior_art.json'):
+def append_draft_text(work, text, fname='prior_art.json'):
     """Append `text` to the first transferable-method text of prior_art.json (a field that takes up the draft)."""
     def go(d):
         d['materials']['transferable_methods'][0]['text'] += ' ' + text
@@ -78,27 +78,27 @@ class DraftCheckTest(AM):
 
     def test_am7_taken_up_without_claim(self):
         w = self.add_draft(claims=[{"id": "D1", "quote": Q_SLEEVE, "status": "verified", "ref": dict(GOOD_REF)}])
-        reprise(w, 'Smith et al. (2019) report a gain.')
+        append_draft_text(w, 'Smith et al. (2019) report a gain.')
         p = self.assertCode('[DRAFT-UNMARKED]')
         self.assertTrue(any('Smith' in x for x in p if x.startswith('[DRAFT-UNMARKED]')))
 
     def test_am7_number_taken_up(self):
         w = self.add_draft(claims=[{"id": "D1", "quote": Q_SLEEVE, "status": "verified", "ref": dict(GOOD_REF)}])
-        reprise(w, 'The cradle padding ratio of 1,82 looks fragile.')
+        append_draft_text(w, 'The cradle padding ratio of 1,82 looks fragile.')
         self.assertCode('[DRAFT-UNMARKED]')
 
     def test_am7_unrelated_number_is_not_taken_up(self):
         w = self.add_draft(claims=[{"id": "D1", "quote": Q_SLEEVE, "status": "verified", "ref": dict(GOOD_REF)}])
-        reprise(w, 'Budget of 1,82 hours of reading per paper.')
+        append_draft_text(w, 'Budget of 1,82 hours of reading per paper.')
         self.assertNoCode('[DRAFT-UNMARKED]')
 
     def test_am8_mark_required_for_memory_claims(self):
         w = self.add_draft()
-        reprise(w, 'Smith et al. (2019) report a gain.')
+        append_draft_text(w, 'Smith et al. (2019) report a gain.')
         self.assertCode('[DRAFT-MARK]')
         self.fresh()
         w = self.add_draft()
-        reprise(w, 'Smith et al. (2019) report a gain [unverified (memory)].')
+        append_draft_text(w, 'Smith et al. (2019) report a gain [unverified (memory)].')
         self.assertNoCode('[DRAFT-MARK]')
         self.assertNoCode('[DRAFT-UNMARKED]')
 
@@ -115,7 +115,7 @@ class DraftCheckTest(AM):
                   {"id": "D2", "quote": Q_SMITH, "status": "removed", "why": "could not be found by VP"}]
         w = self.add_draft(claims=claims)
         self.assertNoCode('[DRAFT')
-        reprise(w, 'Smith et al. (2019) report a gain.')
+        append_draft_text(w, 'Smith et al. (2019) report a gain.')
         self.assertCode('[DRAFT-REMOVED]')
 
     def test_am11_reference_object_needs_no_claim(self):

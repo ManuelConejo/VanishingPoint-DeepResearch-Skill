@@ -15,9 +15,10 @@ Usage: export_data.py RUN_DIR [--out DIR]     Exit: 0 written (paths printed); 2
 Import: entries(dir) -> [dict]; studies(dir) -> (header, rows); bibtex/ris/csl(entries) -> str."""
 import argparse, csv, io, json, pathlib, re, sys, unicodedata
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from export_report import BIB_LINE, IDLINK, _json            # noqa: E402
+from export_report import BIB_LINE, _json            # noqa: E402
 from validate_card import IDS, sections                     # noqa: E402
 from validate_result import CRITERIA                        # noqa: E402
+import bibliography_links as BL
 import sources as _reg                                      # noqa: E402  (source registry: export types)
 
 STATUSES = ['FOUND', 'DISTORTED', 'ABSENT', 'INVALID', 'SOURCE-UNAVAILABLE', 'UNVERIFIED']
@@ -43,16 +44,12 @@ def _clean(s):
 
 
 def _id(prefix, value):
-    return f'{prefix.lower()}:{value.rstrip(".,;)]")}'
+    return prefix.lower() + ':' + BL._trim(value.strip('`'))
 
 
 def bib_entries(report):
-    """[(n, text)] of `## Bibliography` (a continuation line joins its entry, as in export_report)."""
-    body = dict(sections(report)).get('Bibliography', ''); out = []
-    for l in body.splitlines():
-        if (m := BIB_LINE.match(l)): out.append([int(m.group(1)), m.group(2).strip()])
-        elif l.strip() and out: out[-1][1] += ' ' + l.strip()
-    return [tuple(e) for e in out]
+    """[(n, text)] of `## Bibliography` (strict physical entry lines; inference uses bibliography_links.enrich)."""
+    return [(n, re.sub(r'^\s*\[\d{1,3}\][ \t]*', '', body, count=1)) for _, n, body in BL.entry_lines(BL.enrich(report))]
 
 
 EXPORT = sorted(((i['export_rank'], n, i['prefix'], i['export']) for n, i in enumerate(_reg.IDS) if i['export']))   # (rank, -, prefix, type or fn)
@@ -85,14 +82,14 @@ def person(name):
 def parse_text(text, known_titles):
     """Fields written in one bibliography line: authors, title, venue, year, identifiers, code ref, url, basis."""
     e = {'ids': [], 'code': None, 'url': '', 'basis': '', 'authors': '', 'title': '', 'venue': '', 'year': ''}
-    for m in VPID.finditer(text):
+    for m in VPID.finditer(URL.sub(' ', BL.without_inline_code(text))):
         if (i := _id(m.group(1), m.group(2))) not in e['ids']: e['ids'].append(i)
     if (m := CODE.search(text)): e['code'] = {'path': m.group(1), 'line': m.group(2) or '', 'sha': m.group(3)}
-    if (m := URL.search(text)): e['url'] = m.group(0).rstrip('.,;)')
+    if (m := URL.search(text)): e['url'] = BL._trim(m.group(0))
     if (m := re.search(r'\bbasis:?\s*(abstract|title|full ?text)\s*\.?\s*$', text, re.I)): e['basis'] = m.group(1).lower()
     if e['code']:   # `owner/repo, `path:line@SHA` (...)`: the repo is the publisher, the path the title, the SHA the version
         e['venue'] = _clean(text[:text.find('`')]); e['title'] = e['code']['path']; return e
-    stop = min([m.start() for m in (VPID.search(text), URL.search(text), re.search(r'\bbasis\b', text, re.I)) if m] + [len(text)])
+    stop = min([m.start() for m in (VPID.search(BL.without_inline_code(text)), URL.search(text), re.search(r'\bbasis\b', text, re.I)) if m] + [len(text)])
     head = text[:stop]
     for t in known_titles:   # the title the annex gives, found in the line: authors before it, venue just after it
         for cand in (t, re.sub(r'\s*\([^()]*\)\s*$', '', t)):
@@ -121,9 +118,10 @@ def entries(folder):
     srcs = card.get('sources') if isinstance(card, dict) and isinstance(card.get('sources'), dict) else {}
     studs = {str(s.get('id', '')).lower(): s for s in (res.get('studies') or []) if isinstance(s, dict)} if isinstance(res, dict) else {}
     out = []
-    for n, text in bib_entries((d / 'REPORT.md').read_text(encoding='utf-8', errors='replace')):
+    for n, raw in bib_entries((d / 'REPORT.md').read_bytes().decode('utf-8', errors='replace')):
+        text = ' '.join(raw.split())
         src = srcs.get(f'S{n}') if isinstance(srcs.get(f'S{n}'), dict) else {}
-        pre = [m for m in (_id(m.group(1), m.group(2)) for m in VPID.finditer(text))]
+        pre = [m for m in (_id(m.group(1), m.group(2)) for m in VPID.finditer(URL.sub(' ', BL.without_inline_code(text))))]
         if src and pre and not set(_src_ids(src)) & set(pre) and not src.get('code'): src = {}   # S<n> is another document: ignored
         st = next((studs[i] for i in pre + _src_ids(src) if i in studs), {})
         e = parse_text(text, [t for t in (st.get('title'), src.get('title')) if isinstance(t, str) and t.strip()])
@@ -136,7 +134,7 @@ def entries(folder):
         year = str(st.get('year') or e['year'] or '')
         vp = (str(st['id']).lower() if st.get('id') else ids[0] if ids else f"code:{code['path']}@{code['sha']}" if code else '')
         doi = next((i[4:] for i in ids if i.startswith('doi:')), '')
-        url = e['url'] or next((IDLINK[p].format(v) for p, v in (i.split(':', 1) for i in ids) if p in IDLINK), '')
+        url = e['url']  # Explicit URL or the shared strict enrichment decision.
         authors, etal = split_authors(e['authors'])
         t = kind(ids, code, e['url'], e['venue'])
         out.append({'n': n, 'type': t, 'authors': authors, 'etal': etal, 'title': title, 'year': year if re.fullmatch(r'\d{4}', year) else '',

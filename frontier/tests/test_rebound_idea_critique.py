@@ -392,7 +392,7 @@ class IdeaCritique(RB):
 
     def test_mutations_hold_tournament_directory_lock_before_reading(self):
         tool = load_tool('rebound')
-        tournament = load_tool('tournoi')
+        tournament = load_tool('tournament')
         events = []
         import sys
         real_read = tool.read_rebound
@@ -409,7 +409,7 @@ class IdeaCritique(RB):
         path = self.w / 'incoming-critique.json'
         write_json(path, submission)
         # Patch the module actually shared by the tools, not another import.
-        with mock.patch.object(sys.modules['tournoi'], 'journal_lock', lock), \
+        with mock.patch.object(sys.modules['tournament'], 'journal_lock', lock), \
              mock.patch.object(tool, 'read_rebound', read), \
              mock.patch.dict('os.environ', FRONTIER_HOST_FAMILY='openai', FRONTIER_CRITIC_FAMILIES=''):
             self.assertEqual(tool.main(['record', str(self.w), '--critique', str(path)]), 0)
