@@ -1,3 +1,0 @@
-card.json, verdicts.json and result.json are byte copies of a recorded public-review VP run.
-state/journal.jsonl is SYNTHETIC: the real run did not keep its gateway journal; it is written here only so that
-tools/check.py can read a journal next to the real files. PRIOR-ART.md does not exist in a real card run.

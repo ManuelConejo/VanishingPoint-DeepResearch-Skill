@@ -1,6 +1,0 @@
-{
-  "steps": [
-    {"step": "vp_run", "utc": "2025-08-01T09:00:00Z", "duration_s": "unknown", "cost_usd": 0.1808, "vp_run": "q01", "note": "cost of the VP verifier only (verdicts.json cost_usd)"},
-    {"step": "critique", "utc": "2025-08-01T10:30:00Z", "duration_s": "unknown", "cost_usd": "unknown"}
-  ]
-}

@@ -9,7 +9,7 @@ plus a template to add one.
 **This repository is the product and the source of truth.** It is what a user installs; nothing else is needed.
 The benches that measured it are not part of this repository and are not required to use the skill.
 
-Status: v0.6.29, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
+Status: v0.6.30, research preview. Measured on small private benches (3 to 50 cases); no public benchmark yet; see
 "What is measured, what is not" below and CHANGELOG.md.
 
 ## In two minutes
@@ -303,7 +303,7 @@ Measured (private benches, small n, judged by models of other families and by th
   invented references (section "Academic research against web search" below);
 - whole reading before verdicts on code: exclusive verified findings in 5 of 6 code cases;
 - contradictor option: 6 code cases, three models of 2026-10-27;
-- every tool: an offline test suite (`tests/`, 754 tests, standard library only, about three minutes).
+- every tool: an offline test suite (standard library only), run before each release; it is kept in the development tree and not shipped here, to keep the repository minimal.
 
 Not measured or not verified:
 - no public benchmark: the figures above cannot be reproduced from this repository yet;
@@ -386,18 +386,7 @@ the engines, lowest cap, oldest lower bound. The rest of the section is text for
 One source = one file `tools/sources/<name>.py` (copy `tools/sources/_TEMPLATE.py`): its `SOURCE` declaration (engine, identifier
 prefix, hosts and pacing, access level, terms, date-barrier notes, optional key) and its `search` / `read` functions. Everything else
 (gateway engines and routing, `check_keys.py`, `setup_keys.py`, validators, exports) is derived from the registry. Your own sources
-can live in `~/.config/vp/sources/` (loaded with `VP_USER_SOURCES=1`). Rules, barrier, keys and tests: [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Tests
-
-```
-for t in tests/test_*.py; do python3 -I "$t"; done        # unittest, offline (test_code_capsule.py also runs under pytest)
-python3 -I tests/test_gateway.py --online                 # optional, network: forbidden reviews must stay unfindable
-```
-
-Run the tests as a normal user (not root): the code-capsule and whole-reading tests create throwaway git repositories.
-Checked on Python 3.12 (Ubuntu 24.04, `env -i`, empty home): all files pass, about three minutes. The system Python often has
-no `pytest`; without it, skip `test_code_capsule.py` or install it (`python3 -m pip install --user pytest`).
+can live in `~/.config/vp/sources/` (loaded with `VP_USER_SOURCES=1`). Rules, barrier and keys: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Layout
 
@@ -412,7 +401,7 @@ tools/check_decisions.py   French court decisions cited in any text, checked on 
 tools/code_capsule.py, code_sources.py (library), condense_repo.py, whole_reading.py, contradictor.py   code plugin tools (capsule, Y condensation, whole reading); contradictor (every plugin)
 tools/prior_art.py, prisma.py, followups.py   optional sections of SKILL.md (prior art, PRISMA flow diagram and PRISMA-S search report, follow-up questions)
 tools/evidence_bank.py, contradictions.py   command-line tools, not used by the skill by default; progress.py (run by the SKILL.md hook on Claude Code), report_lang.py, new_run.py, parse_date.py, summary.py (finish_run.py --summary), cost.py (budget): used by the skill
-tools/config.json   caps, models, host command profiles             tests/  examples/  KEYS.md  ACCESS-POLICY.md  CONTRIBUTING.md  CHANGELOG.md  USAGE.md  LICENSE  NOTICE
+tools/config.json   caps, models, host command profiles             examples/  KEYS.md  ACCESS-POLICY.md  CONTRIBUTING.md  CHANGELOG.md  USAGE.md  LICENSE  NOTICE
 .claude-plugin/     plugin.json + marketplace.json: the repository as a Claude Code plugin (the skill directory needs neither)
 ```
 

@@ -1,1 +1,0 @@
-{"utc": "2026-11-14T15:05:00.000000+00:00", "run": "vp-2026-11-14-vp-rb-b1", "T": "2026-11-14", "call": "search-openalex", "engine": "openalex", "query": "retrieval rank gain journal records title rewrite", "n": 20, "count": 2, "excluded": 0, "error": null, "ids": ["doi:10.1000/rb.b1.2022", "doi:10.1000/rb.b1.2022.b"]}

@@ -123,16 +123,6 @@ Limits: the evidence behind the design comes from abstracts of 46 sources in lan
 
 The two baselines of the pilot are written in the format of `schemas/baseline.json`: `"baseline": "T1"` (the model alone, without search) or `"T2"` (one standard VP run on the idea, `vp_run` required, then a recommendation by the same model), with `idea`, `domain`, `T`, `produced_by`, optional `hypotheses`, `tests` (each test in the item format of `schemas/tests.json`) and `recommendation`. `python3 tools/export_judge.py --baseline <file> --out <out> --case-id <blind id>` gives a `judge.json` with the same keys as a Frontier directory, for the paired comparison; `produced_by` and the recommendation never reach the judges. Examples: `tests/fixtures/baseline_t1.json`, `tests/fixtures/baseline_t2.json`. Cost and duration per step are in each working directory's `run.json`.
 
-## Tests
-
-From the directory that contains `frontier/`:
-
-```
-python3 -m unittest discover -v -s frontier/tests -t .
-```
-
-The tests use synthetic working directories and copies of three recorded VP runs on public review questions (`tests/fixtures/`), and fake container engines; they make no network call, no model call and start no real container.
-
 ## License
 
 Frontier is part of the VanishingPoint repository and is distributed under the repository's license, Apache-2.0 (see `LICENSE` at the repository root; there is no separate license file in this directory).
